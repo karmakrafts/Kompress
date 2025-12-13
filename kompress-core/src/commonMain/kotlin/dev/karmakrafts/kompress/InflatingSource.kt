@@ -21,7 +21,7 @@ import kotlinx.io.RawSource
 import kotlinx.io.readByteArray
 import kotlin.math.min
 
-class InflatingSource( // @formatter:off
+private class InflatingSource( // @formatter:off
     private val delegate: RawSource,
     raw: Boolean,
     private val bufferSize: Int
@@ -66,4 +66,4 @@ class InflatingSource( // @formatter:off
 fun RawSource.inflating( // @formatter:off
     raw: Boolean = true,
     bufferSize: Int = Inflater.DEFAULT_BUFFER_SIZE
-): InflatingSource = InflatingSource(this, raw, bufferSize) // @formatter:on
+): RawSource = InflatingSource(this, raw, bufferSize) // @formatter:on

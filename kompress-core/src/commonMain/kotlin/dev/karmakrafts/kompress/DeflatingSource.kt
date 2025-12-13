@@ -21,14 +21,13 @@ import kotlinx.io.RawSource
 import kotlinx.io.readByteArray
 import kotlin.math.min
 
-class DeflatingSource internal constructor( // @formatter:off
+private class DeflatingSource( // @formatter:off
     private val delegate: RawSource,
     raw: Boolean,
     level: Int,
     private val bufferSize: Int
 ) : RawSource { // @formatter:on
-    @PublishedApi
-    internal val deflater: Deflater = Deflater(raw, level)
+    private val deflater: Deflater = Deflater(raw, level)
     private val buffer: Buffer = Buffer()
     private val chunkBuffer: ByteArray = ByteArray(bufferSize)
 
@@ -72,4 +71,4 @@ fun RawSource.deflating( // @formatter:off
     raw: Boolean = true,
     level: Int = Deflater.DEFAULT_LEVEL,
     bufferSize: Int = Deflater.DEFAULT_BUFFER_SIZE
-): DeflatingSource = DeflatingSource(this, raw, level, bufferSize) // @formatter:on
+): RawSource = DeflatingSource(this, raw, level, bufferSize) // @formatter:on
