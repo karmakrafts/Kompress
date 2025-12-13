@@ -25,6 +25,7 @@ import java.time.ZonedDateTime
 
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
+    alias(libs.plugins.kotlin.jsPlainObjects)
     alias(libs.plugins.android.library)
     alias(libs.plugins.dokka)
     signing
@@ -61,12 +62,24 @@ configureJava(libs.versions.java)
     watchosSimulatorArm64()
     jvm()
     js {
-        browser()
-        // TODO: add NodeJS support
+        useEsModules()
+        browser {
+            testTask {
+                useKarma {
+                    useChromeHeadless()
+                }
+            }
+        }
     }
     wasmJs {
-        browser()
-        // TODO: add WASI support
+        useEsModules()
+        browser {
+            testTask {
+                useKarma {
+                    useChromeHeadless()
+                }
+            }
+        }
     }
     applyDefaultHierarchyTemplate {
         common {

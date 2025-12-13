@@ -61,6 +61,8 @@ interface Deflater : AutoCloseable {
      * - 0 means no compression
      * - 1 is the fastest compression with the lowest ratio
      * - 9 is the slowest compression with the highest ratio
+     *
+     * **DO NOT change this during compression as it will corrupt your data!**
      */
     var level: Int
 

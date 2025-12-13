@@ -16,7 +16,17 @@
 
 package dev.karmakrafts.kompress
 
+import dev.karmakrafts.kompress.fflate.Inflate
+import dev.karmakrafts.kompress.fflate.InflateOptions
+import dev.karmakrafts.kompress.fflate.Unzlib
+import dev.karmakrafts.kompress.fflate.UnzlibOptions
+
 private class InflaterImpl(raw: Boolean) : Inflater {
+    private var impl: FlateStreamWrapper = FlateStreamWrapper(
+        if (raw) Inflate(InflateOptions(null, null))
+        else Unzlib(UnzlibOptions(null, null))
+    )
+
     override var input: ByteArray
         get() = TODO("Not yet implemented")
         set(value) {}

@@ -24,8 +24,16 @@ import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 class DeflateInflateTest {
+    @Test
+    fun deflate() {
+        val value = "Hellou, World!"
+        val compressedData = Deflater.deflate(value.encodeToByteArray())
+        assertTrue(compressedData.isNotEmpty())
+    }
+
     @Test
     fun `Deflate and inflate small array raw`() {
         val value = "Hellou, World!"
