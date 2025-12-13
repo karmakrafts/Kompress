@@ -16,56 +16,53 @@
 
 package dev.karmakrafts.kompress
 
-import dev.karmakrafts.kompress.fflate.Deflate
-import dev.karmakrafts.kompress.fflate.DeflateOptions
-import dev.karmakrafts.kompress.fflate.Zlib
-import dev.karmakrafts.kompress.fflate.ZlibOptions
+import dev.karmakrafts.kompress.fflate.FlateStream
+import dev.karmakrafts.kompress.fflate.Inflate
+import dev.karmakrafts.kompress.fflate.InflateOptions
+import dev.karmakrafts.kompress.fflate.Unzlib
+import dev.karmakrafts.kompress.fflate.UnzlibOptions
 import org.khronos.webgl.Uint8Array
 import org.khronos.webgl.toUByteArray
 import org.khronos.webgl.toUint8Array
 import kotlin.math.min
 
 @OptIn(ExperimentalUnsignedTypes::class)
-private class DeflaterImpl( // @formatter:off
-    private val raw: Boolean,
-    initialLevel: Int
-) : Deflater { // @formatter:on
-    private var impl: FlateStreamWrapper = createImpl(initialLevel)
-    private var finalRequested: Boolean = false
-    private var finalSeen: Boolean = false
+private class InflaterImpl(raw: Boolean) : Inflater {
+    private var impl: FlateStream =
+        (if (raw) Inflate(InflateOptions(null, null)) else Unzlib(UnzlibOptions(null, null))).apply {
+            ondata = ::onData
+        }
+
     private var inputPending: Boolean = false
+    private var finalSeen: Boolean = false
+    private var finalPushed: Boolean = false
     private val outQueue: ArrayDeque<ByteArray> = ArrayDeque()
     private var outOffset: Int = 0
     private val emptyUint8Array: Uint8Array = Uint8Array(0)
 
-    override var level: Int = initialLevel
-        set(value) {
-            field = value
-            impl = createImpl(value)
-        }
-
     override var input: ByteArray = ByteArray(0)
         set(value) {
-            inputPending = true
             field = value
+            inputPending = true
         }
 
     override val needsInput: Boolean
         get() = !inputPending
+
     override val finished: Boolean
         get() = finalSeen && outQueue.isEmpty()
 
     @OptIn(ExperimentalUnsignedTypes::class)
-    override fun deflate(output: ByteArray): Int {
+    override fun inflate(output: ByteArray): Int {
         if (output.isEmpty()) return 0
         if (inputPending && !finalSeen) {
             val dataToPush = if (input.isNotEmpty()) input.asUByteArray().toUint8Array() else emptyUint8Array
-            impl.push(dataToPush, finalRequested)
+            impl.push(dataToPush, false)
             inputPending = false
         }
-
-        if (!inputPending && finalRequested && !finalSeen) {
+        else if (!finalSeen && !finalPushed && outQueue.isEmpty()) {
             impl.push(emptyUint8Array, true)
+            finalPushed = true
         }
 
         if (outQueue.isEmpty()) return 0
@@ -95,25 +92,17 @@ private class DeflaterImpl( // @formatter:off
         return written
     }
 
-    override fun finish() {
-        finalRequested = true
-    }
-
     override fun close() {
+        if (!finalSeen && !finalPushed) {
+            impl.push(emptyUint8Array, true)
+            finalPushed = true
+        }
         impl.ondata = null
         outQueue.clear()
         outOffset = 0
         inputPending = false
-        finalRequested = true
         finalSeen = true
         input = ByteArray(0)
-    }
-
-    private fun createImpl(level: Int): FlateStreamWrapper = FlateStreamWrapper(
-        if (raw) Deflate(DeflateOptions(level, 6), null)
-        else Zlib(ZlibOptions(level, 6))
-    ).apply {
-        ondata = ::onData
     }
 
     private fun onData(data: Uint8Array, isFinal: Boolean) {
@@ -122,4 +111,4 @@ private class DeflaterImpl( // @formatter:off
     }
 }
 
-actual fun Deflater(raw: Boolean, level: Int): Deflater = DeflaterImpl(raw, level)
+actual fun Inflater(raw: Boolean): Inflater = InflaterImpl(raw)

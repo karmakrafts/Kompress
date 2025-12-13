@@ -14,15 +14,17 @@
  * limitations under the License.
  */
 
-@file:JsModule("fflate")
+@file:OptIn(ExperimentalWasmJsInterop::class) @file:JsModule("fflate")
 
 package dev.karmakrafts.kompress.fflate
 
-import kotlinx.js.JsPlainObject
 import org.khronos.webgl.Uint8Array
+import kotlin.js.ExperimentalWasmJsInterop
+import kotlin.js.JsAny
+import kotlin.js.JsModule
+import kotlin.js.definedExternally
 
-@JsPlainObject
-internal external interface DeflateOptions {
+internal external interface DeflateOptions : JsAny {
     val level: Int
     val mem: Int
 }
@@ -30,7 +32,7 @@ internal external interface DeflateOptions {
 internal external class Deflate( // @formatter:off
     options: DeflateOptions,
     callback: FlateStreamHandler? = definedExternally
-) { // @formatter:on
-    var ondata: FlateStreamHandler?
-    fun push(data: Uint8Array, isFinal: Boolean)
+) : FlateStream { // @formatter:on
+    override var ondata: FlateStreamHandler?
+    override fun push(data: Uint8Array, isFinal: Boolean)
 }

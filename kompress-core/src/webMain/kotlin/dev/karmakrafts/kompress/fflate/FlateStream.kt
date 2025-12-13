@@ -14,24 +14,11 @@
  * limitations under the License.
  */
 
-package dev.karmakrafts.kompress
+package dev.karmakrafts.kompress.fflate
 
-private class InflaterImpl(raw: Boolean) : Inflater {
-    override var input: ByteArray
-        get() = TODO("Not yet implemented")
-        set(value) {}
-    override val needsInput: Boolean
-        get() = TODO("Not yet implemented")
-    override val finished: Boolean
-        get() = TODO("Not yet implemented")
+import org.khronos.webgl.Uint8Array
 
-    override fun inflate(output: ByteArray): Int {
-        TODO("Not yet implemented")
-    }
-
-    override fun close() {
-        TODO("Not yet implemented")
-    }
+internal external interface FlateStream {
+    var ondata: FlateStreamHandler?
+    fun push(data: Uint8Array, isFinal: Boolean)
 }
-
-actual fun Inflater(raw: Boolean): Inflater = InflaterImpl(raw)

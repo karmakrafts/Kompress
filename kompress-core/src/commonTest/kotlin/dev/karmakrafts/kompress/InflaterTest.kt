@@ -31,7 +31,24 @@ class InflaterTest {
 
     @Test
     fun `Decompression sanity check`() {
-        val data = Inflater.inflate(ubyteArrayOf(0x78U, 0x9CU, 0xF3U, 0x48U, 0xCDU, 0xC9U, 0xC9U, 0x57U, 0x04U, 0x00U, 0x07U, 0xA2U, 0x02U, 0x16U).asByteArray(), raw = false)
+        val data = Inflater.inflate(
+            ubyteArrayOf(
+                0x78U,
+                0x9CU,
+                0xF3U,
+                0x48U,
+                0xCDU,
+                0xC9U,
+                0xC9U,
+                0x57U,
+                0x04U,
+                0x00U,
+                0x07U,
+                0xA2U,
+                0x02U,
+                0x16U
+            ).asByteArray(), raw = false
+        )
         assertTrue(data.isNotEmpty())
         data.forEach { println("Byte: 0x${it.toHexString()}") }
         println("Decompressed: ${data.decodeToString()}")

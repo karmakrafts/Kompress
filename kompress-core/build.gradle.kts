@@ -108,10 +108,6 @@ configureJava(libs.versions.java)
         webMain {
             dependencies {
                 implementation(libs.kotlinx.browser)
-            }
-        }
-        jsMain {
-            dependencies {
                 implementation(npm("fflate", libs.versions.fflate.get()))
             }
         }

@@ -14,20 +14,21 @@
  * limitations under the License.
  */
 
-@file:JsModule("fflate")
+@file:OptIn(ExperimentalWasmJsInterop::class) @file:JsModule("fflate")
 
 package dev.karmakrafts.kompress.fflate
 
-import kotlinx.js.JsPlainObject
 import org.khronos.webgl.Uint8Array
+import kotlin.js.ExperimentalWasmJsInterop
+import kotlin.js.JsAny
+import kotlin.js.JsModule
 
-@JsPlainObject
-internal external interface InflateOptions {
+internal external interface InflateOptions : JsAny {
     val dictionary: Uint8Array?
     val out: Uint8Array?
 }
 
-internal external class Inflate(options: InflateOptions) {
-    var ondata: FlateStreamHandler?
-    fun push(data: Uint8Array, isFinal: Boolean)
+internal external class Inflate(options: InflateOptions) : FlateStream {
+    override var ondata: FlateStreamHandler?
+    override fun push(data: Uint8Array, isFinal: Boolean)
 }
