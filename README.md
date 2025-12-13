@@ -14,7 +14,7 @@ Lightweight zlib (de)compression API for Kotlin Multiplatform.
 - Support for **DEFLATE** and **DEFLATE RAW** compression
 - Synchronous streaming API inspired by Java's `Inflater`/`Deflater` APIs
 - Integration with [kotlinx.io](https://github.com/Kotlin/kotlinx-io)
-- Customizable compression- and memory-level
+- Customizable compression-level
 - Extra lightweight on JVM and native because it wraps available platform APIs
 
 ### How to use it
