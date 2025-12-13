@@ -38,9 +38,7 @@ kotlin {
     sourceSets {
         commonMain {
             dependencies {
-                implementation("dev.karmakrafts.fluently:fluently-core:<version>")
-                // Optional support for coroutines based reactivity
-                implementation("dev.karmakrafts.fluently:fluently-reactive:<version>")
+                implementation("dev.karmakrafts.kompress:kompress-core:<version>")
             }
         }
     }
