@@ -23,7 +23,6 @@ import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 import org.jetbrains.kotlin.gradle.targets.jvm.tasks.KotlinJvmTest
 import java.time.Duration
 import java.time.ZonedDateTime
-import kotlin.time.Duration.Companion.seconds
 
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
@@ -74,18 +73,17 @@ configureJava(libs.versions.java)
             }
         }
     }
-    // wasmJs target is disabled for now to focus on JS debugging
-    // wasmJs {
-    //     useEsModules()
-    //     browser {
-    //         testTask {
-    //             useKarma {
-    //                 timeout = Duration.ofSeconds(30)
-    //                 useChromeHeadless()
-    //             }
-    //         }
-    //     }
-    // }
+    wasmJs {
+        useEsModules()
+        browser {
+            testTask {
+                useKarma {
+                    timeout = Duration.ofSeconds(30)
+                    useChromeHeadless()
+                }
+            }
+        }
+    }
     applyDefaultHierarchyTemplate {
         common {
             group("jvmAndAndroid") {
@@ -110,7 +108,6 @@ configureJava(libs.versions.java)
         webMain {
             dependencies {
                 implementation(libs.kotlinx.browser)
-                implementation(libs.kotlinx.coroutines.core)
             }
         }
         jsMain {

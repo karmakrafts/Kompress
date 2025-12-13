@@ -21,10 +21,11 @@ import dev.karmakrafts.kompress.fflate.InflateOptions
 import dev.karmakrafts.kompress.fflate.Unzlib
 import dev.karmakrafts.kompress.fflate.UnzlibOptions
 import org.khronos.webgl.Uint8Array
-import org.khronos.webgl.get
+import org.khronos.webgl.toUByteArray
 import org.khronos.webgl.toUint8Array
 import kotlin.math.min
 
+@OptIn(ExperimentalUnsignedTypes::class)
 private class InflaterImpl(raw: Boolean) : Inflater {
     private var impl: FlateStreamWrapper = FlateStreamWrapper(
         if (raw) Inflate(InflateOptions(null, null)) else Unzlib(UnzlibOptions(null, null))
@@ -105,11 +106,7 @@ private class InflaterImpl(raw: Boolean) : Inflater {
     }
 
     private fun onData(data: Uint8Array, isFinal: Boolean) {
-        if (data.length > 0) {
-            val chunk = ByteArray(data.length)
-            for (i in 0 until data.length) chunk[i] = (data[i].toInt() and 0xFF).toByte()
-            outQueue.addLast(chunk)
-        }
+        if (data.length > 0) outQueue.addLast(data.toUByteArray().asByteArray())
         if (isFinal) finalSeen = true
     }
 }
