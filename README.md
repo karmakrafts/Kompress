@@ -1,5 +1,11 @@
 # 🗜️ Kompress
 
+[![](https://git.karmakrafts.dev/kk/kompress/badges/master/pipeline.svg)](https://git.karmakrafts.dev/kk/kompress/-/pipelines)
+[![](https://img.shields.io/maven-metadata/v?metadataUrl=https%3A%2F%2Frepo.maven.apache.org%2Fmaven2%2Fdev%2Fkarmakrafts%2Fkompress%2Fkompress-core%2Fmaven-metadata.xml
+)](https://git.karmakrafts.dev/kk/kompress/-/packages)
+[![](https://img.shields.io/maven-metadata/v?metadataUrl=https%3A%2F%2Fcentral.sonatype.com%2Frepository%2Fmaven-snapshots%2Fdev%2Fkarmakrafts%2Fkompress%2Fkompress-core%2Fmaven-metadata.xml
+)](https://git.karmakrafts.dev/kk/kompress/-/packages)
+
 Lightweight zlib (de)compression API for Kotlin Multiplatform.  
 
 ### Features
