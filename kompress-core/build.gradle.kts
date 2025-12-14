@@ -110,8 +110,8 @@ configureJava(libs.versions.java)
     sourceSets {
         commonMain {
             dependencies {
-                implementation(libs.kotlinx.io.bytestring)
-                implementation(libs.kotlinx.io.core)
+                api(libs.kotlinx.io.bytestring)
+                api(libs.kotlinx.io.core)
             }
         }
         commonTest {
