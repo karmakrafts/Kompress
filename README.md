@@ -45,3 +45,74 @@ kotlin {
 ```
 
 Or, if you are only using Kotlin/JVM, add it to your top-level dependencies block instead.
+
+### Inflater and Deflater interfaces
+
+#### Bulk compression
+
+If you just want to (de)compress one large blob of data, the `Deflater.deflate` and `Inflater.inflate` functions
+are what you're probably looking for:
+
+```kotlin
+fun main() {
+    val myData = "Hello, World! This is an important message."
+    val compressedData = Deflater.deflate(
+        data = myData.encodeToByteArray(),
+        raw = false, // Control if you want the gzip/pkzip header
+        level = 9, // Control the compression level
+        bufferSize = 1024 // Control the internal buffer size
+    )
+    val decompressedData = Inflater.inflate(
+        data = compressedData,
+        raw = false,
+        bufferSize = 1024
+    )
+    println(myData == decompressedData.decodeToString())
+}
+```
+
+#### Streaming compression
+
+Streaming compression is what you want if your data exceeds a certain size,  
+that size usually being the limit of the underlying runtime's array size.  
+With Kompress, that limit is about 2.147GB because the index type of an array
+in Kotlin is a signed integer.
+Streaming allows you to split up the data into discrete chunks and compress those
+chunks sequentially until you processed all the data.
+
+You can either use the `Deflater` and `Inflater` interfaces from the core module manually:
+
+```kotlin
+fun main() {
+    val deflater = Deflater(
+        raw = false,
+        level = 9,
+        // ...
+    )
+    val outputBuffer = ByteArray(1024)
+    while(deflater.needsInput) {
+        deflater.input = getInputChunk()
+        while(!deflater.finished) {
+            deflater.deflate(outputBuffer) // Deflate data into the buffer
+            copyChunkToSomeTarget(outputBuffer)
+        }
+    }
+    deflater.close() // Always close Deflater/Inflater, it is recommended to use .use{}
+}
+```
+
+Or you can use the recommended way of `kotlinx.io` wrappers:
+
+```kotlin
+fun main() {
+    val buffer = Buffer()
+    buffer.writeInt(42)
+    buffer.writeFloat(4.20F)
+    
+    val compressedBuffer = Buffer()
+    compressedBuffer.transferFrom(buffer.deflating())
+    
+    val decompressedBuffer = Buffer()
+    decompressedBuffer.transferFrom(compressedBuffer.inflating())
+}
+```
