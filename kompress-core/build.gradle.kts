@@ -141,7 +141,7 @@ dokka {
     moduleName = project.name
     pluginsConfiguration {
         html {
-            footerMessage = "(c) ${ZonedDateTime.now().year} Karma Krafts & associates"
+            footerMessage = "&copy; ${ZonedDateTime.now().year} Karma Krafts"
         }
     }
 }
