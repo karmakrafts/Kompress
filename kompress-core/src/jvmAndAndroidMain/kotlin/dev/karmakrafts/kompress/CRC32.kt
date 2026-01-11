@@ -16,13 +16,15 @@
 
 package dev.karmakrafts.kompress
 
+import kotlinx.io.Source
+import kotlinx.io.readByteArray
 import java.util.zip.CRC32
 
 private val instance: ThreadLocal<CRC32> = ThreadLocal.withInitial { CRC32() }
 
-actual fun crc32(data: ByteArray): UInt {
+actual fun Source.crc32(size: Int): UInt {
     val crc = instance.get()
     crc.reset()
-    crc.update(data)
+    crc.update(readByteArray(size))
     return crc.value.toUInt()
 }

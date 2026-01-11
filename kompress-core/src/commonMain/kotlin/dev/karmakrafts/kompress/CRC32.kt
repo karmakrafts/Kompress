@@ -16,4 +16,6 @@
 
 package dev.karmakrafts.kompress
 
-expect fun crc32(data: ByteArray): UInt
+import kotlinx.io.Source
+
+expect fun Source.crc32(size: Int): UInt
