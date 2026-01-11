@@ -19,6 +19,11 @@ Lightweight zlib (de)compression API for Kotlin Multiplatform.
 - Customizable compression-level
 - Extra lightweight on JVM and native because it wraps available platform APIs
 
+### Modules
+
+- **kompress-core**: Core DEFLATE and CRC APIs
+- **kompress-zip**: Pure Kotlin implementation of the PKZip standard
+
 ### How to use it
 
 First, add the official Maven Central repository to your settings.gradle.kts:

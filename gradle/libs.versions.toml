@@ -6,14 +6,15 @@ androidGradle = "8.12.3" # https://developer.android.com/reference/tools/gradle-
 androidCompileSDK = "36"
 androidMinimalSDK = "26"
 
-kompress = "1.3.1"
+kompress = "1.4.0"
 kotlin = "2.3.0" # https://github.com/JetBrains/kotlin/releases
 kotlinxIo = "0.8.2" # https://github.com/Kotlin/kotlinx-io/releases
-kotlinxBrowser = "0.5.0" # https://mvnrepository.com/artifact/org.jetbrains.kotlinx/kotlinx-browser
+kotlinxBrowser = "0.5.0" # https://mvnrepository.com/artifact/org.jetbrains.kotlinx/kotlinx-browser # TODO: this is deprecated, replace with kotlin-wrappers:browser
 dokka = "2.1.0" # https://github.com/Kotlin/dokka/releases
 karmaConventions = "1.9.4" # https://github.com/karmakrafts/karma-conventions/tags
 gradleNexus = "2.0.0" # https://github.com/gradle-nexus/publish-plugin/releases
-fflate = "0.8.2" # https://github.com/101arrowz/fflate/releases
+
+fflate = "0.8.2" # https://github.com/101arrowz/fflate/releases # TODO: this is a deprecated impl detail, get rid of it
 
 [libraries]
 

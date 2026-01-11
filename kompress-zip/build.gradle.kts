@@ -1,5 +1,5 @@
 /*
- * Copyright 2025 Karma Krafts
+ * Copyright 2026 Karma Krafts
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -39,7 +39,6 @@ defaultDokkaConfig()
 @OptIn(ExperimentalWasmDsl::class) kotlin {
     compilerOptions {
         freeCompilerArgs.add("-Xexpect-actual-classes")
-        freeCompilerArgs.add("-XXLanguage:+UnnamedLocalVariables")
     }
     withSourcesJar(true)
     mingwX64()
@@ -104,30 +103,16 @@ defaultDokkaConfig()
             }
         }
     }
-    applyDefaultHierarchyTemplate {
-        common {
-            group("jvmAndAndroid") {
-                withJvm()
-                withCompilations { it is KotlinMultiplatformAndroidCompilation }
-            }
-        }
-    }
+    applyDefaultHierarchyTemplate()
     sourceSets {
         commonMain {
             dependencies {
-                api(libs.kotlinx.io.bytestring)
-                api(libs.kotlinx.io.core)
+
             }
         }
         commonTest {
             dependencies {
                 implementation(libs.kotlin.test)
-            }
-        }
-        webMain {
-            dependencies {
-                implementation(libs.kotlinx.browser) // TODO: replace this with kotlin-wrappers
-                implementation(npm("fflate", libs.versions.fflate.get()))
             }
         }
     }
@@ -141,8 +126,8 @@ tasks {
 
 publishing {
     setProjectInfo(
-        name = "Kompress Core",
-        description = "Lightweight zlib API for Kotlin Multiplatform",
+        name = "Kompress ZIP",
+        description = "PKZip implementation for Kotlin Multiplatform",
         url = "https://git.karmakrafts.dev/kk/kompress"
     )
 }

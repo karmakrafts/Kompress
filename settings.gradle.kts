@@ -39,3 +39,4 @@ dependencyResolutionManagement {
 }
 
 include("kompress-core")
+include("kompress-zip")
