@@ -1,5 +1,5 @@
 /*
- * Copyright 2025 Karma Krafts
+ * Copyright 2026 Karma Krafts
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,6 @@
 
 package dev.karmakrafts.kompress.fflate
 
-import org.khronos.webgl.Uint8Array
+import js.typedarrays.Uint8Array
 
-internal typealias FlateStreamHandler = (data: Uint8Array, isFinal: Boolean) -> Unit
+internal typealias FlateStreamHandler = (data: Uint8Array<*>, isFinal: Boolean) -> Unit

@@ -1,5 +1,5 @@
 /*
- * Copyright 2025 Karma Krafts
+ * Copyright 2026 Karma Krafts
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,9 +21,10 @@ import dev.karmakrafts.kompress.fflate.Inflate
 import dev.karmakrafts.kompress.fflate.InflateOptions
 import dev.karmakrafts.kompress.fflate.Unzlib
 import dev.karmakrafts.kompress.fflate.UnzlibOptions
-import org.khronos.webgl.Uint8Array
-import org.khronos.webgl.toUByteArray
-import org.khronos.webgl.toUint8Array
+import js.buffer.ArrayBufferLike
+import js.typedarrays.Uint8Array
+import js.typedarrays.toUByteArray
+import js.typedarrays.toUint8Array
 import kotlin.math.min
 
 @OptIn(ExperimentalUnsignedTypes::class)
@@ -38,7 +39,7 @@ private class InflaterImpl(raw: Boolean) : Inflater {
     private var finalPushed: Boolean = false
     private val outQueue: ArrayDeque<ByteArray> = ArrayDeque()
     private var outOffset: Int = 0
-    private val emptyUint8Array: Uint8Array = Uint8Array(0)
+    private val emptyUint8Array: Uint8Array<ArrayBufferLike> = Uint8Array(0)
 
     override var input: ByteArray = ByteArray(0)
         set(value) {
@@ -105,7 +106,7 @@ private class InflaterImpl(raw: Boolean) : Inflater {
         input = ByteArray(0)
     }
 
-    private fun onData(data: Uint8Array, isFinal: Boolean) {
+    private fun onData(data: Uint8Array<*>, isFinal: Boolean) {
         if (data.length > 0) outQueue.addLast(data.toUByteArray().asByteArray())
         if (isFinal) finalSeen = true
     }

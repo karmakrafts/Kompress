@@ -14,11 +14,13 @@
  * limitations under the License.
  */
 
+@file:OptIn(ExperimentalWasmJsInterop::class) @file:JsModule("fflate")
+
 package dev.karmakrafts.kompress.fflate
 
 import js.typedarrays.Uint8Array
 
-internal external interface FlateStream {
-    var ondata: FlateStreamHandler?
-    fun push(data: Uint8Array<*>, isFinal: Boolean)
+internal actual external class Unzlib actual constructor(options: UnzlibOptions) : FlateStream {
+    actual override var ondata: FlateStreamHandler?
+    actual override fun push(data: Uint8Array<*>, isFinal: Boolean)
 }

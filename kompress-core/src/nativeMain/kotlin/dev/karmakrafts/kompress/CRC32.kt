@@ -19,6 +19,7 @@ package dev.karmakrafts.kompress
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.UnsafeNumber
 import kotlinx.cinterop.addressOf
+import kotlinx.cinterop.convert
 import kotlinx.cinterop.reinterpret
 import kotlinx.cinterop.usePinned
 import kotlinx.io.Source
@@ -27,5 +28,5 @@ import platform.zlib.crc32 as zCrc32
 
 @OptIn(ExperimentalForeignApi::class, UnsafeNumber::class)
 actual fun Source.crc32(size: Int): UInt = readByteArray(size).usePinned { pinnedData ->
-    zCrc32(0U, pinnedData.addressOf(0).reinterpret(), size.toUInt())
+    zCrc32(0U, pinnedData.addressOf(0).reinterpret(), size.toUInt()).convert()
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2025 Karma Krafts
+ * Copyright 2026 Karma Krafts
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,9 +21,10 @@ import dev.karmakrafts.kompress.fflate.DeflateOptions
 import dev.karmakrafts.kompress.fflate.FlateStream
 import dev.karmakrafts.kompress.fflate.Zlib
 import dev.karmakrafts.kompress.fflate.ZlibOptions
-import org.khronos.webgl.Uint8Array
-import org.khronos.webgl.toUByteArray
-import org.khronos.webgl.toUint8Array
+import js.buffer.ArrayBufferLike
+import js.typedarrays.Uint8Array
+import js.typedarrays.toUByteArray
+import js.typedarrays.toUint8Array
 import kotlin.math.min
 
 @OptIn(ExperimentalUnsignedTypes::class)
@@ -37,7 +38,7 @@ private class DeflaterImpl( // @formatter:off
     private var inputPending: Boolean = false
     private val outQueue: ArrayDeque<ByteArray> = ArrayDeque()
     private var outOffset: Int = 0
-    private val emptyUint8Array: Uint8Array = Uint8Array(0)
+    private val emptyUint8Array: Uint8Array<ArrayBufferLike> = Uint8Array(0)
 
     override var level: Int = initialLevel
         set(value) {
@@ -117,7 +118,7 @@ private class DeflaterImpl( // @formatter:off
         }
     }
 
-    private fun onData(data: Uint8Array, isFinal: Boolean) {
+    private fun onData(data: Uint8Array<*>, isFinal: Boolean) {
         if (data.length > 0) outQueue.addLast(data.toUByteArray().asByteArray())
         if (isFinal) finalSeen = true
     }

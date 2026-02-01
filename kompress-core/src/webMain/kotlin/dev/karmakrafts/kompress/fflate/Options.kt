@@ -1,5 +1,5 @@
 /*
- * Copyright 2025 Karma Krafts
+ * Copyright 2026 Karma Krafts
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,19 +16,19 @@
 
 package dev.karmakrafts.kompress.fflate
 
-import org.khronos.webgl.Uint8Array
+import js.typedarrays.Uint8Array
 
 internal fun DeflateOptions(level: Int, mem: Int): DeflateOptions = unsafeJso {
     this.level = level
     this.mem = mem
 }
 
-internal fun InflateOptions(dictionary: Uint8Array?, out: Uint8Array?): InflateOptions = unsafeJso {
+internal fun InflateOptions(dictionary: Uint8Array<*>?, out: Uint8Array<*>?): InflateOptions = unsafeJso {
     this.dictionary = dictionary
     this.out = out
 }
 
-internal fun UnzlibOptions(dictionary: Uint8Array?, out: Uint8Array?): UnzlibOptions = unsafeJso {
+internal fun UnzlibOptions(dictionary: Uint8Array<*>?, out: Uint8Array<*>?): UnzlibOptions = unsafeJso {
     this.dictionary = dictionary
     this.out = out
 }

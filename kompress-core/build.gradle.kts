@@ -1,5 +1,5 @@
 /*
- * Copyright 2025 Karma Krafts
+ * Copyright 2026 Karma Krafts
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,14 +16,18 @@
 
 @file:OptIn(ExperimentalKotlinGradlePluginApi::class)
 
-import com.android.build.api.dsl.KotlinMultiplatformAndroidCompilation
 import dev.karmakrafts.conventions.configureJava
 import dev.karmakrafts.conventions.defaultDokkaConfig
+import dev.karmakrafts.conventions.kotlin.defaultCompilerOptions
+import dev.karmakrafts.conventions.kotlin.withAndroidLibrary
+import dev.karmakrafts.conventions.kotlin.withBrowser
+import dev.karmakrafts.conventions.kotlin.withJvm
+import dev.karmakrafts.conventions.kotlin.withNative
+import dev.karmakrafts.conventions.kotlin.withNodeJs
+import dev.karmakrafts.conventions.kotlin.withWeb
 import dev.karmakrafts.conventions.setProjectInfo
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
-import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 import org.jetbrains.kotlin.gradle.targets.jvm.tasks.KotlinJvmTest
-import java.time.Duration
 
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
@@ -36,79 +40,23 @@ plugins {
 configureJava(libs.versions.java)
 defaultDokkaConfig()
 
-@OptIn(ExperimentalWasmDsl::class) kotlin {
-    compilerOptions {
-        freeCompilerArgs.add("-Xexpect-actual-classes")
-        freeCompilerArgs.add("-XXLanguage:+UnnamedLocalVariables")
-    }
-    withSourcesJar(true)
-    mingwX64()
-    linuxX64()
-    linuxArm64()
-    macosX64()
-    macosArm64()
-    androidLibrary {
-        namespace = "$group.${rootProject.name}"
-        compileSdk = libs.versions.androidCompileSDK.get().toInt()
-        minSdk = libs.versions.androidMinimalSDK.get().toInt()
-    }
-    androidNativeArm32()
-    androidNativeArm64()
-    androidNativeX64()
-    androidNativeX86()
-    iosX64()
-    iosArm64()
-    iosSimulatorArm64()
-    tvosArm64()
-    tvosX64()
-    tvosSimulatorArm64()
-    watchosArm32()
-    watchosArm64()
-    watchosX64()
-    watchosSimulatorArm64()
-    jvm()
-    js {
-        useCommonJs()
-        browser {
-            testTask {
-                useKarma {
-                    timeout = Duration.ofSeconds(30)
-                    useChromeHeadless()
-                }
-            }
+kotlin {
+    defaultCompilerOptions()
+    withSourcesJar()
+    withAndroidLibrary("$group.core")
+    withNative()
+    withJvm()
+    withWeb {
+        withBrowser {
+            useEsModules()
         }
-        nodejs {
-            testTask {
-                useKarma {
-                    timeout = Duration.ofSeconds(30)
-                    useChromeHeadless()
-                }
-            }
-        }
-    }
-    wasmJs {
-        browser {
-            testTask {
-                useKarma {
-                    timeout = Duration.ofSeconds(30)
-                    useChromeHeadless()
-                }
-            }
-        }
-        nodejs {
-            testTask {
-                useKarma {
-                    timeout = Duration.ofSeconds(30)
-                    useChromeHeadless()
-                }
-            }
-        }
+        withNodeJs()
     }
     applyDefaultHierarchyTemplate {
         common {
             group("jvmAndAndroid") {
                 withJvm()
-                withCompilations { it is KotlinMultiplatformAndroidCompilation }
+                withAndroidLibrary()
             }
         }
     }
@@ -126,7 +74,7 @@ defaultDokkaConfig()
         }
         webMain {
             dependencies {
-                implementation(libs.kotlinx.browser) // TODO: replace this with kotlin-wrappers
+                implementation(libs.kotlin.wrappers.browser)
                 implementation(npm("fflate", libs.versions.fflate.get()))
             }
         }
