@@ -7,12 +7,16 @@ workflow:
     - if: $CI_PIPELINE_SOURCE == "schedule"
 
 stages:
+  - check_changelog
   - build
   - security
   - publish
+  - update_changelog
 
 variables:
   GRADLE_OPTS: -Dorg.gradle.daemon=false
+  FF_USE_FASTZIP: "true"
+  DOCS_URL: "https://docs.karmakrafts.dev/kompress-core"
 
 # ------------------------------ Conditions
 
@@ -32,24 +36,66 @@ variables:
   - if: $CI_PIPELINE_SOURCE == "schedule"
     when: never
 
+.if-merge-request: &if-merge-request
+  - if: $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME
+  - if: $CI_PIPELINE_SOURCE == "schedule"
+    when: never
+
+# ------------------------------ Changelog
+
+check_changelog:
+  stage: check_changelog
+  interruptible: true
+  rules:
+    - *if-merge-request
+  script:
+    - |
+      echo "Checking CHANGELOG.md"
+      git fetch origin $CI_MERGE_REQUEST_TARGET_BRANCH_NAME
+      if ! git diff --name-only origin/$CI_MERGE_REQUEST_TARGET_BRANCH_NAME...HEAD | grep -q CHANGELOG.md; then
+        echo "❌ CHANGELOG.md was not updated"
+        exit 1
+      fi
+      echo "✅ CHANGELOG.md was updated"
+  tags:
+    - macos
+
+update_changelog:
+  stage: update_changelog
+  interruptible: false
+  rules:
+    - *if-release
+  script:
+    - |
+      git clone "$CI_PROJECT_URL" update-changelog
+      cd update-changelog
+      echo "Updating CHANGELOG.md for next release"
+      sed -i '' "s/^## \[Unreleased\]/## [Unreleased]\\
+      \\
+      ## [$CI_COMMIT_TAG]/" CHANGELOG.md
+      git config user.name "GitLab CI"
+      git config user.email "gitlab-ci@example.com"
+      git add CHANGELOG.md
+      git commit -m "[skip-ci] Update changelog for next release"
+      git push https://gitlab-ci-token:${CI_PUSH_TOKEN}@git.karmakrafts.dev/kk/kompress.git
+      cd ..
+      rm -rf update-changelog
+  tags:
+    - macos
+
 # ------------------------------ Security
 
 security:
   stage: security
   interruptible: true
-  needs: [ ]
   variables:
     TRIVY_CACHE_DIR: ".trivycache/"
   cache:
     paths:
       - .trivycache/
   rules:
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-      allow_failure: true
-    - if: '$CI_COMMIT_TAG =~ /^\d+.\d+.\d+.*/'
-      allow_failure: false
-    - if: $CI_PIPELINE_SOURCE == "schedule"
-      allow_failure: false
+    - *if-merge-request
+    - *if-main
   artifacts:
     when: always
     reports:
@@ -58,7 +104,7 @@ security:
     - ./gradlew dependenciesForAll --write-locks --no-parallel > dependencies.txt
   script:
     - trivy repo ./ --exit-code 0
-    - trivy repo ./ --exit-code 0 --format template --template "@/Volumes/Data/contrib/gitlab.tpl" --output report.json
+    - trivy repo ./ --exit-code 0 --format template --template "@/Volumes/Runner/contrib/gitlab.tpl" --output report.json
     - trivy repo ./ --exit-code 1 --severity CRITICAL
   tags:
     - macos
@@ -105,3 +151,76 @@ publish-documentation:
     - ./gradlew -DpublishDocs.root=/var/www/docs publishDocs
   tags:
     - docs
+
+# ------------------------------ Release
+
+release:gitlab:
+  stage: release
+  rules:
+    - *if-release
+  script:
+    - |
+      awk '
+        $0 == "## [Unreleased]" { found=1; next }
+        found && $0 ~ "^## \\[" { exit }
+        found { print }
+      ' "CHANGELOG.md" > release_notes.md
+      echo "Extracted release notes"
+  release:
+    tag_name: "$CI_COMMIT_TAG"
+    name: "$CI_COMMIT_TAG"
+    description: "$(cat release_notes.md)"
+    assets:
+      links:
+        - name: "Documentation"
+          url: "$DOCS_URL"
+          link_type: "other"
+        - name: "Changelog"
+          url: "$CI_PROJECT_URL/-/blob/$CI_COMMIT_TAG/CHANGELOG.md"
+          link_type: "other"
+  tags:
+    - macos
+
+release:github:
+  stage: release
+  rules:
+    - *if-release
+  variables:
+    GITHUB_API: "https://api.github.com"
+    GITHUB_REPO: "karmakrafts/kompress"
+    CHANGELOG_URL: "$CI_PROJECT_URL/-/blob/$CI_COMMIT_TAG/CHANGELOG.md"
+    GITLAB_RELEASE_URL: "$CI_PROJECT_URL/-/releases/$CI_COMMIT_TAG"
+  script:
+    - |
+      awk '
+      $0 == "## [Unreleased]" { found=1; next }
+      found && $0 ~ "^## \\[" { exit }
+      found { print }
+      ' "CHANGELOG.md" > release_notes.md
+      echo "Extracted release notes"
+      HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$GITHUB_API/repos/$GITHUB_REPO/releases" \
+        -H "Authorization: token $GITHUB_TOKEN" \
+        -H "Accept: application/vnd.github+json" \
+        -d "$(jq -n \
+          --arg tag "$CI_COMMIT_TAG" \
+          --arg body "# Release Notes
+      $(cat release_notes.md)
+      
+      # Links
+      
+      - [GitLab Release]($GITLAB_RELEASE_URL)
+      - [Changelog]($CHANGELOG_URL)
+      - [Documentation]($DOCS_URL)" \
+          '{
+            tag_name: $tag,
+            name: $tag,
+            body: $body
+          }')")
+      if [ "$HTTP_STATUS" -eq 201 ]; then 
+          echo "✅ GitHub release created successfully!"
+      else 
+          echo "❌ Failed to create GitHub release (HTTP $HTTP_STATUS)"
+          exit 1
+      fi
+  tags:
+    - macos
