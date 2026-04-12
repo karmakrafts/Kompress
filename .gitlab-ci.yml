@@ -11,6 +11,7 @@ stages:
   - build
   - security
   - publish
+  - release
   - update_changelog
 
 variables:
@@ -19,12 +20,6 @@ variables:
   DOCS_URL: "https://docs.karmakrafts.dev/kompress-core"
 
 # ------------------------------ Conditions
-
-.if-merge-request-or-main: &if-merge-request-or-main
-  - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-  - if: $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME
-  - if: $CI_PIPELINE_SOURCE == "schedule"
-    when: never
 
 .if-main: &if-main
   - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
