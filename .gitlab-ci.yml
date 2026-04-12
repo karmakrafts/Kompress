@@ -110,7 +110,8 @@ build:
   stage: build
   interruptible: true
   rules:
-    - *if-merge-request-or-main
+    - *if-merge-request
+    - *if-main
   script:
     - ./gradlew clean build --stacktrace
   tags:
