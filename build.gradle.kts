@@ -37,8 +37,10 @@ group = "dev.karmakrafts.kompress"
 version = GitLabCI.getDefaultVersion(libs.versions.kompress)
 
 @OptIn(ExperimentalEncodingApi::class) subprojects {
-    apply<MavenPublishPlugin>()
-    apply<SigningPlugin>()
+    apply {
+        plugin<MavenPublishPlugin>()
+        plugin<SigningPlugin>()
+    }
 
     group = rootProject.group
     version = rootProject.version
