@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.4.2]
+
 ### Changed
 
 - Updated to Kotlin 2.3.21
