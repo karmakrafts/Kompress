@@ -27,6 +27,7 @@ import kotlinx.cinterop.ptr
 import kotlinx.cinterop.reinterpret
 import kotlinx.cinterop.usePinned
 import platform.zlib.Z_BUF_ERROR
+import platform.zlib.Z_FINISH
 import platform.zlib.Z_NO_FLUSH
 import platform.zlib.Z_OK
 import platform.zlib.Z_STREAM_END
@@ -59,9 +60,15 @@ private class InflaterImpl(raw: Boolean) : Inflater {
     override val needsInput: Boolean
         get() = stream.avail_in == 0u
 
+    private var finishRequested: Boolean = false
+
     private var _finished: Boolean = false
     override val finished: Boolean
         get() = _finished
+
+    override fun finish() {
+        finishRequested = true
+    }
 
     override fun inflate(output: ByteArray): Int = output.usePinned { pinnedOutput ->
         if (_finished) return@usePinned 0
@@ -70,7 +77,8 @@ private class InflaterImpl(raw: Boolean) : Inflater {
         stream.avail_out = output.size.toUInt()
 
         val before = stream.avail_out
-        val res = inflate(stream.ptr, Z_NO_FLUSH)
+        val flush = if (finishRequested) Z_FINISH else Z_NO_FLUSH
+        val res = inflate(stream.ptr, flush)
         val after = stream.avail_out
         val written = (before - after).toInt()
 

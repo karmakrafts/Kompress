@@ -38,12 +38,14 @@ private class InflatingSource( // @formatter:off
             if (inflater.needsInput) {
                 if (buffer.size == 0L && delegate.readAtMostTo(buffer, bufferSize.toLong()) == -1L) {
                     // No more compressed input available.
-                    return if (totalWritten > 0L) totalWritten else -1L
+                    inflater.finish()
                 }
-                // Provide a chunk of compressed data to the inflater.
-                val toProvide = min(buffer.size, bufferSize.toLong()).toInt()
-                val provided = buffer.readByteArray(toProvide)
-                inflater.input = provided
+                else {
+                    // Provide a chunk of compressed data to the inflater.
+                    val toProvide = min(buffer.size, bufferSize.toLong()).toInt()
+                    val provided = buffer.readByteArray(toProvide)
+                    inflater.input = provided
+                }
             }
             // Inflate into the output buffer, respecting the requested byteCount.
             val remaining = (byteCount - totalWritten).toInt()

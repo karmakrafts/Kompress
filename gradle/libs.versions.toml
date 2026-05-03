@@ -3,7 +3,7 @@
 java = "17"
 
 androidGradle = "9.2.0" # https://developer.android.com/reference/tools/gradle-api
-kompress = "1.4.2"
+kompress = "1.4.3"
 kotlin = "2.3.21" # https://github.com/JetBrains/kotlin/releases
 kotlinxIo = "0.9.0" # https://github.com/Kotlin/kotlinx-io/releases
 kotlinBrowser = "2026.4.15" # https://github.com/JetBrains/kotlin-wrappers/releases

@@ -42,6 +42,7 @@ interface Inflater : AutoCloseable {
             bufferSize: Int = DEFAULT_BUFFER_SIZE
         ): ByteArray = Inflater(raw).use { inflater -> // @formatter:on
             inflater.input = data
+            inflater.finish() // We only handle a single input chunk in this case
             val buffer = Buffer()
             val chunkBuffer = ByteArray(bufferSize)
             while (!inflater.finished) {
@@ -76,6 +77,12 @@ interface Inflater : AutoCloseable {
      * @return The actual number of decompressed bytes.
      */
     fun inflate(output: ByteArray): Int
+
+    /**
+     * When called, indicates that decompression should end with the current
+     * contents of the input buffer.
+     */
+    fun finish()
 }
 
 /**

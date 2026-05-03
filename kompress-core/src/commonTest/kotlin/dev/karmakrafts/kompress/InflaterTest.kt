@@ -16,7 +16,13 @@
 
 package dev.karmakrafts.kompress
 
+import kotlinx.io.Buffer
+import kotlinx.io.buffered
+import kotlinx.io.readByteArray
+import kotlin.random.Random
 import kotlin.test.Test
+import kotlin.test.assertContentEquals
+import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 @OptIn(ExperimentalUnsignedTypes::class)
@@ -39,5 +45,39 @@ class InflaterTest {
         assertTrue(data.isNotEmpty())
         data.forEach { println("Byte: 0x${it.toHexString()}") }
         println("Decompressed: ${data.decodeToString()}")
+    }
+
+    @Test
+    fun `Inflating source flushes pending output when delegate reaches EOF`() {
+        val value = Random(4).nextBytes(3 * 1024 * 1024)
+        val compressedData = Deflater.deflate(value)
+        val compressedBuffer = Buffer()
+        compressedBuffer.write(compressedData)
+        val decompressedBuffer = Buffer()
+        decompressedBuffer.transferFrom(compressedBuffer.inflating())
+        val decompressedData = decompressedBuffer.readByteArray()
+        assertTrue(decompressedData.isNotEmpty())
+        assertEquals(value.size, decompressedData.size)
+        assertContentEquals(value, decompressedData)
+    }
+
+    @Test
+    fun `Raw inflating source buffered immediate read`() {
+        val value = "Hello, World!".encodeToByteArray()
+        val compressedBytes = Deflater.deflate(value)
+        val buffer = Buffer().apply { write(compressedBytes) }
+        val decompressed = buffer.inflating(raw = true).buffered()
+        val decompressedBytes = decompressed.readByteArray()
+        assertContentEquals(value, decompressedBytes)
+    }
+
+    @Test
+    fun `Inflating source buffered immediate read`() {
+        val value = "Hello, World!".encodeToByteArray()
+        val compressedBytes = Deflater.deflate(value, raw = false)
+        val buffer = Buffer().apply { write(compressedBytes) }
+        val decompressed = buffer.inflating(raw = false).buffered()
+        val decompressedBytes = decompressed.readByteArray()
+        assertContentEquals(value, decompressedBytes)
     }
 }

@@ -32,6 +32,8 @@ private class InflaterImpl(raw: Boolean) : Inflater {
 
     override fun inflate(output: ByteArray): Int = impl.inflate(output)
 
+    override fun finish() = Unit
+
     override fun close() = impl.end()
 }
 

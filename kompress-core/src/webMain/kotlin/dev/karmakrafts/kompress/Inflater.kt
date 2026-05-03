@@ -35,6 +35,7 @@ private class InflaterImpl(raw: Boolean) : Inflater {
         }
 
     private var inputPending: Boolean = false
+    private var finishRequested: Boolean = false
     private var finalSeen: Boolean = false
     private var finalPushed: Boolean = false
     private val outQueue: ArrayDeque<ByteArray> = ArrayDeque()
@@ -48,7 +49,7 @@ private class InflaterImpl(raw: Boolean) : Inflater {
         }
 
     override val needsInput: Boolean
-        get() = !inputPending
+        get() = !inputPending && outQueue.isEmpty()
 
     override val finished: Boolean
         get() = finalSeen && outQueue.isEmpty()
@@ -61,7 +62,7 @@ private class InflaterImpl(raw: Boolean) : Inflater {
             impl.push(dataToPush, false)
             inputPending = false
         }
-        else if (!finalSeen && !finalPushed && outQueue.isEmpty()) {
+        else if (!finalSeen && finishRequested && !finalPushed && outQueue.isEmpty()) {
             impl.push(emptyUint8Array, true)
             finalPushed = true
         }
@@ -91,6 +92,10 @@ private class InflaterImpl(raw: Boolean) : Inflater {
             }
         }
         return written
+    }
+
+    override fun finish() {
+        finishRequested = true
     }
 
     override fun close() {
