@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-@file:JvmName("CRCImpl")
+@file:JvmName("CRC$")
 
 package dev.karmakrafts.kompress
 

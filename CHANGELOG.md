@@ -6,6 +6,8 @@
 - Support for ZIP via `ZipCompressor/ZipDecompressor`
 - Added `Compressor` interface
 - Added `Decompressor` interface
+- Added `RawSource.compressing()` extension function
+- Added `RawSource.decompressing()` extension function
 
 ### Changed
 

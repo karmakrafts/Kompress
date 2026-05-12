@@ -16,16 +16,15 @@
 
 package dev.karmakrafts.kompress
 
-import kotlinx.io.Buffer
-import kotlinx.io.readByteArray
+import dev.karmakrafts.kompress.Deflater.Companion.compress
+import kotlinx.io.RawSource
 
 /**
  * Streaming compression interface that supports deflate and deflate-raw compression.
  */
-interface Deflater : Compressor, AutoCloseable {
+interface Deflater : Compressor {
     companion object {
         const val DEFAULT_LEVEL: Int = 6
-        const val DEFAULT_BUFFER_SIZE: Int = 4096
 
         /**
          * Compresses the given data in one go using the given
@@ -42,17 +41,9 @@ interface Deflater : Compressor, AutoCloseable {
             data: ByteArray,
             raw: Boolean = true,
             level: Int = DEFAULT_LEVEL,
-            bufferSize: Int = DEFAULT_BUFFER_SIZE
+            bufferSize: Int = Compressor.DEFAULT_BUFFER_SIZE
         ): ByteArray = Deflater(raw, level).use { deflater -> // @formatter:on
-            deflater.input = data
-            deflater.finish() // We only handle a single input chunk in this case
-            val buffer = Buffer()
-            val chunkBuffer = ByteArray(bufferSize)
-            while (!deflater.finished) {
-                val bytesCompressed = deflater.compress(chunkBuffer)
-                buffer.write(chunkBuffer, 0, bytesCompressed)
-            }
-            buffer.readByteArray()
+            deflater.compressBulk(data, bufferSize)
         }
 
         /**
@@ -63,7 +54,7 @@ interface Deflater : Compressor, AutoCloseable {
             data: ByteArray,
             raw: Boolean = true,
             level: Int = DEFAULT_LEVEL,
-            bufferSize: Int = DEFAULT_BUFFER_SIZE
+            bufferSize: Int = Compressor.DEFAULT_BUFFER_SIZE
         ): ByteArray = compress(data, raw, level, bufferSize) // @formatter:on
     }
 
@@ -97,3 +88,25 @@ expect fun Deflater( // @formatter:off
     raw: Boolean = true,
     level: Int = Deflater.DEFAULT_LEVEL
 ): Deflater // @formatter:on
+
+/**
+ * Returns a [RawSource] that reads uncompressed bytes from this source and
+ * emits their DEFLATE-compressed form.
+ *
+ * This is a streaming wrapper: bytes are compressed on the fly as you read
+ * from the returned source. Close the returned source when finished to free
+ * any underlying resources.
+ *
+ * @param raw If true (default), the compressed stream is in "deflate-raw"
+ *  format without ZLIB header/footer. Set to false to include ZLIB wrapper
+ *  fields, which some consumers may require.
+ * @param level Compression level in range 0..9. See [Deflater.level].
+ * @param bufferSize Size of the internal working buffers used during
+ *  compression.
+ * @return A [RawSource] that produces compressed data.
+ */
+fun RawSource.deflating( // @formatter:off
+    raw: Boolean = true,
+    level: Int = Deflater.DEFAULT_LEVEL,
+    bufferSize: Int = Compressor.DEFAULT_BUFFER_SIZE
+): RawSource = compressing(Deflater(raw, level), bufferSize)

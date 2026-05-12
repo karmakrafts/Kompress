@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+@file:JvmName("Deflater$")
+
 package dev.karmakrafts.kompress
 
 import java.util.zip.Deflater as JavaDeflater

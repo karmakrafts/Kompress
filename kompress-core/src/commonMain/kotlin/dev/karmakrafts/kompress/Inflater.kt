@@ -16,16 +16,14 @@
 
 package dev.karmakrafts.kompress
 
-import kotlinx.io.Buffer
-import kotlinx.io.readByteArray
+import dev.karmakrafts.kompress.Inflater.Companion.decompress
+import kotlinx.io.RawSource
 
 /**
  * Streaming decompression interface that supports inflate and inflate-raw decompression.
  */
 interface Inflater : Decompressor, AutoCloseable {
     companion object {
-        const val DEFAULT_BUFFER_SIZE: Int = 4096
-
         /**
          * Decompresses the given data in one go using the given
          * buffer size.
@@ -39,17 +37,9 @@ interface Inflater : Decompressor, AutoCloseable {
         fun decompress( // @formatter:off
             data: ByteArray,
             raw: Boolean = true,
-            bufferSize: Int = DEFAULT_BUFFER_SIZE
+            bufferSize: Int = Decompressor.DEFAULT_BUFFER_SIZE
         ): ByteArray = Inflater(raw).use { inflater -> // @formatter:on
-            inflater.input = data
-            inflater.finish() // We only handle a single input chunk in this case
-            val buffer = Buffer()
-            val chunkBuffer = ByteArray(bufferSize)
-            while (!inflater.finished) {
-                val bytesDecompressed = inflater.decompress(chunkBuffer)
-                buffer.write(chunkBuffer, 0, bytesDecompressed)
-            }
-            buffer.readByteArray()
+            inflater.decompressBulk(data, bufferSize)
         }
 
         /**
@@ -59,7 +49,7 @@ interface Inflater : Decompressor, AutoCloseable {
         fun inflate( // @formatter:off
             data: ByteArray,
             raw: Boolean = true,
-            bufferSize: Int = DEFAULT_BUFFER_SIZE
+            bufferSize: Int = Decompressor.DEFAULT_BUFFER_SIZE
         ): ByteArray = decompress(data, raw, bufferSize) // @formatter:on
     }
 
@@ -79,3 +69,23 @@ interface Inflater : Decompressor, AutoCloseable {
  * @return A new [Inflater] instance with the given parameters.
  */
 expect fun Inflater(raw: Boolean = true): Inflater
+
+/**
+ * Returns a [RawSource] that reads DEFLATE-compressed bytes from this source
+ * and emits their uncompressed form.
+ *
+ * This is a streaming wrapper: bytes are decompressed on the fly as you read
+ * from the returned source. Close the returned source when finished to free
+ * any underlying resources.
+ *
+ * @param raw If true (default), expects "deflate-raw" input without ZLIB
+ *  header/footer. Set to false if the compressed input is ZLIB-wrapped and
+ *  includes header and checksum fields.
+ * @param bufferSize Size of the internal working buffers used during
+ *  decompression.
+ * @return A [RawSource] that produces decompressed data.
+ */
+fun RawSource.inflating( // @formatter:off
+    raw: Boolean = true,
+    bufferSize: Int = Decompressor.DEFAULT_BUFFER_SIZE
+): RawSource = decompressing(Inflater(raw), bufferSize) // @formatter:on

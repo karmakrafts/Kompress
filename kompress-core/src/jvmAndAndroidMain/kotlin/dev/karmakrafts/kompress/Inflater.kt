@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+@file:JvmName("Inflater$")
+
 package dev.karmakrafts.kompress
 
 import java.util.zip.Inflater as JavaInflater

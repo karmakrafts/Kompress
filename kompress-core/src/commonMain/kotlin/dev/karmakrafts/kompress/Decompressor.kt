@@ -22,7 +22,11 @@ import kotlinx.io.readByteArray
 /**
  * Base interface for any type of streaming decompressor.
  */
-interface Decompressor {
+interface Decompressor : AutoCloseable {
+    companion object {
+        const val DEFAULT_BUFFER_SIZE: Int = 4096
+    }
+
     /**
      * The current input data chunk to be decompressed.
      * Should be updated whenever [needsInput] is true.

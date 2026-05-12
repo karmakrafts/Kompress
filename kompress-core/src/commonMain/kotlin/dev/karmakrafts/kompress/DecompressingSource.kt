@@ -21,12 +21,11 @@ import kotlinx.io.RawSource
 import kotlinx.io.readByteArray
 import kotlin.math.min
 
-private class InflatingSource( // @formatter:off
+private class DecompressingSource( // @formatter:off
+    private val decompressor: Decompressor,
     private val delegate: RawSource,
-    raw: Boolean,
     private val bufferSize: Int
 ) : RawSource { // @formatter:on
-    private val inflater: Inflater = Inflater(raw)
     private val buffer: Buffer = Buffer()
     private val chunkBuffer: ByteArray = ByteArray(bufferSize)
 
@@ -35,52 +34,37 @@ private class InflatingSource( // @formatter:off
         var totalWritten = 0L
         while (totalWritten < byteCount) {
             // If the inflater needs input, try to read more compressed data from the delegate.
-            if (inflater.needsInput) {
+            if (decompressor.needsInput) {
                 if (buffer.size == 0L && delegate.readAtMostTo(buffer, bufferSize.toLong()) == -1L) {
                     // No more compressed input available.
-                    inflater.finish()
+                    decompressor.finish()
                 }
                 else {
                     // Provide a chunk of compressed data to the inflater.
                     val toProvide = min(buffer.size, bufferSize.toLong()).toInt()
                     val provided = buffer.readByteArray(toProvide)
-                    inflater.input = provided
+                    decompressor.input = provided
                 }
             }
             // Inflate into the output buffer, respecting the requested byteCount.
             val remaining = (byteCount - totalWritten).toInt()
             val outLimit = if (remaining < bufferSize) remaining else bufferSize
             val outBuf = if (outLimit == bufferSize) chunkBuffer else ByteArray(outLimit)
-            val written = inflater.decompress(outBuf)
+            val written = decompressor.decompress(outBuf)
             if (written > 0) {
                 sink.write(outBuf, 0, written)
                 totalWritten += written
                 continue
             }
-            if (inflater.finished) break
+            if (decompressor.finished) break
         }
-        return if (totalWritten == 0L && inflater.finished) -1L else totalWritten
+        return if (totalWritten == 0L && decompressor.finished) -1L else totalWritten
     }
 
-    override fun close() = inflater.close()
+    override fun close() = decompressor.close()
 }
 
-/**
- * Returns a [RawSource] that reads DEFLATE-compressed bytes from this source
- * and emits their uncompressed form.
- *
- * This is a streaming wrapper: bytes are decompressed on the fly as you read
- * from the returned source. Close the returned source when finished to free
- * any underlying resources.
- *
- * @param raw If true (default), expects "deflate-raw" input without ZLIB
- *  header/footer. Set to false if the compressed input is ZLIB-wrapped and
- *  includes header and checksum fields.
- * @param bufferSize Size of the internal working buffers used during
- *  decompression.
- * @return A [RawSource] that produces decompressed data.
- */
-fun RawSource.inflating( // @formatter:off
-    raw: Boolean = true,
-    bufferSize: Int = Inflater.DEFAULT_BUFFER_SIZE
-): RawSource = InflatingSource(this, raw, bufferSize) // @formatter:on
+fun RawSource.decompressing( // @formatter:off
+    decompressor: Decompressor,
+    bufferSize: Int = Decompressor.DEFAULT_BUFFER_SIZE
+): RawSource = DecompressingSource(decompressor, this, bufferSize) // @formatter:on
