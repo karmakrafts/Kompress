@@ -18,8 +18,6 @@
 
 package dev.karmakrafts.kompress
 
-import kotlinx.io.Source
-
 private const val CRC32_POLYNOMIAL: UInt = 0xEDB88320U
 
 private val crc32Table: UIntArray = UIntArray(256) { index ->
@@ -33,11 +31,10 @@ private val crc32Table: UIntArray = UIntArray(256) { index ->
     value
 }
 
-actual fun Source.crc32(size: Int): UInt {
+actual fun crc32(data: ByteArray): UInt {
     var crc = 0xFFFFFFFFU
-    val view = peek()
-    for (i in 0..<size) {
-        val tableIndex = (crc xor view.readByte().toUByte().toUInt()) and 0xFFU
+    for (index in 0..<data.size) {
+        val tableIndex = (crc xor data[index].toUByte().toUInt()) and 0xFFU
         crc = (crc shr 8) xor crc32Table[tableIndex.toInt()]
     }
     return crc

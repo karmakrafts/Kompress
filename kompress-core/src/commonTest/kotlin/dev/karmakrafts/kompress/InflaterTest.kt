@@ -29,7 +29,8 @@ import kotlin.test.assertTrue
 class InflaterTest {
     @Test
     fun `Raw decompression sanity check`() {
-        val data = Inflater.decompress(ubyteArrayOf(0xF3U, 0x48U, 0xCDU, 0xC9U, 0xC9U, 0x57U, 0x04U, 0x00U).asByteArray())
+        val data =
+            Inflater.decompress(ubyteArrayOf(0xF3U, 0x48U, 0xCDU, 0xC9U, 0xC9U, 0x57U, 0x04U, 0x00U).asByteArray())
         assertTrue(data.isNotEmpty())
         data.forEach { println("Byte: 0x${it.toHexString()}") }
         println("Decompressed: ${data.decodeToString()}")

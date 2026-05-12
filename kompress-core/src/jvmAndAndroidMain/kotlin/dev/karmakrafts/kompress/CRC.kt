@@ -14,8 +14,17 @@
  * limitations under the License.
  */
 
+@file:JvmName("CRCImpl")
+
 package dev.karmakrafts.kompress
 
-import kotlinx.io.Source
+import java.util.zip.CRC32
 
-expect fun Source.crc32(size: Int): UInt
+private val instance: ThreadLocal<CRC32> = ThreadLocal.withInitial { CRC32() }
+
+actual fun crc32(data: ByteArray): UInt {
+    val crc = instance.get()
+    crc.reset()
+    crc.update(data)
+    return crc.value.toUInt()
+}

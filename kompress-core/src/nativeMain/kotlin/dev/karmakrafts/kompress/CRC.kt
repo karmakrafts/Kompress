@@ -22,11 +22,11 @@ import kotlinx.cinterop.addressOf
 import kotlinx.cinterop.convert
 import kotlinx.cinterop.reinterpret
 import kotlinx.cinterop.usePinned
-import kotlinx.io.Source
-import kotlinx.io.readByteArray
 import platform.zlib.crc32 as zCrc32
 
 @OptIn(ExperimentalForeignApi::class, UnsafeNumber::class)
-actual fun Source.crc32(size: Int): UInt = readByteArray(size).usePinned { pinnedData ->
-    zCrc32(0U, pinnedData.addressOf(0).reinterpret(), size.toUInt()).convert()
+actual fun crc32(data: ByteArray): UInt {
+    return data.usePinned { pinnedData ->
+        zCrc32(0U, pinnedData.addressOf(0).reinterpret(), data.size.toUInt()).convert()
+    }
 }
