@@ -2,15 +2,15 @@
 
 java = "17"
 
-androidGradle = "9.2.0" # https://developer.android.com/reference/tools/gradle-api
-kompress = "1.4.3"
+androidGradle = "9.2.1" # https://developer.android.com/reference/tools/gradle-api
+kompress = "1.5.0"
 kotlin = "2.3.21" # https://github.com/JetBrains/kotlin/releases
 kotlinxIo = "0.9.0" # https://github.com/Kotlin/kotlinx-io/releases
-kotlinBrowser = "2026.4.15" # https://github.com/JetBrains/kotlin-wrappers/releases
+kotlinBrowser = "2026.5.3" # https://github.com/JetBrains/kotlin-wrappers/releases
 dokka = "2.2.0" # https://github.com/Kotlin/dokka/releases
-karmaConventions = "1.16.1" # https://github.com/karmakrafts/karma-conventions/tags
+karmaConventions = "1.16.3" # https://github.com/karmakrafts/karma-conventions/tags
 gradleNexus = "2.0.0" # https://github.com/gradle-nexus/publish-plugin/releases
-fflate = "0.8.2" # https://github.com/101arrowz/fflate/releases # TODO: this is a deprecated impl detail, get rid of it
+fflate = "0.8.2" # https://github.com/101arrowz/fflate/releases
 
 [libraries]
 

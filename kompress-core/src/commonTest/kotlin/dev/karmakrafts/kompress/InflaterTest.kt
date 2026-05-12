@@ -29,7 +29,7 @@ import kotlin.test.assertTrue
 class InflaterTest {
     @Test
     fun `Raw decompression sanity check`() {
-        val data = Inflater.inflate(ubyteArrayOf(0xF3U, 0x48U, 0xCDU, 0xC9U, 0xC9U, 0x57U, 0x04U, 0x00U).asByteArray())
+        val data = Inflater.decompress(ubyteArrayOf(0xF3U, 0x48U, 0xCDU, 0xC9U, 0xC9U, 0x57U, 0x04U, 0x00U).asByteArray())
         assertTrue(data.isNotEmpty())
         data.forEach { println("Byte: 0x${it.toHexString()}") }
         println("Decompressed: ${data.decodeToString()}")
@@ -37,7 +37,7 @@ class InflaterTest {
 
     @Test
     fun `Decompression sanity check`() {
-        val data = Inflater.inflate(
+        val data = Inflater.decompress(
             ubyteArrayOf(
                 0x78U, 0x9CU, 0xF3U, 0x48U, 0xCDU, 0xC9U, 0xC9U, 0x57U, 0x04U, 0x00U, 0x07U, 0xA2U, 0x02U, 0x16U
             ).asByteArray(), raw = false
@@ -50,7 +50,7 @@ class InflaterTest {
     @Test
     fun `Inflating source flushes pending output when delegate reaches EOF`() {
         val value = Random(4).nextBytes(3 * 1024 * 1024)
-        val compressedData = Deflater.deflate(value)
+        val compressedData = Deflater.compress(value)
         val compressedBuffer = Buffer()
         compressedBuffer.write(compressedData)
         val decompressedBuffer = Buffer()
@@ -64,7 +64,7 @@ class InflaterTest {
     @Test
     fun `Raw inflating source buffered immediate read`() {
         val value = "Hello, World!".encodeToByteArray()
-        val compressedBytes = Deflater.deflate(value)
+        val compressedBytes = Deflater.compress(value)
         val buffer = Buffer().apply { write(compressedBytes) }
         val decompressed = buffer.inflating(raw = true).buffered()
         val decompressedBytes = decompressed.readByteArray()
@@ -74,7 +74,7 @@ class InflaterTest {
     @Test
     fun `Inflating source buffered immediate read`() {
         val value = "Hello, World!".encodeToByteArray()
-        val compressedBytes = Deflater.deflate(value, raw = false)
+        val compressedBytes = Deflater.compress(value, raw = false)
         val buffer = Buffer().apply { write(compressedBytes) }
         val decompressed = buffer.inflating(raw = false).buffered()
         val decompressedBytes = decompressed.readByteArray()

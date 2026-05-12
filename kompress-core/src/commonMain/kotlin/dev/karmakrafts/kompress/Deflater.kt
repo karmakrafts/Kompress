@@ -22,7 +22,7 @@ import kotlinx.io.readByteArray
 /**
  * Streaming compression interface that supports deflate and deflate-raw compression.
  */
-interface Deflater : AutoCloseable {
+interface Deflater : Compressor, AutoCloseable {
     companion object {
         const val DEFAULT_LEVEL: Int = 6
         const val DEFAULT_BUFFER_SIZE: Int = 4096
@@ -38,7 +38,7 @@ interface Deflater : AutoCloseable {
          * @param bufferSize The size of the intermediate buffer used during compression.
          * @return The compressed data.
          */
-        fun deflate( // @formatter:off
+        fun compress( // @formatter:off
             data: ByteArray,
             raw: Boolean = true,
             level: Int = DEFAULT_LEVEL,
@@ -49,11 +49,19 @@ interface Deflater : AutoCloseable {
             val buffer = Buffer()
             val chunkBuffer = ByteArray(bufferSize)
             while (!deflater.finished) {
-                val bytesCompressed = deflater.deflate(chunkBuffer)
+                val bytesCompressed = deflater.compress(chunkBuffer)
                 buffer.write(chunkBuffer, 0, bytesCompressed)
             }
             buffer.readByteArray()
         }
+
+        @Deprecated(message = "This API will be removed in 2.0", replaceWith = ReplaceWith("compress"))
+        fun deflate( // @formatter:off
+            data: ByteArray,
+            raw: Boolean = true,
+            level: Int = DEFAULT_LEVEL,
+            bufferSize: Int = DEFAULT_BUFFER_SIZE
+        ): ByteArray = compress(data, raw, level, bufferSize) // @formatter:on
     }
 
     /**
@@ -66,39 +74,8 @@ interface Deflater : AutoCloseable {
      */
     var level: Int
 
-    /**
-     * The current input data chunk to be compressed.
-     * Should be updated whenever [needsInput] is true.
-     */
-    var input: ByteArray
-
-    /**
-     * True when the input buffer does not contain any more
-     * data to compress.
-     */
-    val needsInput: Boolean
-
-    /**
-     * True when the end of the compressed data buffer has been reached.
-     */
-    val finished: Boolean
-
-    /**
-     * Compresses the input data and fills specified buffer with compressed data.
-     * Returns actual number of bytes of compressed data.
-     * A return value of 0 indicates that needsInput should be called in order
-     * to determine if more input data is required.
-     *
-     * @param output The buffer to compress the data into.
-     * @return The actual number of compressed bytes.
-     */
-    fun deflate(output: ByteArray): Int
-
-    /**
-     * When called, indicates that compression should end with the current
-     * contents of the input buffer.
-     */
-    fun finish()
+    @Deprecated(message = "This API will be removed in 2.0", replaceWith = ReplaceWith("compress"))
+    fun deflate(output: ByteArray): Int = compress(output)
 }
 
 /**

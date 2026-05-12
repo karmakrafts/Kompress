@@ -14,23 +14,6 @@
  * limitations under the License.
  */
 
-@file:OptIn(ExperimentalWasmJsInterop::class)
+package dev.karmakrafts.kompress
 
-package dev.karmakrafts.kompress.fflate
-
-import js.typedarrays.Uint8Array
-import kotlin.js.ExperimentalWasmJsInterop
-import kotlin.js.JsAny
-
-internal external interface InflateOptions : JsAny {
-    var dictionary: Uint8Array<*>?
-    var out: Uint8Array<*>?
-}
-
-@Suppress("EXPECTED_EXTERNAL_DECLARATION", "EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
-internal expect external class Inflate(
-    options: InflateOptions
-) : FlateStream {
-    override var ondata: FlateStreamHandler?
-    override fun push(data: Uint8Array<*>, isFinal: Boolean)
-}
+interface GZipDecompressor : Decompressor

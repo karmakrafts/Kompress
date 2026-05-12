@@ -83,7 +83,7 @@ private class DeflaterImpl(raw: Boolean, initialLevel: Int) : Deflater {
         finishRequested = true
     }
 
-    override fun deflate(output: ByteArray): Int = output.usePinned { pinnedOutput ->
+    override fun compress(output: ByteArray): Int = output.usePinned { pinnedOutput ->
         if (_finished) return@usePinned 0
 
         stream.next_out = pinnedOutput.addressOf(0).reinterpret()

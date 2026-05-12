@@ -28,7 +28,7 @@ internal external interface ZlibOptions : JsAny {
     var mem: Int
 }
 
-@Suppress("EXPECTED_EXTERNAL_DECLARATION")
+@Suppress("EXPECTED_EXTERNAL_DECLARATION", "EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
 internal expect external class Zlib( // @formatter:off
     options: ZlibOptions,
     callback: FlateStreamHandler? = definedExternally

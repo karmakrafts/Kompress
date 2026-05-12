@@ -29,16 +29,16 @@ class DeflateInflateTest {
     @Test
     fun `Deflate and inflate small array raw`() {
         val value = "Hellou, World!"
-        val compressedData = Deflater.deflate(value.encodeToByteArray())
-        val decompressedData = Inflater.inflate(compressedData)
+        val compressedData = Deflater.compress(value.encodeToByteArray())
+        val decompressedData = Inflater.decompress(compressedData)
         assertEquals(value, decompressedData.decodeToString())
     }
 
     @Test
     fun `Deflate and inflate small array`() {
         val value = "Hellou, World!"
-        val compressedData = Deflater.deflate(value.encodeToByteArray(), raw = false)
-        val decompressedData = Inflater.inflate(compressedData, raw = false)
+        val compressedData = Deflater.compress(value.encodeToByteArray(), raw = false)
+        val decompressedData = Inflater.decompress(compressedData, raw = false)
         assertEquals(value, decompressedData.decodeToString())
     }
 
@@ -69,16 +69,16 @@ class DeflateInflateTest {
     @Test
     fun `Deflate and inflate large array raw`() {
         val value = Random.nextBytes(1024 * 1024)
-        val compressedData = Deflater.deflate(value)
-        val decompressedData = Inflater.inflate(compressedData)
+        val compressedData = Deflater.compress(value)
+        val decompressedData = Inflater.decompress(compressedData)
         assertContentEquals(value, decompressedData)
     }
 
     @Test
     fun `Deflate and inflate large array`() {
         val value = Random.nextBytes(1024 * 1024)
-        val compressedData = Deflater.deflate(value, raw = false)
-        val decompressedData = Inflater.inflate(compressedData, raw = false)
+        val compressedData = Deflater.compress(value, raw = false)
+        val decompressedData = Inflater.decompress(compressedData, raw = false)
         assertContentEquals(value, decompressedData)
     }
 

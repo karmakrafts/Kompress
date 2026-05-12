@@ -22,7 +22,7 @@ import kotlinx.io.readByteArray
 /**
  * Streaming decompression interface that supports inflate and inflate-raw decompression.
  */
-interface Inflater : AutoCloseable {
+interface Inflater : Decompressor, AutoCloseable {
     companion object {
         const val DEFAULT_BUFFER_SIZE: Int = 4096
 
@@ -36,7 +36,7 @@ interface Inflater : AutoCloseable {
          * @param bufferSize The size of the intermediate buffer used during compression.
          * @return The decompressed data.
          */
-        fun inflate( // @formatter:off
+        fun decompress( // @formatter:off
             data: ByteArray,
             raw: Boolean = true,
             bufferSize: Int = DEFAULT_BUFFER_SIZE
@@ -46,43 +46,22 @@ interface Inflater : AutoCloseable {
             val buffer = Buffer()
             val chunkBuffer = ByteArray(bufferSize)
             while (!inflater.finished) {
-                val bytesDecompressed = inflater.inflate(chunkBuffer)
+                val bytesDecompressed = inflater.decompress(chunkBuffer)
                 buffer.write(chunkBuffer, 0, bytesDecompressed)
             }
             buffer.readByteArray()
         }
+
+        @Deprecated(message = "This API will be removed in 2.0", replaceWith = ReplaceWith("decompress"))
+        fun inflate( // @formatter:off
+            data: ByteArray,
+            raw: Boolean = true,
+            bufferSize: Int = DEFAULT_BUFFER_SIZE
+        ): ByteArray = decompress(data, raw, bufferSize) // @formatter:on
     }
 
-    /**
-     * The current input data chunk to be decompressed.
-     * Should be updated whenever [needsInput] is true.
-     */
-    var input: ByteArray
-
-    /**
-     * True when the input buffer does not contain any more
-     * data to decompress.
-     */
-    val needsInput: Boolean
-
-    /**
-     * True when the end of the decompressed data buffer has been reached.
-     */
-    val finished: Boolean
-
-    /**
-     * Uncompresses bytes into specified buffer.
-     *
-     * @param output The buffer to decompress the data into.
-     * @return The actual number of decompressed bytes.
-     */
-    fun inflate(output: ByteArray): Int
-
-    /**
-     * When called, indicates that decompression should end with the current
-     * contents of the input buffer.
-     */
-    fun finish()
+    @Deprecated(message = "This API will be removed in 2.0", replaceWith = ReplaceWith("decompress"))
+    fun inflate(output: ByteArray): Int = decompress(output)
 }
 
 /**

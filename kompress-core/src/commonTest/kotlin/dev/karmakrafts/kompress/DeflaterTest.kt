@@ -28,14 +28,14 @@ import kotlin.test.assertTrue
 class DeflaterTest {
     @Test
     fun `Raw compression sanity check`() {
-        val data = Deflater.deflate("Hello!".encodeToByteArray())
+        val data = Deflater.compress("Hello!".encodeToByteArray())
         assertTrue(data.isNotEmpty())
         data.forEach { println("Byte: 0x${it.toHexString()}") }
     }
 
     @Test
     fun `Compression sanity check`() {
-        val data = Deflater.deflate("Hello!".encodeToByteArray(), raw = false)
+        val data = Deflater.compress("Hello!".encodeToByteArray(), raw = false)
         assertTrue(data.isNotEmpty())
         data.forEach { println("Byte: 0x${it.toHexString()}") }
     }
@@ -48,7 +48,7 @@ class DeflaterTest {
         val compressedBuffer = Buffer()
         compressedBuffer.transferFrom(sourceBuffer.deflating())
         val compressedData = compressedBuffer.readByteArray()
-        val decompressedData = Inflater.inflate(compressedData)
+        val decompressedData = Inflater.decompress(compressedData)
         assertTrue(compressedData.isNotEmpty())
         assertEquals(value.size, decompressedData.size)
         assertContentEquals(value, decompressedData)
@@ -60,7 +60,7 @@ class DeflaterTest {
         val source = Buffer().apply { write(value) }
         val compressed = source.deflating(raw = true).buffered()
         val compressedBytes = compressed.readByteArray()
-        val decompressedBytes = Inflater.inflate(compressedBytes, raw = true)
+        val decompressedBytes = Inflater.decompress(compressedBytes, raw = true)
         assertContentEquals(value, decompressedBytes)
     }
 
@@ -70,7 +70,7 @@ class DeflaterTest {
         val source = Buffer().apply { write(value) }
         val compressed = source.deflating(raw = false).buffered()
         val compressedBytes = compressed.readByteArray()
-        val decompressedBytes = Inflater.inflate(compressedBytes, raw = false)
+        val decompressedBytes = Inflater.decompress(compressedBytes, raw = false)
         assertContentEquals(value, decompressedBytes)
     }
 }

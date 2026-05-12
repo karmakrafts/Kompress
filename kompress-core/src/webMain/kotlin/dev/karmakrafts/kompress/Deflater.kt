@@ -58,7 +58,7 @@ private class DeflaterImpl( // @formatter:off
         get() = finalSeen && outQueue.isEmpty()
 
     @OptIn(ExperimentalUnsignedTypes::class)
-    override fun deflate(output: ByteArray): Int {
+    override fun compress(output: ByteArray): Int {
         if (output.isEmpty()) return 0
         if (inputPending && !finalSeen) {
             val dataToPush = if (input.isNotEmpty()) input.asUByteArray().toUint8Array() else emptyUint8Array

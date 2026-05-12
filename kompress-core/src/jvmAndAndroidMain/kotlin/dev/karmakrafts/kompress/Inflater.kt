@@ -30,7 +30,7 @@ private class InflaterImpl(raw: Boolean) : Inflater {
     override val needsInput: Boolean get() = impl.needsInput()
     override val finished: Boolean get() = impl.finished()
 
-    override fun inflate(output: ByteArray): Int = impl.inflate(output)
+    override fun decompress(output: ByteArray): Int = impl.inflate(output)
 
     override fun finish() = Unit
 

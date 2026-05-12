@@ -70,7 +70,7 @@ private class InflaterImpl(raw: Boolean) : Inflater {
         finishRequested = true
     }
 
-    override fun inflate(output: ByteArray): Int = output.usePinned { pinnedOutput ->
+    override fun decompress(output: ByteArray): Int = output.usePinned { pinnedOutput ->
         if (_finished) return@usePinned 0
 
         stream.next_out = pinnedOutput.addressOf(0).reinterpret()

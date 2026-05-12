@@ -40,7 +40,7 @@ private class DeflaterImpl( // @formatter:off
     override val finished: Boolean get() = impl.finished()
 
     override fun finish() = impl.finish()
-    override fun deflate(output: ByteArray): Int = impl.deflate(output)
+    override fun compress(output: ByteArray): Int = impl.deflate(output)
     override fun close() = impl.end()
 }
 

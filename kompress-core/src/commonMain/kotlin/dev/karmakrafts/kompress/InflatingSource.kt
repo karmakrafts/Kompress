@@ -51,7 +51,7 @@ private class InflatingSource( // @formatter:off
             val remaining = (byteCount - totalWritten).toInt()
             val outLimit = if (remaining < bufferSize) remaining else bufferSize
             val outBuf = if (outLimit == bufferSize) chunkBuffer else ByteArray(outLimit)
-            val written = inflater.inflate(outBuf)
+            val written = inflater.decompress(outBuf)
             if (written > 0) {
                 sink.write(outBuf, 0, written)
                 totalWritten += written
