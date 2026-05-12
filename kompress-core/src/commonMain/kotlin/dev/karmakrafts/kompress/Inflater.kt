@@ -52,6 +52,9 @@ interface Inflater : Decompressor, AutoCloseable {
             buffer.readByteArray()
         }
 
+        /**
+         * @see decompress
+         */
         @Deprecated(message = "This API will be removed in 2.0", replaceWith = ReplaceWith("decompress"))
         fun inflate( // @formatter:off
             data: ByteArray,
@@ -60,6 +63,9 @@ interface Inflater : Decompressor, AutoCloseable {
         ): ByteArray = decompress(data, raw, bufferSize) // @formatter:on
     }
 
+    /**
+     * @see decompress
+     */
     @Deprecated(message = "This API will be removed in 2.0", replaceWith = ReplaceWith("decompress"))
     fun inflate(output: ByteArray): Int = decompress(output)
 }

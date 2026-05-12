@@ -19,6 +19,9 @@ package dev.karmakrafts.kompress
 import kotlinx.io.Buffer
 import kotlinx.io.readByteArray
 
+/**
+ * Base interface for any type of streaming compressor.
+ */
 interface Compressor {
     /**
      * The current input data chunk to be compressed.

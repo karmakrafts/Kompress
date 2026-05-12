@@ -55,6 +55,9 @@ interface Deflater : Compressor, AutoCloseable {
             buffer.readByteArray()
         }
 
+        /**
+         * @see compress
+         */
         @Deprecated(message = "This API will be removed in 2.0", replaceWith = ReplaceWith("compress"))
         fun deflate( // @formatter:off
             data: ByteArray,
@@ -74,6 +77,9 @@ interface Deflater : Compressor, AutoCloseable {
      */
     var level: Int
 
+    /**
+     * @see compress
+     */
     @Deprecated(message = "This API will be removed in 2.0", replaceWith = ReplaceWith("compress"))
     fun deflate(output: ByteArray): Int = compress(output)
 }
