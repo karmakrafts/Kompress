@@ -16,6 +16,7 @@
 
 package dev.karmakrafts.kompress.fflate
 
+import js.objects.unsafeJso
 import js.typedarrays.Uint8Array
 
 internal fun DeflateOptions(level: Int, mem: Int): DeflateOptions = unsafeJso {
