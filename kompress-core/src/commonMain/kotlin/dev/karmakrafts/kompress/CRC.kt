@@ -19,37 +19,6 @@ package dev.karmakrafts.kompress
 import kotlinx.io.Source
 import kotlinx.io.readByteArray
 
-private const val CRC16_CCITT: UShort = 0x1021U
-
-private fun crc16Round(value: UShort, byte: Byte): UShort {
-    var newValue = value.toUInt()
-    var currentBit = byte.toUInt()
-    for (index in 0..<Byte.SIZE_BITS) {
-        newValue = if (((newValue and 0x8000U) shr 8) xor (currentBit and 0x80U) != 0U) {
-            (newValue shl 1) xor CRC16_CCITT.toUInt()
-        }
-        else newValue shl 1
-        currentBit = currentBit shl 1
-    }
-    return newValue.toUShort()
-}
-
-/**
- * Compute the CRC16-CCITT checksum for the given [data].
- *
- * @param data The data to compute the checksum for.
- * @return The computed CRC16-CCITT checksum.
- */
-fun crc16(data: ByteArray): UShort = data.fold(0.toUShort(), ::crc16Round)
-
-/**
- * Compute the CRC16-CCITT checksum for the next [size] bytes from this [Source].
- *
- * @param size The number of bytes to read from the source.
- * @return The computed CRC16-CCITT checksum.
- */
-fun Source.crc16(size: Int): UShort = crc16(readByteArray(size))
-
 /**
  * Compute the CRC32 checksum for the given [data].
  *

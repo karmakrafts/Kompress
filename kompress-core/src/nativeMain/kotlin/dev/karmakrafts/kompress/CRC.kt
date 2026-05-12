@@ -26,6 +26,7 @@ import platform.zlib.crc32 as zCrc32
 
 @OptIn(ExperimentalForeignApi::class, UnsafeNumber::class)
 actual fun crc32(data: ByteArray): UInt {
+    if (data.isEmpty()) return 0U
     return data.usePinned { pinnedData ->
         zCrc32(0U, pinnedData.addressOf(0).reinterpret(), data.size.toUInt()).convert()
     }

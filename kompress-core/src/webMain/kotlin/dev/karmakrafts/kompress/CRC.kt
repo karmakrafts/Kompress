@@ -22,7 +22,7 @@ private const val CRC32_POLYNOMIAL: UInt = 0xEDB88320U
 
 private val crc32Table: UIntArray = UIntArray(256) { index ->
     var value = index.toUInt()
-    for (i in 0..<8) {
+    repeat(8) {
         value = when {
             value and 0x1U != 0x0U -> (value shr 1) xor CRC32_POLYNOMIAL
             else -> value shr 1
@@ -32,10 +32,11 @@ private val crc32Table: UIntArray = UIntArray(256) { index ->
 }
 
 actual fun crc32(data: ByteArray): UInt {
+    if (data.isEmpty()) return 0U
     var crc = 0xFFFFFFFFU
     for (index in 0..<data.size) {
-        val tableIndex = (crc xor data[index].toUByte().toUInt()) and 0xFFU
+        val tableIndex = (crc xor (data[index].toUInt() and 0xFFU)) and 0xFFU
         crc = (crc shr 8) xor crc32Table[tableIndex.toInt()]
     }
-    return crc
+    return crc.inv()
 }

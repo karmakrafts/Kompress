@@ -8,6 +8,8 @@
 - Added `Decompressor` interface
 - Added `RawSource.compressing()` extension function
 - Added `RawSource.decompressing()` extension function
+- Added `Source.crc32` extension function
+- Added `crc32(ByteArray)` function
 
 ### Changed
 
