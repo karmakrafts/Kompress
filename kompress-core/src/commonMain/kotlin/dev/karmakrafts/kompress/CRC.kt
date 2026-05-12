@@ -34,10 +34,34 @@ private fun crc16Round(value: UShort, byte: Byte): UShort {
     return newValue.toUShort()
 }
 
+/**
+ * Compute the CRC16-CCITT checksum for the given [data].
+ *
+ * @param data The data to compute the checksum for.
+ * @return The computed CRC16-CCITT checksum.
+ */
 fun crc16(data: ByteArray): UShort = data.fold(0.toUShort(), ::crc16Round)
 
+/**
+ * Compute the CRC16-CCITT checksum for the next [size] bytes from this [Source].
+ *
+ * @param size The number of bytes to read from the source.
+ * @return The computed CRC16-CCITT checksum.
+ */
 fun Source.crc16(size: Int): UShort = crc16(readByteArray(size))
 
+/**
+ * Compute the CRC32 checksum for the given [data].
+ *
+ * @param data The data to compute the checksum for.
+ * @return The computed CRC32 checksum.
+ */
 expect fun crc32(data: ByteArray): UInt
 
+/**
+ * Compute the CRC32 checksum for the next [size] bytes from this [Source].
+ *
+ * @param size The number of bytes to read from the source.
+ * @return The computed CRC32 checksum.
+ */
 fun Source.crc32(size: Int): UInt = crc32(readByteArray(size))
