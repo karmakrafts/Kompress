@@ -19,6 +19,10 @@ package dev.karmakrafts.kompress
 import kotlinx.io.Source
 
 private const val CRC32_POLYNOMIAL: UInt = 0xEDB88320U
+
+/**
+ * Initial value for CRC32 calculations.
+ */
 const val CRC32_INITIAL_VALUE: UInt = 0xFFFFFFFFU
 
 private val crc32Table: UIntArray = UIntArray(256) { index ->
@@ -32,7 +36,17 @@ private val crc32Table: UIntArray = UIntArray(256) { index ->
     value
 }
 
-fun crc32(data: ByteArray, initialValue: UInt = CRC32_INITIAL_VALUE): UInt {
+/**
+ * Calculates the CRC32 checksum for the given [data].
+ *
+ * @param data the data to calculate the checksum for.
+ * @param initialValue the initial value for the CRC32 calculation.
+ * @return the calculated CRC32 checksum.
+ */
+fun crc32( // @formatter:off
+    data: ByteArray,
+    initialValue: UInt = CRC32_INITIAL_VALUE
+): UInt { // @formatter:on
     if (data.isEmpty()) return 0U
     var crc = initialValue
     for (index in data.indices) {
@@ -42,7 +56,19 @@ fun crc32(data: ByteArray, initialValue: UInt = CRC32_INITIAL_VALUE): UInt {
     return crc.inv()
 }
 
-fun Source.crc32(size: Long, initialValue: UInt = CRC32_INITIAL_VALUE): UInt {
+/**
+ * Calculates the CRC32 checksum for the given [size] of bytes from this [Source].
+ *
+ * Calling this function will consume the specified number of bytes from the source.
+ *
+ * @param size the number of bytes to read from the source.
+ * @param initialValue the initial value for the CRC32 calculation.
+ * @return the calculated CRC32 checksum.
+ */
+fun Source.crc32( // @formatter:off
+    size: Long,
+    initialValue: UInt = CRC32_INITIAL_VALUE
+): UInt { // @formatter:on
     if (exhausted()) return 0U
     var crc = initialValue
     var index = 0

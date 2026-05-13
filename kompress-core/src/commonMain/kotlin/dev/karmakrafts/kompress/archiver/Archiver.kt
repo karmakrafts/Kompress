@@ -18,10 +18,11 @@ package dev.karmakrafts.kompress.archiver
 
 import dev.karmakrafts.kompress.Compressor
 import kotlinx.io.RawSink
+import kotlinx.io.Sink
 
 interface Archiver<E> : AutoCloseable {
     val sink: RawSink
     val compressor: Compressor
 
-    fun appendEntry(entry: E, callback: (RawSink) -> Unit)
+    fun appendEntry(entry: E, callback: (Sink) -> Boolean)
 }

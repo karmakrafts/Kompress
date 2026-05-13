@@ -16,6 +16,7 @@
 
 package dev.karmakrafts.kompress.gzip
 
+import dev.karmakrafts.kompress.CRC32_INITIAL_VALUE
 import dev.karmakrafts.kompress.Compressor
 import dev.karmakrafts.kompress.Deflater
 import dev.karmakrafts.kompress.archiver.Archiver
@@ -24,17 +25,19 @@ import dev.karmakrafts.kompress.crc32
 import dev.karmakrafts.kompress.util.writeZeroTerminatedString
 import kotlinx.io.Buffer
 import kotlinx.io.RawSink
+import kotlinx.io.Sink
 import kotlinx.io.writeUByte
-import kotlinx.io.writeUInt
+import kotlinx.io.writeUIntLe
 import kotlinx.io.writeUShort
+import kotlinx.io.writeUShortLe
 
 private class GZipArchiver( // @formatter:off
     override val sink: RawSink,
     val deflater: Deflater = Deflater()
 ) : Archiver<GZipEntry> { // @formatter:on
-    override val compressor: Compressor get() = deflater
-
+    private val compressingSink: RawSink = sink.compressing(deflater)
     private val buffer: Buffer = Buffer()
+    override val compressor: Compressor get() = deflater
 
     /**
      * See [RFC1952](https://datatracker.ietf.org/doc/html/rfc1952) 2.3.1.
@@ -43,7 +46,7 @@ private class GZipArchiver( // @formatter:off
     private fun getCurrentXFL(): UByte = when (deflater.level) {
         GZipConstants.MIN_COMPRESSION -> GZipConstants.XFL_MIN_COMPRESSION
         GZipConstants.MAX_COMPRESSION -> GZipConstants.XFL_MAX_COMPRESSION
-        else -> error("Unsupported GZip XFL")
+        else -> GZipConstants.XFL_NONE
     }
 
     /**
@@ -51,10 +54,10 @@ private class GZipArchiver( // @formatter:off
      * start of page 5.
      */
     private fun appendHeader(entry: GZipEntry, flags: GZipEntryFlags) {
-        buffer.writeUShort(GZipConstants.MAGIC)
+        buffer.writeUShort(GZipConstants.MAGIC) // Magic is normally 2 separate bytes, so no LE
         buffer.writeUByte(GZipCompressionMethod.DEFLATE.encodedValue)
         buffer.writeUByte(flags.value)
-        buffer.writeUInt(entry.modificationTime.epochSeconds.toUInt())
+        buffer.writeUIntLe(entry.modificationTime.epochSeconds.toUInt())
         buffer.writeUByte(getCurrentXFL())
         buffer.writeUByte(entry.os.encodedValue)
     }
@@ -63,13 +66,13 @@ private class GZipArchiver( // @formatter:off
      * See [RFC1952](https://datatracker.ietf.org/doc/html/rfc1952) 2.3.
      * start of page 5.
      */
-    override fun appendEntry(entry: GZipEntry, callback: (RawSink) -> Unit) {
+    override fun appendEntry(entry: GZipEntry, callback: (Sink) -> Boolean) {
         val flags = entry.computeFlags()
         appendHeader(entry, flags)
         // Write extra field if present
         entry.extraField?.let { extraField ->
             check(extraField.size.toUShort() <= UShort.MAX_VALUE) { "Extra field size exceeds GZip maximum" }
-            buffer.writeUShort(extraField.size.toUShort())
+            buffer.writeUShortLe(extraField.size.toUShort())
             buffer.write(extraField)
         }
         // Write original file name if present
@@ -81,17 +84,27 @@ private class GZipArchiver( // @formatter:off
             // HCRC is two least significant bytes of header CRC32 up until self
             val crc32 = buffer.peek().crc32(buffer.size)
             val crc16 = (crc32 and 0xFFFFU).toUShort()
-            buffer.writeUShort(crc16)
+            buffer.writeUShortLe(crc16)
         }
         // Flush the entry header into the sink
         sink.write(buffer, buffer.size)
-        buffer.clear()
-        // Returned sink appends the compressed block data
-        callback(sink.compressing(deflater))
-        // Append CRC32 and total size
+        // We chunk the entry data and compute the CRC32 of the uncompressed data at the same time
+        var crc = CRC32_INITIAL_VALUE
+        var uncompressedSize = 0L
+        while (callback(buffer)) {
+            crc = buffer.peek().crc32(buffer.size, crc)
+            val chunkSize = buffer.size
+            compressingSink.write(buffer, chunkSize)
+            uncompressedSize += chunkSize
+        }
+        // Append the CRC32 of the uncompressed data and the uncompressed size (breaks over 4GB)
+        buffer.writeUIntLe(crc)
+        buffer.writeUIntLe(uncompressedSize.toUInt())
+        sink.write(buffer, buffer.size)
     }
 
     override fun close() {
+        compressingSink.close()
         deflater.close()
         buffer.clear()
     }

@@ -29,6 +29,7 @@ object GZipConstants {
      */
     const val XFL_MIN_COMPRESSION: UByte = 0x04U
     const val XFL_MAX_COMPRESSION: UByte = 0x02U
+    const val XFL_NONE: UByte = 0x00U
 
     const val NO_COMPRESSION: Int = 0
     const val MIN_COMPRESSION: Int = 1
