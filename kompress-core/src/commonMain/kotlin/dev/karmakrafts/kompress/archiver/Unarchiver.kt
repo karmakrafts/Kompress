@@ -16,14 +16,47 @@
 
 package dev.karmakrafts.kompress.archiver
 
+import dev.karmakrafts.kompress.Decompressor
 import kotlinx.io.RawSource
+import kotlinx.io.Source
 
+/**
+ * Base interface for all unarchiver implementations.
+ * Provides access to the source [RawSource], the [Decompressor] used to decompress entries,
+ * and functions to read entries from the archive.
+ */
 interface Unarchiver<E> : AutoCloseable {
+    /**
+     * The source being read from.
+     */
     val source: RawSource
+
+    /**
+     * The decompressor used for decompressing entry data blocks.
+     */
+    val decompressor: Decompressor
+
+    /**
+     * Get the next entry from the archive.
+     *
+     * @return The next entry of type [E] (usually the header) or null if no more entries are available.
+     */
     fun nextEntry(): E?
-    fun openEntry(entry: E): RawSource
+
+    /**
+     * Open a [Source] to read the data of the given [entry].
+     *
+     * @param entry The entry to open.
+     * @return A [Source] to read the entry data.
+     */
+    fun openEntry(entry: E): Source
 }
 
+/**
+ * Get a [Sequence] of all entries in the archive.
+ *
+ * @return A [Sequence] of all entries of type [E].
+ */
 fun <E> Unarchiver<E>.entries(): Sequence<E> = sequence {
     var entry = nextEntry()
     while (entry != null) {

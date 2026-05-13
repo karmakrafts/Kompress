@@ -18,6 +18,7 @@ package dev.karmakrafts.kompress.archiver
 
 import dev.karmakrafts.kompress.Compressor
 import kotlinx.io.RawSink
+import kotlinx.io.RawSource
 import kotlinx.io.Sink
 
 /**
@@ -45,4 +46,27 @@ interface Archiver<E> : AutoCloseable {
      *  This allows streaming compression for the current entry data.
      */
     fun appendEntry(entry: E, callback: (Sink) -> Boolean)
+}
+
+/**
+ * Append a new entry to the archive using a [RawSource].
+ *
+ * @param entry The entry of type [E] to write.
+ * @param source The source to read the entry data from.
+ */
+fun <E> Archiver<E>.appendEntry(entry: E, source: RawSource) {
+    appendEntry(entry) { sink ->
+        sink.transferFrom(source) > 0L
+    }
+}
+
+/**
+ * Append multiple entries to the archive.
+ *
+ * @param entries An [Iterable] of entry and source pairs to write.
+ */
+fun <E> Archiver<E>.appendEntries(entries: Iterable<Pair<E, RawSource>>) {
+    for ((entry, source) in entries) {
+        appendEntry(entry, source)
+    }
 }
