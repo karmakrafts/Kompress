@@ -14,20 +14,14 @@
  * limitations under the License.
  */
 
-package dev.karmakrafts.kompress
+package dev.karmakrafts.kompress.archiver
 
-import kotlinx.cinterop.ExperimentalForeignApi
-import kotlinx.cinterop.UnsafeNumber
-import kotlinx.cinterop.addressOf
-import kotlinx.cinterop.convert
-import kotlinx.cinterop.reinterpret
-import kotlinx.cinterop.usePinned
-import platform.zlib.crc32 as zCrc32
+import dev.karmakrafts.kompress.Compressor
+import kotlinx.io.RawSink
 
-@OptIn(ExperimentalForeignApi::class, UnsafeNumber::class)
-actual fun crc32(data: ByteArray): UInt {
-    if (data.isEmpty()) return 0U
-    return data.usePinned { pinnedData ->
-        zCrc32(0U, pinnedData.addressOf(0).reinterpret(), data.size.toUInt()).convert()
-    }
+interface Archiver<E> : AutoCloseable {
+    val sink: RawSink
+    val compressor: Compressor
+
+    fun appendEntry(entry: E, callback: (RawSink) -> Unit)
 }

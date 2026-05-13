@@ -16,7 +16,9 @@
 
 package dev.karmakrafts.kompress.gzip
 
+import dev.karmakrafts.kompress.Compressor
 import dev.karmakrafts.kompress.Deflater
+import dev.karmakrafts.kompress.archiver.Archiver
 import dev.karmakrafts.kompress.compressing
 import dev.karmakrafts.kompress.crc32
 import dev.karmakrafts.kompress.util.writeZeroTerminatedString
@@ -26,10 +28,12 @@ import kotlinx.io.writeUByte
 import kotlinx.io.writeUInt
 import kotlinx.io.writeUShort
 
-class GZipArchiver( // @formatter:off
-    val sink: RawSink,
+private class GZipArchiver( // @formatter:off
+    override val sink: RawSink,
     val deflater: Deflater = Deflater()
-) : AutoCloseable { // @formatter:on
+) : Archiver<GZipEntry> { // @formatter:on
+    override val compressor: Compressor get() = deflater
+
     private val buffer: Buffer = Buffer()
 
     /**
@@ -59,7 +63,7 @@ class GZipArchiver( // @formatter:off
      * See [RFC1952](https://datatracker.ietf.org/doc/html/rfc1952) 2.3.
      * start of page 5.
      */
-    fun appendEntry(entry: GZipEntry): RawSink {
+    override fun appendEntry(entry: GZipEntry, callback: (RawSink) -> Unit) {
         val flags = entry.computeFlags()
         appendHeader(entry, flags)
         // Write extra field if present
@@ -75,18 +79,24 @@ class GZipArchiver( // @formatter:off
         // Compute and write entry header CRC16 sum if flag bit is set
         if (flags.fhcrc) {
             // HCRC is two least significant bytes of header CRC32 up until self
-            val crc32 = buffer.peek().crc32(buffer.size.toInt())
+            val crc32 = buffer.peek().crc32(buffer.size)
             val crc16 = (crc32 and 0xFFFFU).toUShort()
             buffer.writeUShort(crc16)
         }
         // Flush the entry header into the sink
         sink.write(buffer, buffer.size)
         buffer.clear()
-        // Append the compressed data block
-        return sink.compressing(deflater)
+        // Returned sink appends the compressed block data
+        callback(sink.compressing(deflater))
+        // Append CRC32 and total size
     }
 
     override fun close() {
         deflater.close()
+        buffer.clear()
     }
 }
+
+fun RawSink.gzip(
+    deflater: Deflater = Deflater()
+): Archiver<GZipEntry> = GZipArchiver(this, deflater)

@@ -14,17 +14,20 @@
  * limitations under the License.
  */
 
-@file:JvmName("CRC$")
+package dev.karmakrafts.kompress.archiver
 
-package dev.karmakrafts.kompress
+import kotlinx.io.RawSource
 
-import java.util.zip.CRC32
+interface Unarchiver<E> : AutoCloseable {
+    val source: RawSource
+    fun nextEntry(): E?
+    fun openEntry(entry: E): RawSource
+}
 
-private val instance: ThreadLocal<CRC32> = ThreadLocal.withInitial { CRC32() }
-
-actual fun crc32(data: ByteArray): UInt {
-    val crc = instance.get()
-    crc.reset()
-    crc.update(data)
-    return crc.value.toUInt()
+fun <E> Unarchiver<E>.entries(): Sequence<E> = sequence {
+    var entry = nextEntry()
+    while (entry != null) {
+        yield(entry)
+        entry = nextEntry()
+    }
 }

@@ -17,20 +17,39 @@
 package dev.karmakrafts.kompress
 
 import kotlinx.io.Source
-import kotlinx.io.readByteArray
 
-/**
- * Compute the CRC32 checksum for the given [data].
- *
- * @param data The data to compute the checksum for.
- * @return The computed CRC32 checksum.
- */
-expect fun crc32(data: ByteArray): UInt
+private const val CRC32_POLYNOMIAL: UInt = 0xEDB88320U
+const val CRC32_INITIAL_VALUE: UInt = 0xFFFFFFFFU
 
-/**
- * Compute the CRC32 checksum for the next [size] bytes from this [Source].
- *
- * @param size The number of bytes to read from the source.
- * @return The computed CRC32 checksum.
- */
-fun Source.crc32(size: Int): UInt = crc32(readByteArray(size))
+private val crc32Table: UIntArray = UIntArray(256) { index ->
+    var value = index.toUInt()
+    repeat(8) {
+        value = when {
+            value and 0x1U != 0x0U -> (value shr 1) xor CRC32_POLYNOMIAL
+            else -> value shr 1
+        }
+    }
+    value
+}
+
+fun crc32(data: ByteArray, initialValue: UInt = CRC32_INITIAL_VALUE): UInt {
+    if (data.isEmpty()) return 0U
+    var crc = initialValue
+    for (index in data.indices) {
+        val tableIndex = (crc xor (data[index].toUInt() and 0xFFU)) and 0xFFU
+        crc = (crc shr 8) xor crc32Table[tableIndex.toInt()]
+    }
+    return crc.inv()
+}
+
+fun Source.crc32(size: Long, initialValue: UInt = CRC32_INITIAL_VALUE): UInt {
+    if (exhausted()) return 0U
+    var crc = initialValue
+    var index = 0
+    while (!exhausted() && index < size) {
+        val tableIndex = (crc xor (readByte().toUInt() and 0xFFU)) and 0xFFU
+        crc = (crc shr 8) xor crc32Table[tableIndex.toInt()]
+        index++
+    }
+    return crc.inv()
+}
