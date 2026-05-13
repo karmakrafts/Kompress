@@ -37,14 +37,16 @@ group = "dev.karmakrafts.kompress"
 version = GitLabCI.getDefaultVersion(libs.versions.kompress)
 
 @OptIn(ExperimentalEncodingApi::class) subprojects {
+    group = rootProject.group
+    version = rootProject.version
+    if (GitLabCI.isCI) defaultDependencyLocking()
+
+    if("benchmarks" in project.name) return@subprojects
+
     apply {
         plugin<MavenPublishPlugin>()
         plugin<SigningPlugin>()
     }
-
-    group = rootProject.group
-    version = rootProject.version
-    if (GitLabCI.isCI) defaultDependencyLocking()
 
     publishing {
         apache2License()

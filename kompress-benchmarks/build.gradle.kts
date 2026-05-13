@@ -18,31 +18,22 @@
 
 import dev.karmakrafts.conventions.configureJava
 import dev.karmakrafts.conventions.kotlin.defaultCompilerOptions
-import dev.karmakrafts.conventions.kotlin.withAndroidLibrary
 import dev.karmakrafts.conventions.kotlin.withBrowser
 import dev.karmakrafts.conventions.kotlin.withJvm
 import dev.karmakrafts.conventions.kotlin.withNative
 import dev.karmakrafts.conventions.kotlin.withNodeJs
 import dev.karmakrafts.conventions.kotlin.withWeb
-import dev.karmakrafts.conventions.setProjectInfo
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
-import org.jetbrains.kotlin.gradle.targets.jvm.tasks.KotlinJvmTest
 
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
-    alias(libs.plugins.android.library)
-    alias(libs.plugins.dokka)
     alias(libs.plugins.kotlinx.benchmark)
-    signing
-    `maven-publish`
 }
 
 configureJava(libs.versions.java)
 
 kotlin {
     defaultCompilerOptions()
-    withSourcesJar()
-    withAndroidLibrary("$group.lz4")
     withNative()
     withJvm()
     withWeb {
@@ -51,14 +42,7 @@ kotlin {
         }
         withNodeJs()
     }
-    applyDefaultHierarchyTemplate {
-        common {
-            group("jvmAndAndroid") {
-                withJvm()
-                withAndroidLibrary()
-            }
-        }
-    }
+    applyDefaultHierarchyTemplate()
     sourceSets {
         commonMain {
             dependencies {
@@ -66,18 +50,4 @@ kotlin {
             }
         }
     }
-}
-
-tasks {
-    withType<KotlinJvmTest>().configureEach {
-        jvmArgs("-Xms2G", "-Xmx2G")
-    }
-}
-
-publishing {
-    setProjectInfo(
-        name = "Kompress LZ4",
-        description = "Lightweight LZ4 compression for Kotlin Multiplatform",
-        url = "https://git.karmakrafts.dev/kk/kompress"
-    )
 }

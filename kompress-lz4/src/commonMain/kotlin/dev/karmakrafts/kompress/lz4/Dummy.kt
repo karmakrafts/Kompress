@@ -14,17 +14,4 @@
  * limitations under the License.
  */
 
-@file:OptIn(ExperimentalWasmJsInterop::class) @file:JsModule("fflate")
-
-package dev.karmakrafts.kompress.fflate
-
-import js.typedarrays.Uint8Array
-
-@Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
-internal actual external class Zlib actual constructor( // @formatter:off
-    options: ZlibOptions,
-    callback: FlateStreamHandler?
-) : FlateStream { // @formatter:on
-    actual override var ondata: FlateStreamHandler?
-    actual override fun push(data: Uint8Array<*>, isFinal: Boolean)
-}
+package dev.karmakrafts.kompress.lz4

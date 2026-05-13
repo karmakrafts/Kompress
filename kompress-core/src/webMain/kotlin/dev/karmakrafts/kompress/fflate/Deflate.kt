@@ -28,7 +28,7 @@ internal external interface DeflateOptions : JsAny {
     var mem: Int
 }
 
-@Suppress("EXPECTED_EXTERNAL_DECLARATION", "EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
+@Suppress("EXPECTED_EXTERNAL_DECLARATION", "EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING", "ERROR_SUPPRESSION")
 internal expect external class Deflate(
     options: DeflateOptions, callback: FlateStreamHandler? = definedExternally
 ) : FlateStream {

@@ -20,6 +20,7 @@ package dev.karmakrafts.kompress.fflate
 
 import js.typedarrays.Uint8Array
 
+@Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
 internal actual external class Inflate actual constructor(options: InflateOptions) : FlateStream {
     actual override var ondata: FlateStreamHandler?
     actual override fun push(data: Uint8Array<*>, isFinal: Boolean)

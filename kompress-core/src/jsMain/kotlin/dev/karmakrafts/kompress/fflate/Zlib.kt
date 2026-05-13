@@ -20,6 +20,7 @@ package dev.karmakrafts.kompress.fflate
 
 import js.typedarrays.Uint8Array
 
+@Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
 internal actual external class Zlib actual constructor( // @formatter:off
     options: ZlibOptions,
     callback: FlateStreamHandler?

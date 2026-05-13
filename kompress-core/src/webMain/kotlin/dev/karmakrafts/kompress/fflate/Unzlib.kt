@@ -27,7 +27,7 @@ internal external interface UnzlibOptions : JsAny {
     var out: Uint8Array<*>?
 }
 
-@Suppress("EXPECTED_EXTERNAL_DECLARATION", "EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
+@Suppress("EXPECTED_EXTERNAL_DECLARATION", "EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING", "ERROR_SUPPRESSION")
 internal expect external class Unzlib(options: UnzlibOptions) : FlateStream {
     override var ondata: FlateStreamHandler?
     override fun push(data: Uint8Array<*>, isFinal: Boolean)
