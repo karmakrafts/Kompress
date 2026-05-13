@@ -55,7 +55,8 @@ private class InflaterImpl(raw: Boolean) : Inflater {
                     stream.next_in = addressOf(0).reinterpret()
                     stream.avail_in = value.size.toUInt()
                 }
-            } else {
+            }
+            else {
                 pinnedInput = null
                 stream.next_in = null
                 stream.avail_in = 0u
@@ -92,7 +93,8 @@ private class InflaterImpl(raw: Boolean) : Inflater {
 
             if (res == Z_STREAM_END) {
                 _finished = true
-            } else if (res != Z_OK && res != Z_BUF_ERROR) {
+            }
+            else if (res != Z_OK && res != Z_BUF_ERROR) {
                 error("Inflater error: $res")
             }
 

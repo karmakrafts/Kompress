@@ -55,7 +55,8 @@ private class DeflaterImpl(raw: Boolean, initialLevel: Int) : Deflater {
                     stream.next_in = addressOf(0).reinterpret()
                     stream.avail_in = value.size.toUInt()
                 }
-            } else {
+            }
+            else {
                 pinnedInput = null
                 stream.next_in = null
                 stream.avail_in = 0u
@@ -105,7 +106,8 @@ private class DeflaterImpl(raw: Boolean, initialLevel: Int) : Deflater {
 
             if (res == Z_STREAM_END) {
                 _finished = true
-            } else if (res != Z_OK) {
+            }
+            else if (res != Z_OK) {
                 if (written == 0) return@usePinned 0
             }
 

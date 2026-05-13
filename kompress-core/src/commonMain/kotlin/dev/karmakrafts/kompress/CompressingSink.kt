@@ -49,7 +49,8 @@ private class CompressingSink( // @formatter:off
             if (written > 0) {
                 drainBuffer.write(chunkBuffer, 0, written)
                 delegate.write(drainBuffer, written.toLong())
-            } else break
+            }
+            else break
         }
     }
 
@@ -65,7 +66,8 @@ private class CompressingSink( // @formatter:off
             if (written > 0) {
                 drainBuffer.write(chunkBuffer, 0, written)
                 delegate.write(drainBuffer, written.toLong())
-            } else if (compressor.needsInput) break
+            }
+            else if (compressor.needsInput) break
         }
         delegate.flush()
         compressor.close()
