@@ -12,17 +12,21 @@ Lightweight zlib (de)compression API for Kotlin Multiplatform.
 
 ### Features
 
+- General purpose `Compressor` and `Decompressor` APIs for modeling streaming compressors.
+- General purpose `Archiver<E>` and `Unarchiver<E>` APIs for modeling streaming archivers.
 - Supports all Kotlin Multiplatform targets
-- Support for **DEFLATE** and **DEFLATE RAW** compression
+- Support for various compression algorithms, including DEFLATE, DEFLATE Raw and LZ4
+- Create and read various archive types, including GZIP and ZIP.
 - Synchronous streaming API inspired by Java's `Inflater`/`Deflater` APIs
 - Integration with [kotlinx.io](https://github.com/Kotlin/kotlinx-io)
-- Customizable compression-level
+- Customizable compression-level for supported (de)compressors
 - Extra lightweight on JVM and native because it wraps available platform APIs
 
 ### Modules
 
-- **kompress-core**: Core DEFLATE and CRC APIs
-- **kompress-zip**: Pure Kotlin implementation of the PKZip standard
+- **kompress-core**: Core DEFLATE and CRC APIs, GZIP and ZIP support
+- **kompress-lz4**: LZ4 compression (for high-throughput applications)
+- **kompress-benchmarks**: Various benchmarks comparing Kompress implementations against platform references
 
 ### How to use it
 
@@ -64,15 +68,12 @@ are what you're probably looking for:
 fun main() {
     val myData = "Hello, World! This is an important message."
     val compressedData = Deflater.deflate(
-        data = myData.encodeToByteArray(),
-        raw = false, // Control if you want the gzip/pkzip header
+        data = myData.encodeToByteArray(), raw = false, // Control if you want the gzip/pkzip header
         level = 9, // Control the compression level
         bufferSize = 1024 // Control the internal buffer size
     )
     val decompressedData = Inflater.inflate(
-        data = compressedData,
-        raw = false,
-        bufferSize = 1024
+        data = compressedData, raw = false, bufferSize = 1024
     )
     println(myData == decompressedData.decodeToString())
 }
@@ -97,10 +98,10 @@ fun main() {
         // ...
     )
     val outputBuffer = ByteArray(1024)
-    while(deflater.needsInput) {
-        if(!hasMoreInput) deflater.finish() // Signal that we are done compressing
+    while (deflater.needsInput) {
+        if (!hasMoreInput) deflater.finish() // Signal that we are done compressing
         deflater.input = getInputChunk()
-        while(!deflater.finished) {
+        while (!deflater.finished) {
             deflater.deflate(outputBuffer) // Deflate data into the buffer
             copyChunkToSomeTarget(outputBuffer)
         }
@@ -116,10 +117,10 @@ fun main() {
     val buffer = Buffer()
     buffer.writeInt(42)
     buffer.writeFloat(4.20F)
-    
+
     val compressedBuffer = Buffer()
     buffer.deflating().use(compressedBuffer::transferFrom)
-    
+
     val decompressedBuffer = Buffer()
     compressedBuffer.inflating().use(decompressedBuffer::transferFrom)
 }

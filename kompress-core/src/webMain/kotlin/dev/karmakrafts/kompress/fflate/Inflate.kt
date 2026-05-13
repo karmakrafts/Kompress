@@ -27,7 +27,7 @@ internal external interface InflateOptions : JsAny {
     var out: Uint8Array<*>?
 }
 
-@Suppress("EXPECTED_EXTERNAL_DECLARATION", "EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING", "ERROR_SUPPRESSION")
+@Suppress("EXPECTED_EXTERNAL_DECLARATION", "EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
 internal expect external class Inflate(
     options: InflateOptions
 ) : FlateStream {
