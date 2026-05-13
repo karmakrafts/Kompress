@@ -64,3 +64,11 @@ internal value class GZipEntryFlags(val value: UByte) {
     inline val fcomment: Boolean
         get() = value and FCOMMENT != FNONE
 }
+
+internal fun GZipEntry.computeFlags(): GZipEntryFlags = GZipEntryFlags( // @formatter:off
+    ftext = isText,
+    fhcrc = false, // TODO: implement support for this
+    fextra = false,
+    fname = name != null,
+    fcomment = comment != null
+) // @formatter:on

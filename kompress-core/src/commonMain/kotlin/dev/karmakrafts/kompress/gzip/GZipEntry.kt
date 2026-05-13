@@ -23,11 +23,11 @@ import kotlin.time.Instant
 
 class GZipEntry( // @formatter:off
     offset: Long,
-    val compressionMethod: GZipCompressionMethod,
     val modificationTime: Instant,
     val os: GZipOs,
     val crc32: UInt,
     val uncompressedSize: UInt,
+    val isText: Boolean = false,
     val name: String? = null,
     val comment: String? = null,
     val extraField: ByteArray? = null,

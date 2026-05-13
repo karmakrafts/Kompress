@@ -14,18 +14,12 @@
  * limitations under the License.
  */
 
-package dev.karmakrafts.kompress.archiver
+package dev.karmakrafts.kompress.gzip
 
-interface Archiver<E : ArchiveEntry> : AutoCloseable {
-    fun appendEntry(entry: E)
-    fun nextEntry(): E?
-    fun finish()
-}
-
-fun <E : ArchiveEntry> Archiver<E>.entries(): Sequence<E> = sequence {
-    var entry = nextEntry()
-    while (entry != null) {
-        yield(entry)
-        entry = nextEntry()
-    }
+object GZipConstants {
+    /**
+     * See [RFC1952](https://datatracker.ietf.org/doc/html/rfc1952) 2.3.1.
+     * start of page 6.
+     */
+    const val MAGIC: UShort = 0x1F8BU
 }
