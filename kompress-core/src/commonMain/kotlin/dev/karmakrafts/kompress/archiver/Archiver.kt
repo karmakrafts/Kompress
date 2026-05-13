@@ -20,9 +20,29 @@ import dev.karmakrafts.kompress.Compressor
 import kotlinx.io.RawSink
 import kotlinx.io.Sink
 
+/**
+ * Base interface for all archiver implementations.
+ * Provides access to the target [Sink], the [Compressor] used to compress entries,
+ * and a function to append new entries to the archive.
+ */
 interface Archiver<E> : AutoCloseable {
+    /**
+     * The target sink being written to.
+     */
     val sink: RawSink
+
+    /**
+     * The compressor used for compressing entry data blocks.
+     */
     val compressor: Compressor
 
+    /**
+     * Append a new entry to the archive.
+     *
+     * @param entry The entry of type [E] (usually the header) to write.
+     * @param callback An entry write callback which is invoked repeatedly
+     *  until the returned Boolean value is false.
+     *  This allows streaming compression for the current entry data.
+     */
     fun appendEntry(entry: E, callback: (Sink) -> Boolean)
 }

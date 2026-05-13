@@ -60,15 +60,6 @@ private class GZipArchiver( // @formatter:off
         buffer.writeUIntLe(entry.modificationTime.epochSeconds.toUInt())
         buffer.writeUByte(getCurrentXFL())
         buffer.writeUByte(entry.os.encodedValue)
-    }
-
-    /**
-     * See [RFC1952](https://datatracker.ietf.org/doc/html/rfc1952) 2.3.
-     * start of page 5.
-     */
-    override fun appendEntry(entry: GZipEntry, callback: (Sink) -> Boolean) {
-        val flags = entry.computeFlags()
-        appendHeader(entry, flags)
         // Write extra field if present
         entry.extraField?.let { extraField ->
             check(extraField.size.toUShort() <= UShort.MAX_VALUE) { "Extra field size exceeds GZip maximum" }
@@ -88,6 +79,15 @@ private class GZipArchiver( // @formatter:off
         }
         // Flush the entry header into the sink
         sink.write(buffer, buffer.size)
+    }
+
+    /**
+     * See [RFC1952](https://datatracker.ietf.org/doc/html/rfc1952) 2.3.
+     * start of page 5.
+     */
+    override fun appendEntry(entry: GZipEntry, callback: (Sink) -> Boolean) {
+        val flags = entry.computeFlags()
+        appendHeader(entry, flags)
         // We chunk the entry data and compute the CRC32 of the uncompressed data at the same time
         var crc = CRC32_INITIAL_VALUE
         var uncompressedSize = 0L
