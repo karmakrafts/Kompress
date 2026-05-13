@@ -22,14 +22,6 @@ package dev.karmakrafts.kompress.gzip
  */
 enum class GZipCompressionMethod(val encodedValue: UByte) {
     // @formatter:off
-    RESERVED_0(0x00U),
-    RESERVED_1(0x01U),
-    RESERVED_2(0x02U),
-    RESERVED_3(0x03U),
-    RESERVED_4(0x04U),
-    RESERVED_5(0x05U),
-    RESERVED_6(0x06U),
-    RESERVED_7(0x07U),
-    DEFLATE   (0x08U)
+    DEFLATE(0x08U)
     // @formatter:on
 }

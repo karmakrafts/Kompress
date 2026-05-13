@@ -67,8 +67,8 @@ internal value class GZipEntryFlags(val value: UByte) {
 
 internal fun GZipEntry.computeFlags(): GZipEntryFlags = GZipEntryFlags( // @formatter:off
     ftext = isText,
-    fhcrc = false, // TODO: implement support for this
-    fextra = false,
+    fhcrc = hcrc16 != null,
+    fextra = extraField != null,
     fname = name != null,
     fcomment = comment != null
 ) // @formatter:on

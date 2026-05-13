@@ -28,28 +28,24 @@ import kotlin.test.assertTrue
 @OptIn(ExperimentalUnsignedTypes::class)
 class InflaterTest {
     @Test
-    fun `Raw decompression sanity check`() {
+    fun `raw decompression sanity check`() {
         val data =
             Inflater.decompress(ubyteArrayOf(0xF3U, 0x48U, 0xCDU, 0xC9U, 0xC9U, 0x57U, 0x04U, 0x00U).asByteArray())
         assertTrue(data.isNotEmpty())
-        data.forEach { println("Byte: 0x${it.toHexString()}") }
-        println("Decompressed: ${data.decodeToString()}")
     }
 
     @Test
-    fun `Decompression sanity check`() {
+    fun `decompression sanity check`() {
         val data = Inflater.decompress(
             ubyteArrayOf(
                 0x78U, 0x9CU, 0xF3U, 0x48U, 0xCDU, 0xC9U, 0xC9U, 0x57U, 0x04U, 0x00U, 0x07U, 0xA2U, 0x02U, 0x16U
             ).asByteArray(), raw = false
         )
         assertTrue(data.isNotEmpty())
-        data.forEach { println("Byte: 0x${it.toHexString()}") }
-        println("Decompressed: ${data.decodeToString()}")
     }
 
     @Test
-    fun `Inflating source flushes pending output when delegate reaches EOF`() {
+    fun `inflating source flushes pending output when delegate reaches eof`() {
         val value = Random(4).nextBytes(3 * 1024 * 1024)
         val compressedData = Deflater.compress(value)
         val compressedBuffer = Buffer()
@@ -63,7 +59,7 @@ class InflaterTest {
     }
 
     @Test
-    fun `Raw inflating source buffered immediate read`() {
+    fun `raw inflating source buffered immediate read`() {
         val value = "Hello, World!".encodeToByteArray()
         val compressedBytes = Deflater.compress(value)
         val buffer = Buffer().apply { write(compressedBytes) }
@@ -73,7 +69,7 @@ class InflaterTest {
     }
 
     @Test
-    fun `Inflating source buffered immediate read`() {
+    fun `inflating source buffered immediate read`() {
         val value = "Hello, World!".encodeToByteArray()
         val compressedBytes = Deflater.compress(value, raw = false)
         val buffer = Buffer().apply { write(compressedBytes) }

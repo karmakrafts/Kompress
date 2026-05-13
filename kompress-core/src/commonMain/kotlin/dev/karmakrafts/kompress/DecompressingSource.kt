@@ -24,7 +24,7 @@ import kotlin.math.min
 private class DecompressingSource( // @formatter:off
     private val decompressor: Decompressor,
     private val delegate: RawSource,
-    private val bufferSize: Int
+    private val bufferSize: Int = Decompressor.DEFAULT_BUFFER_SIZE
 ) : RawSource { // @formatter:on
     private val buffer: Buffer = Buffer()
     private val chunkBuffer: ByteArray = ByteArray(bufferSize)
@@ -64,6 +64,13 @@ private class DecompressingSource( // @formatter:off
     override fun close() = decompressor.close()
 }
 
+/**
+ * Wraps this [RawSource] into a decompressing source using the given [decompressor].
+ *
+ * @param decompressor The decompressor to use.
+ * @param bufferSize The size of the buffer used for decompression.
+ * @return A decompressing [RawSource].
+ */
 fun RawSource.decompressing( // @formatter:off
     decompressor: Decompressor,
     bufferSize: Int = Decompressor.DEFAULT_BUFFER_SIZE

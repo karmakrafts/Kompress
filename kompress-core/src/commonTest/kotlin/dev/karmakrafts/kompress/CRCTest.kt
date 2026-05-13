@@ -22,7 +22,7 @@ import kotlin.test.assertEquals
 
 class CRCTest {
     @Test
-    fun testCrc32ByteArray() {
+    fun `crc32 byte array`() {
         assertEquals(0x00000000U, crc32("".encodeToByteArray()))
         assertEquals(0x83DCEFB7U, crc32("1".encodeToByteArray()))
         assertEquals(0xCBF43926U, crc32("123456789".encodeToByteArray()))
@@ -30,7 +30,7 @@ class CRCTest {
     }
 
     @Test
-    fun testCrc32Source() {
+    fun `crc32 source`() {
         val buffer = Buffer()
         buffer.write("123456789".encodeToByteArray())
         assertEquals(0xCBF43926U, buffer.crc32(9))
@@ -38,10 +38,17 @@ class CRCTest {
     }
 
     @Test
-    fun testCrc32SourcePartial() {
+    fun `crc32 source partial`() {
         val buffer = Buffer()
         buffer.write("123456789".encodeToByteArray())
-        assertEquals(0x83DCEFB7U, buffer.crc32(1)) // "1" is 0x31 -> CRC 0x83D211A5
+        assertEquals(0x83DCEFB7U, buffer.crc32(1))
         assertEquals(8, buffer.size)
+    }
+
+    @Test
+    fun `crc32 source empty`() {
+        val buffer = Buffer()
+        assertEquals(0x00000000U, buffer.crc32(0))
+        assertEquals(0, buffer.size)
     }
 }

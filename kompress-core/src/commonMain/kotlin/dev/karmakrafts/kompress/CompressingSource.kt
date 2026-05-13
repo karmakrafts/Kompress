@@ -24,7 +24,7 @@ import kotlin.math.min
 private class CompressingSource( // @formatter:off
     private val compressor: Compressor,
     private val delegate: RawSource,
-    private val bufferSize: Int
+    private val bufferSize: Int = Compressor.DEFAULT_BUFFER_SIZE
 ) : RawSource { // @formatter:on
     private val buffer: Buffer = Buffer()
     private val chunkBuffer: ByteArray = ByteArray(bufferSize)
@@ -65,6 +65,13 @@ private class CompressingSource( // @formatter:off
     override fun close() = compressor.close()
 }
 
+/**
+ * Wraps this [RawSource] into a compressing source using the given [compressor].
+ *
+ * @param compressor The compressor to use.
+ * @param bufferSize The size of the buffer used for compression.
+ * @return A compressing [RawSource].
+ */
 fun RawSource.compressing( // @formatter:off
     compressor: Compressor,
     bufferSize: Int = Compressor.DEFAULT_BUFFER_SIZE

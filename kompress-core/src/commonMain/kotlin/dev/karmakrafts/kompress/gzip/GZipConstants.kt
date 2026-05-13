@@ -22,4 +22,15 @@ object GZipConstants {
      * start of page 6.
      */
     const val MAGIC: UShort = 0x1F8BU
+
+    /**
+     * See [RFC1952](https://datatracker.ietf.org/doc/html/rfc1952) 2.3.1.
+     * end of page 7.
+     */
+    const val XFL_MIN_COMPRESSION: UByte = 0x04U
+    const val XFL_MAX_COMPRESSION: UByte = 0x02U
+
+    const val NO_COMPRESSION: Int = 0
+    const val MIN_COMPRESSION: Int = 1
+    const val MAX_COMPRESSION: Int = 9
 }

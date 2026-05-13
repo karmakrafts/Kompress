@@ -17,6 +17,7 @@
 package dev.karmakrafts.kompress
 
 import kotlinx.io.Buffer
+import kotlinx.io.RawSource
 import kotlinx.io.readByteArray
 import kotlinx.io.readString
 import kotlinx.io.writeString
@@ -27,7 +28,7 @@ import kotlin.test.assertEquals
 
 class DeflateInflateTest {
     @Test
-    fun `Deflate and inflate small array raw`() {
+    fun `deflate and inflate small array raw`() {
         val value = "Hellou, World!"
         val compressedData = Deflater.compress(value.encodeToByteArray())
         val decompressedData = Inflater.decompress(compressedData)
@@ -35,7 +36,7 @@ class DeflateInflateTest {
     }
 
     @Test
-    fun `Deflate and inflate small array`() {
+    fun `deflate and inflate small array`() {
         val value = "Hellou, World!"
         val compressedData = Deflater.compress(value.encodeToByteArray(), raw = false)
         val decompressedData = Inflater.decompress(compressedData, raw = false)
@@ -43,31 +44,31 @@ class DeflateInflateTest {
     }
 
     @Test
-    fun `Deflate and inflate small buffer raw`() {
+    fun `deflate and inflate small buffer raw`() {
         val value = "Hello, World!"
         val buffer = Buffer()
         buffer.writeString(value)
         val compressedBuffer = Buffer()
-        compressedBuffer.transferFrom(buffer.deflating())
+        compressedBuffer.transferFrom((buffer as RawSource).deflating())
         val decompressedBuffer = Buffer()
         decompressedBuffer.transferFrom(compressedBuffer.inflating())
         assertEquals(value, decompressedBuffer.readString())
     }
 
     @Test
-    fun `Deflate and inflate small buffer`() {
+    fun `deflate and inflate small buffer`() {
         val value = "Hello, World!"
         val buffer = Buffer()
         buffer.writeString(value)
         val compressedBuffer = Buffer()
-        compressedBuffer.transferFrom(buffer.deflating(false))
+        compressedBuffer.transferFrom((buffer as RawSource).deflating(false))
         val decompressedBuffer = Buffer()
         decompressedBuffer.transferFrom(compressedBuffer.inflating(false))
         assertEquals(value, decompressedBuffer.readString())
     }
 
     @Test
-    fun `Deflate and inflate large array raw`() {
+    fun `deflate and inflate large array raw`() {
         val value = Random.nextBytes(1024 * 1024)
         val compressedData = Deflater.compress(value)
         val decompressedData = Inflater.decompress(compressedData)
@@ -75,7 +76,7 @@ class DeflateInflateTest {
     }
 
     @Test
-    fun `Deflate and inflate large array`() {
+    fun `deflate and inflate large array`() {
         val value = Random.nextBytes(1024 * 1024)
         val compressedData = Deflater.compress(value, raw = false)
         val decompressedData = Inflater.decompress(compressedData, raw = false)
@@ -83,26 +84,62 @@ class DeflateInflateTest {
     }
 
     @Test
-    fun `Deflate and inflate large buffer raw`() {
+    fun `deflate and inflate large buffer raw`() {
         val value = Random.nextBytes(1024 * 1024)
         val buffer = Buffer()
         buffer.write(value)
         val compressedBuffer = Buffer()
-        compressedBuffer.transferFrom(buffer.deflating())
+        compressedBuffer.transferFrom((buffer as RawSource).deflating())
         val decompressedBuffer = Buffer()
         decompressedBuffer.transferFrom(compressedBuffer.inflating())
         assertContentEquals(value, decompressedBuffer.readByteArray())
     }
 
     @Test
-    fun `Deflate and inflate large buffer`() {
+    fun `deflate and inflate large buffer`() {
         val value = Random.nextBytes(1024 * 1024)
         val buffer = Buffer()
         buffer.write(value)
         val compressedBuffer = Buffer()
-        compressedBuffer.transferFrom(buffer.deflating(false))
+        compressedBuffer.transferFrom((buffer as RawSource).deflating(false))
         val decompressedBuffer = Buffer()
         decompressedBuffer.transferFrom(compressedBuffer.inflating(false))
         assertContentEquals(value, decompressedBuffer.readByteArray())
+    }
+
+    @Test
+    fun `deflate and inflate empty array raw`() {
+        val value = byteArrayOf()
+        val compressedData = Deflater.compress(value)
+        val decompressedData = Inflater.decompress(compressedData)
+        assertContentEquals(value, decompressedData)
+    }
+
+    @Test
+    fun `deflate and inflate empty array`() {
+        val value = byteArrayOf()
+        val compressedData = Deflater.compress(value, raw = false)
+        val decompressedData = Inflater.decompress(compressedData, raw = false)
+        assertContentEquals(value, decompressedData)
+    }
+
+    @Test
+    fun `deflate and inflate empty buffer raw`() {
+        val buffer = Buffer()
+        val compressedBuffer = Buffer()
+        compressedBuffer.transferFrom((buffer as RawSource).deflating())
+        val decompressedBuffer = Buffer()
+        decompressedBuffer.transferFrom(compressedBuffer.inflating())
+        assertEquals(0, decompressedBuffer.size)
+    }
+
+    @Test
+    fun `deflate and inflate empty buffer`() {
+        val buffer = Buffer()
+        val compressedBuffer = Buffer()
+        compressedBuffer.transferFrom((buffer as RawSource).deflating(false))
+        val decompressedBuffer = Buffer()
+        decompressedBuffer.transferFrom(compressedBuffer.inflating(false))
+        assertEquals(0, decompressedBuffer.size)
     }
 }
