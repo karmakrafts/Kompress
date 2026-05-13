@@ -14,28 +14,22 @@
  * limitations under the License.
  */
 
-rootProject.name = "kompress"
+package dev.karmakrafts.kompress.gzip
 
-pluginManagement {
-    repositories {
-        google()
-        mavenCentral()
-        mavenLocal()
-        gradlePluginPortal()
-        maven("https://central.sonatype.com/repository/maven-snapshots")
-    }
+/**
+ * See [RFC1952](https://datatracker.ietf.org/doc/html/rfc1952) 2.3.1.
+ * start of page 6.
+ */
+enum class GZipCompressionMethod(val encodedValue: UByte) {
+    // @formatter:off
+    RESERVED_0(0x00U),
+    RESERVED_1(0x01U),
+    RESERVED_2(0x02U),
+    RESERVED_3(0x03U),
+    RESERVED_4(0x04U),
+    RESERVED_5(0x05U),
+    RESERVED_6(0x06U),
+    RESERVED_7(0x07U),
+    DEFLATE   (0x08U)
+    // @formatter:on
 }
-
-@Suppress("UnstableApiUsage")
-dependencyResolutionManagement {
-    repositories {
-        google()
-        mavenCentral()
-        mavenLocal()
-        maven("https://central.sonatype.com/repository/maven-snapshots")
-    }
-}
-
-enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
-include("kompress-core")
-include("kompress-lz4")

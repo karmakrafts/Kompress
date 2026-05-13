@@ -14,28 +14,24 @@
  * limitations under the License.
  */
 
-rootProject.name = "kompress"
+package dev.karmakrafts.kompress.gzip
 
-pluginManagement {
-    repositories {
-        google()
-        mavenCentral()
-        mavenLocal()
-        gradlePluginPortal()
-        maven("https://central.sonatype.com/repository/maven-snapshots")
+import dev.karmakrafts.kompress.archiver.Archiver
+
+class GZipArchiver : Archiver<GZipEntry> {
+    override fun appendEntry(entry: GZipEntry) {
+        TODO("Not yet implemented")
+    }
+
+    override fun nextEntry(): GZipEntry {
+        TODO("Not yet implemented")
+    }
+
+    override fun finish() {
+        TODO("Not yet implemented")
+    }
+
+    override fun close() {
+        TODO("Not yet implemented")
     }
 }
-
-@Suppress("UnstableApiUsage")
-dependencyResolutionManagement {
-    repositories {
-        google()
-        mavenCentral()
-        mavenLocal()
-        maven("https://central.sonatype.com/repository/maven-snapshots")
-    }
-}
-
-enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
-include("kompress-core")
-include("kompress-lz4")

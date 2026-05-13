@@ -10,6 +10,7 @@
 - Added `RawSource.decompressing()` extension function
 - Added `Source.crc32` extension function
 - Added `crc32(ByteArray)` function
+- Added `kompress-lz4` module for high-throughput compression
 
 ### Changed
 

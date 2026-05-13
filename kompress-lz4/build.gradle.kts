@@ -17,7 +17,6 @@
 @file:OptIn(ExperimentalKotlinGradlePluginApi::class)
 
 import dev.karmakrafts.conventions.configureJava
-import dev.karmakrafts.conventions.dokka.configureDokka
 import dev.karmakrafts.conventions.kotlin.defaultCompilerOptions
 import dev.karmakrafts.conventions.kotlin.withAndroidLibrary
 import dev.karmakrafts.conventions.kotlin.withBrowser
@@ -39,15 +38,10 @@ plugins {
 
 configureJava(libs.versions.java)
 
-configureDokka {
-    withKotlin()
-    withKotlinxIo()
-}
-
 kotlin {
     defaultCompilerOptions()
     withSourcesJar()
-    withAndroidLibrary("$group.core")
+    withAndroidLibrary("$group.lz4")
     withNative()
     withJvm()
     withWeb {
@@ -67,19 +61,12 @@ kotlin {
     sourceSets {
         commonMain {
             dependencies {
-                api(libs.kotlinx.io.bytestring)
-                api(libs.kotlinx.io.core)
+
             }
         }
         commonTest {
             dependencies {
                 implementation(libs.kotlin.test)
-            }
-        }
-        webMain {
-            dependencies {
-                implementation(libs.kotlin.wrappers.browser)
-                implementation(npm("fflate", libs.versions.fflate.get()))
             }
         }
     }
@@ -93,8 +80,8 @@ tasks {
 
 publishing {
     setProjectInfo(
-        name = "Kompress Core",
-        description = "Lightweight compression API for Kotlin Multiplatform",
+        name = "Kompress LZ4",
+        description = "Lightweight LZ4 compression for Kotlin Multiplatform",
         url = "https://git.karmakrafts.dev/kk/kompress"
     )
 }

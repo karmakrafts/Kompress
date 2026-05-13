@@ -14,28 +14,10 @@
  * limitations under the License.
  */
 
-rootProject.name = "kompress"
+package dev.karmakrafts.kompress.archiver
 
-pluginManagement {
-    repositories {
-        google()
-        mavenCentral()
-        mavenLocal()
-        gradlePluginPortal()
-        maven("https://central.sonatype.com/repository/maven-snapshots")
-    }
+interface Archiver<E : ArchiveEntry> : AutoCloseable {
+    fun appendEntry(entry: E)
+    fun nextEntry(): E
+    fun finish()
 }
-
-@Suppress("UnstableApiUsage")
-dependencyResolutionManagement {
-    repositories {
-        google()
-        mavenCentral()
-        mavenLocal()
-        maven("https://central.sonatype.com/repository/maven-snapshots")
-    }
-}
-
-enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
-include("kompress-core")
-include("kompress-lz4")
