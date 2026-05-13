@@ -21,10 +21,7 @@ import kotlin.time.Instant
 data class GZipEntry( // @formatter:off
     val modificationTime: Instant,
     val os: GZipOs,
-    val crc32: UInt,
-    val uncompressedSize: UInt,
     val isText: Boolean = false,
-    val hcrc16: UShort? = null,
     val name: String? = null,
     val comment: String? = null,
     val extraField: ByteArray? = null
@@ -38,9 +35,6 @@ data class GZipEntry( // @formatter:off
         if (isText != other.isText) return false
         if (modificationTime != other.modificationTime) return false
         if (os != other.os) return false
-        if (crc32 != other.crc32) return false
-        if (uncompressedSize != other.uncompressedSize) return false
-        if (hcrc16 != other.hcrc16) return false
         if (name != other.name) return false
         if (comment != other.comment) return false
         if (!extraField.contentEquals(other.extraField)) return false
@@ -52,9 +46,6 @@ data class GZipEntry( // @formatter:off
         var result = isText.hashCode()
         result = 31 * result + modificationTime.hashCode()
         result = 31 * result + os.hashCode()
-        result = 31 * result + crc32.hashCode()
-        result = 31 * result + uncompressedSize.hashCode()
-        result = 31 * result + (hcrc16?.hashCode() ?: 0)
         result = 31 * result + (name?.hashCode() ?: 0)
         result = 31 * result + (comment?.hashCode() ?: 0)
         result = 31 * result + (extraField?.contentHashCode() ?: 0)

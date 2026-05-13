@@ -67,7 +67,7 @@ internal value class GZipEntryFlags(val value: UByte) {
 
 internal fun GZipEntry.computeFlags(): GZipEntryFlags = GZipEntryFlags( // @formatter:off
     ftext = isText,
-    fhcrc = hcrc16 != null,
+    fhcrc = true, // We always include the header checksum
     fextra = extraField != null,
     fname = name != null,
     fcomment = comment != null

@@ -33,9 +33,8 @@ import kotlinx.io.writeUShortLe
 
 private class GZipArchiver( // @formatter:off
     override val sink: RawSink,
-    val deflater: Deflater = Deflater()
+    val deflater: Deflater
 ) : Archiver<GZipEntry> { // @formatter:on
-    private val compressingSink: RawSink = sink.compressing(deflater)
     private val buffer: Buffer = Buffer()
     override val compressor: Compressor get() = deflater
 
@@ -79,6 +78,7 @@ private class GZipArchiver( // @formatter:off
         }
         // Flush the entry header into the sink
         sink.write(buffer, buffer.size)
+        buffer.clear()
     }
 
     /**
@@ -91,25 +91,35 @@ private class GZipArchiver( // @formatter:off
         // We chunk the entry data and compute the CRC32 of the uncompressed data at the same time
         var crc = CRC32_INITIAL_VALUE
         var uncompressedSize = 0L
-        while (callback(buffer)) {
-            crc = buffer.peek().crc32(buffer.size, crc)
-            val chunkSize = buffer.size
-            compressingSink.write(buffer, chunkSize)
-            uncompressedSize += chunkSize
+        sink.compressing(deflater).use { compressingSink ->
+            while (callback(buffer)) {
+                crc = buffer.peek().crc32(buffer.size, crc)
+                val chunkSize = buffer.size
+                compressingSink.write(buffer, chunkSize)
+                buffer.clear()
+                uncompressedSize += chunkSize
+            }
         }
         // Append the CRC32 of the uncompressed data and the uncompressed size (breaks over 4GB)
         buffer.writeUIntLe(crc)
         buffer.writeUIntLe(uncompressedSize.toUInt())
         sink.write(buffer, buffer.size)
+        buffer.clear()
     }
 
     override fun close() {
-        compressingSink.close()
+        sink.close()
         deflater.close()
         buffer.clear()
     }
 }
 
+/**
+ * Wraps this [RawSink] into a GZip [Archiver] using the given [deflater].
+ *
+ * @param deflater The [Deflater] to use for compression.
+ * @return A GZip [Archiver] for [GZipEntry]s.
+ */
 fun RawSink.gzip(
     deflater: Deflater = Deflater()
 ): Archiver<GZipEntry> = GZipArchiver(this, deflater)
