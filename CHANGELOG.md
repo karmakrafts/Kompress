@@ -2,15 +2,16 @@
 
 ### Added
 
-- Support for GZIP via `GZipCompressor`/`GZipDecompressor`
-- Support for ZIP via `ZipCompressor/ZipDecompressor`
-- Added `Compressor` interface
-- Added `Decompressor` interface
+- Added `Archiver<E>` interface for modeling streaming archivers
+- Added `Unarchiver<E>` interface for modeling streaming unarchivers
+- Added `Compressor` interface for modeling streaming compressors
+- Added `Decompressor` interface for modeling streaming decompressors
 - Added `RawSource.compressing()` extension function
 - Added `RawSource.decompressing()` extension function
 - Added `Source.crc32` extension function
 - Added `crc32(ByteArray)` function
 - Added `kompress-lz4` module for high-throughput compression
+- Support for GZIP compression via `RawSink.gzip()` extension function
 
 ### Changed
 
