@@ -36,9 +36,19 @@ private class BufferedUnarchiverImpl<E, D : Decompressor>( // @formatter:off
     private val delegate: Unarchiver<E, D>, 
     private val buffer: Buffer
 ) : BufferedUnarchiver<E, D>, Unarchiver<E, D> by delegate { // @formatter:on
+    private var hasStateChanged: Boolean = false
+
+    override fun forEachEntry(callback: UnarchiverEntryCallback<E>) {
+        delegate.forEachEntry(callback)
+        hasStateChanged = true
+    }
+
     @OptIn(InternalKompressApi::class)
     override fun reset() {
+        if (!hasStateChanged) return
+        source.close()
         source = buffer.peek() // The source is a view of the buffer we can reset
+        hasStateChanged = false
     }
 }
 
