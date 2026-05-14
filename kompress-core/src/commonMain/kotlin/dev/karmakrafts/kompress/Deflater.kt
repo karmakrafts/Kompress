@@ -17,6 +17,7 @@
 package dev.karmakrafts.kompress
 
 import dev.karmakrafts.kompress.Deflater.Companion.compress
+import kotlinx.io.RawSink
 import kotlinx.io.RawSource
 
 /**
@@ -109,4 +110,26 @@ fun RawSource.deflating( // @formatter:off
     raw: Boolean = true,
     level: Int = Deflater.DEFAULT_LEVEL,
     bufferSize: Int = Compressor.DEFAULT_BUFFER_SIZE
-): RawSource = compressing(Deflater(raw, level), bufferSize)
+): RawSource = compressing(Deflater(raw, level), bufferSize) // @formatter:on
+
+/**
+ * Returns a [RawSink] that compresses written bytes using DEFLATE and
+ * writes them to this sink.
+ *
+ * This is a streaming wrapper: bytes are compressed on the fly as you write
+ * to the returned sink. Close the returned sink when finished to free
+ * any underlying resources and ensure all data is flushed.
+ *
+ * @param raw If true (default), the compressed stream is in "deflate-raw"
+ *  format without ZLIB header/footer. Set to false to include ZLIB wrapper
+ *  fields, which some consumers may require.
+ * @param level Compression level in range 0..9. See [Deflater.level].
+ * @param bufferSize Size of the internal working buffers used during
+ *  compression.
+ * @return A [RawSink] that accepts uncompressed data and writes compressed data.
+ */
+fun RawSink.deflating( // @formatter:off
+    raw: Boolean = true,
+    level: Int = Deflater.DEFAULT_LEVEL,
+    bufferSize: Int = Compressor.DEFAULT_BUFFER_SIZE
+): RawSink = compressing(Deflater(raw, level), bufferSize) // @formatter:on

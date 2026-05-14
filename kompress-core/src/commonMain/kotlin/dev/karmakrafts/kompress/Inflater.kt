@@ -17,12 +17,13 @@
 package dev.karmakrafts.kompress
 
 import dev.karmakrafts.kompress.Inflater.Companion.decompress
+import kotlinx.io.RawSink
 import kotlinx.io.RawSource
 
 /**
  * Streaming decompression interface that supports inflate and inflate-raw decompression.
  */
-interface Inflater : Decompressor, AutoCloseable {
+interface Inflater : Decompressor {
     companion object {
         /**
          * Decompresses the given data in one go using the given
@@ -89,3 +90,23 @@ fun RawSource.inflating( // @formatter:off
     raw: Boolean = true,
     bufferSize: Int = Decompressor.DEFAULT_BUFFER_SIZE
 ): RawSource = decompressing(Inflater(raw), bufferSize) // @formatter:on
+
+/**
+ * Returns a [RawSink] that decompresses written bytes using DEFLATE and
+ * writes them to this sink.
+ *
+ * This is a streaming wrapper: bytes are decompressed on the fly as you write
+ * to the returned sink. Close the returned sink when finished to free
+ * any underlying resources and ensure all data is flushed.
+ *
+ * @param raw If true (default), expects "deflate-raw" input without ZLIB
+ *  header/footer. Set to false if the compressed input is ZLIB-wrapped and
+ *  includes header and checksum fields.
+ * @param bufferSize Size of the internal working buffers used during
+ *  decompression.
+ * @return A [RawSink] that accepts compressed data and writes decompressed data.
+ */
+fun RawSink.inflating( // @formatter:off
+    raw: Boolean = true,
+    bufferSize: Int = Decompressor.DEFAULT_BUFFER_SIZE
+): RawSink = decompressing(Inflater(raw), bufferSize) // @formatter:on

@@ -66,7 +66,7 @@ fun crc32( // @formatter:off
  * @return the calculated CRC32 checksum.
  */
 fun Source.crc32( // @formatter:off
-    size: Long,
+    size: Long = Long.MAX_VALUE,
     initialValue: UInt = CRC32_INITIAL_VALUE
 ): UInt { // @formatter:on
     if (exhausted()) return 0U
