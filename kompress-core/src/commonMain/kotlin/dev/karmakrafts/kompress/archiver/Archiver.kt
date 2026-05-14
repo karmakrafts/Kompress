@@ -17,6 +17,7 @@
 package dev.karmakrafts.kompress.archiver
 
 import dev.karmakrafts.kompress.Compressor
+import dev.karmakrafts.kompress.InternalKompressApi
 import kotlinx.io.RawSink
 import kotlinx.io.RawSource
 import kotlinx.io.Sink
@@ -26,16 +27,18 @@ import kotlinx.io.Sink
  * Provides access to the target [Sink], the [Compressor] used to compress entries,
  * and a function to append new entries to the archive.
  */
-interface Archiver<E> : AutoCloseable {
+interface Archiver<E, C : Compressor> : AutoCloseable {
     /**
      * The target sink being written to.
      */
-    val sink: RawSink
+    @set:InternalKompressApi
+    var sink: RawSink
 
     /**
      * The compressor used for compressing entry data blocks.
      */
-    val compressor: Compressor
+    @set:InternalKompressApi
+    var compressor: C
 
     /**
      * Append a new entry to the archive.
@@ -54,7 +57,7 @@ interface Archiver<E> : AutoCloseable {
  * @param entry The entry of type [E] to write.
  * @param source The source to read the entry data from.
  */
-fun <E> Archiver<E>.appendEntry(entry: E, source: RawSource) {
+fun <E, C : Compressor> Archiver<E, C>.appendEntry(entry: E, source: RawSource) {
     appendEntry(entry) { sink ->
         sink.transferFrom(source) > 0L
     }
@@ -65,7 +68,7 @@ fun <E> Archiver<E>.appendEntry(entry: E, source: RawSource) {
  *
  * @param entries An [Iterable] of entry and source pairs to write.
  */
-fun <E> Archiver<E>.appendEntries(entries: Iterable<Pair<E, RawSource>>) {
+fun <E, C : Compressor> Archiver<E, C>.appendEntries(entries: Iterable<Pair<E, RawSource>>) {
     for ((entry, source) in entries) {
         appendEntry(entry, source)
     }

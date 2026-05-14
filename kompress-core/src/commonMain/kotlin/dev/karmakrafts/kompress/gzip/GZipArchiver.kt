@@ -17,7 +17,6 @@
 package dev.karmakrafts.kompress.gzip
 
 import dev.karmakrafts.kompress.CRC32_INITIAL_VALUE
-import dev.karmakrafts.kompress.Compressor
 import dev.karmakrafts.kompress.Deflater
 import dev.karmakrafts.kompress.archiver.Archiver
 import dev.karmakrafts.kompress.compressing
@@ -32,17 +31,16 @@ import kotlinx.io.writeUShort
 import kotlinx.io.writeUShortLe
 
 private class GZipArchiver( // @formatter:off
-    override val sink: RawSink,
-    val deflater: Deflater
-) : Archiver<GZipEntry> { // @formatter:on
+    override var sink: RawSink,
+    override var compressor: Deflater
+) : Archiver<GZipEntry, Deflater> { // @formatter:on
     private val buffer: Buffer = Buffer()
-    override val compressor: Compressor get() = deflater
 
     /**
      * See [RFC1952](https://datatracker.ietf.org/doc/html/rfc1952) 2.3.1.
      * end of page 7.
      */
-    private fun getCurrentXFL(): UByte = when (deflater.level) {
+    private fun getCurrentXFL(): UByte = when (compressor.level) {
         GZipConstants.MIN_COMPRESSION -> GZipConstants.XFL_MIN_COMPRESSION
         GZipConstants.MAX_COMPRESSION -> GZipConstants.XFL_MAX_COMPRESSION
         else -> GZipConstants.XFL_NONE
@@ -89,11 +87,11 @@ private class GZipArchiver( // @formatter:off
         val flags = entry.computeFlags()
         appendHeader(entry, flags)
         // We chunk the entry data and compute the CRC32 of the uncompressed data at the same time
-        var crc = CRC32_INITIAL_VALUE
+        var crc32 = CRC32_INITIAL_VALUE
         var uncompressedSize = 0L
-        sink.compressing(deflater).use { compressingSink ->
+        sink.compressing(compressor).use { compressingSink ->
             while (callback(buffer)) {
-                crc = buffer.peek().crc32(buffer.size, crc)
+                crc32 = buffer.peek().crc32(buffer.size, crc32)
                 val chunkSize = buffer.size
                 compressingSink.write(buffer, chunkSize)
                 buffer.clear()
@@ -101,7 +99,7 @@ private class GZipArchiver( // @formatter:off
             }
         }
         // Append the CRC32 of the uncompressed data and the uncompressed size (breaks over 4GB)
-        buffer.writeUIntLe(crc)
+        buffer.writeUIntLe(crc32)
         buffer.writeUIntLe(uncompressedSize.toUInt())
         sink.write(buffer, buffer.size)
         buffer.clear()
@@ -109,7 +107,7 @@ private class GZipArchiver( // @formatter:off
 
     override fun close() {
         sink.close()
-        deflater.close()
+        compressor.close()
         buffer.clear()
     }
 }
@@ -122,4 +120,4 @@ private class GZipArchiver( // @formatter:off
  */
 fun RawSink.gzip(
     deflater: Deflater = Deflater()
-): Archiver<GZipEntry> = GZipArchiver(this, deflater)
+): Archiver<GZipEntry, Deflater> = GZipArchiver(this, deflater)

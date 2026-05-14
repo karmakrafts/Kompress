@@ -17,50 +17,77 @@
 package dev.karmakrafts.kompress.archiver
 
 import dev.karmakrafts.kompress.Decompressor
+import dev.karmakrafts.kompress.InternalKompressApi
+import kotlinx.io.Buffer
 import kotlinx.io.RawSource
 import kotlinx.io.Source
+
+/**
+ * @param entry The current entry.
+ * @param source A source to read the current entry data from.
+ *  This source **MUST** be consumed, either by copying data or by skipping.
+ * @param fetchMore A callback which allows requesting more data from
+ *  the unarchivers underlying source if needed.
+ *  Returns true if more data was available, false otherwise.
+ */
+typealias UnarchiverEntryCallback<E> = ( // @formatter:off
+    entry: E,
+    source: Source,
+    fetchMore: () -> Boolean
+) -> Unit // @formatter:on
 
 /**
  * Base interface for all unarchiver implementations.
  * Provides access to the source [RawSource], the [Decompressor] used to decompress entries,
  * and functions to read entries from the archive.
  */
-interface Unarchiver<E> : AutoCloseable {
+interface Unarchiver<E, D : Decompressor> : AutoCloseable {
     /**
      * The source being read from.
      */
-    val source: RawSource
+    @set:InternalKompressApi
+    var source: RawSource
 
     /**
      * The decompressor used for decompressing entry data blocks.
      */
-    val decompressor: Decompressor
+    @set:InternalKompressApi
+    var decompressor: D
 
     /**
-     * Get the next entry from the archive.
+     * Iterates over all entries in the current archive in a streaming
+     * fashion. The given source is only to be used within the closure,
+     * since it is backed by the current internal buffer state.
      *
-     * @return The next entry of type [E] (usually the header) or null if no more entries are available.
+     * @param callback The callback to invoke for each entry.
      */
-    fun nextEntry(): E?
-
-    /**
-     * Open a [Source] to read the data of the given [entry].
-     *
-     * @param entry The entry to open.
-     * @return A [Source] to read the entry data.
-     */
-    fun openEntry(entry: E): Source
+    fun forEachEntry(callback: UnarchiverEntryCallback<E>)
 }
 
 /**
- * Get a [Sequence] of all entries in the archive.
+ * Extracts all entries from this unarchiver matching the
+ * given predicate into memory and retains a copy of them
+ * in form of a [kotlinx.io.Buffer].
  *
- * @return A [Sequence] of all entries of type [E].
+ * **Use with care, as this operation can be very expensive!**
+ *
+ * @param chunkSize The maximum size of each transferred data chunk in bytes.
+ * @param filter A filter to match all entries in this archive against.
+ * @return A new list containing all extracted entries which matched the given predicate.
  */
-fun <E> Unarchiver<E>.entries(): Sequence<E> = sequence {
-    var entry = nextEntry()
-    while (entry != null) {
-        yield(entry)
-        entry = nextEntry()
+inline fun <E, D : Decompressor> Unarchiver<E, D>.extract( // @formatter:off
+    chunkSize: Int = 4096,
+    crossinline filter: (E, Source) -> Boolean = { _, _ -> true }
+): List<Pair<E, Source>> { // @formatter:on
+    val entries = ArrayList<Pair<E, Buffer>>()
+    forEachEntry { entry, source, fetchMore ->
+        if (!filter(entry, source)) return@forEachEntry
+        val buffer = Buffer()
+        while (!source.exhausted() || fetchMore()) {
+            val read = source.readAtMostTo(buffer, chunkSize.toLong())
+            if (read == -1L) break // Reached EOF somehow
+        }
+        entries += entry to buffer
     }
+    return entries
 }

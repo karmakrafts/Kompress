@@ -22,6 +22,12 @@ package dev.karmakrafts.kompress.gzip
  */
 enum class GZipCompressionMethod(val encodedValue: UByte) {
     // @formatter:off
-    DEFLATE(0x08U)
+    DEFLATE(0x08U);
     // @formatter:on
+
+    companion object {
+        fun byEncodedValue(encodedValue: UByte): GZipCompressionMethod = entries.first { method ->
+            method.encodedValue == encodedValue
+        }
+    }
 }

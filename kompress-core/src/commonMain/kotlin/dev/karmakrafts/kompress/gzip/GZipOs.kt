@@ -36,6 +36,10 @@ enum class GZipOs(val encodedValue: UByte) {
     NTFS        (0x0BU),
     QDOS        (0x0CU),
     RISCOS      (0x0DU),
-    UNKNOWN     (0xFFU)
+    UNKNOWN     (0xFFU);
     // @formatter:on
+
+    companion object {
+        fun byEncodedValue(encodedValue: UByte): GZipOs = entries.first { os -> os.encodedValue == encodedValue }
+    }
 }
