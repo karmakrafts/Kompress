@@ -78,7 +78,7 @@ interface Unarchiver<E, D : Decompressor> : AutoCloseable {
 inline fun <E, D : Decompressor> Unarchiver<E, D>.extract( // @formatter:off
     chunkSize: Int = 4096,
     crossinline filter: (E, Source) -> Boolean = { _, _ -> true }
-): List<Pair<E, Source>> { // @formatter:on
+): List<Pair<E, Buffer>> { // @formatter:on
     val entries = ArrayList<Pair<E, Buffer>>()
     forEachEntry { entry, source, fetchMore ->
         if (!filter(entry, source)) return@forEachEntry
