@@ -26,6 +26,7 @@ import dev.karmakrafts.kompress.archive.UnarchiverEntryCallback
 import dev.karmakrafts.kompress.crc32
 import dev.karmakrafts.kompress.decompressingSource
 import dev.karmakrafts.kompress.util.readZeroTerminatedString
+import dev.karmakrafts.kompress.util.writeZeroTerminatedString
 import kotlinx.io.Buffer
 import kotlinx.io.RawSource
 import kotlinx.io.Source
@@ -35,6 +36,10 @@ import kotlinx.io.readUByte
 import kotlinx.io.readUIntLe
 import kotlinx.io.readUShort
 import kotlinx.io.readUShortLe
+import kotlinx.io.writeUByte
+import kotlinx.io.writeUIntLe
+import kotlinx.io.writeUShort
+import kotlinx.io.writeUShortLe
 import kotlin.time.Instant
 
 @OptIn(InternalKompressApi::class)
@@ -69,14 +74,28 @@ private class GZipUnarchiver( // @formatter:off
         return buffer.readByteArray(extraBytes)
     }
 
-    private fun computeHeaderChecksum(entry: GZipEntry): UShort {
-        return 0U.toUShort()
+    // TODO: this is horrible; we don't want to reconstruct the entire header just to compute the checksum
+    private fun computeHeaderChecksum(entry: GZipEntry, flags: GZipEntryFlags, xfl: UByte): UShort {
+        buffer.writeUShort(GZipConstants.MAGIC) // Magic is normally 2 separate bytes, so no LE
+        buffer.writeUByte(GZipCompressionMethod.DEFLATE.encodedValue)
+        buffer.writeUByte(flags.value)
+        buffer.writeUIntLe(entry.modificationTime.epochSeconds.toUInt())
+        buffer.writeUByte(xfl)
+        buffer.writeUByte(entry.os.encodedValue)
+        entry.extraField?.let { extraField ->
+            check(extraField.size.toUShort() <= UShort.MAX_VALUE) { "Extra field size exceeds GZip maximum" }
+            buffer.writeUShortLe(extraField.size.toUShort())
+            buffer.write(extraField)
+        }
+        entry.name?.let(buffer::writeZeroTerminatedString)
+        entry.comment?.let(buffer::writeZeroTerminatedString)
+        return (buffer.crc32() and 0xFFFFU).toUShort()
     }
 
     private fun checkHeaderChecksum(computedCrc16: UShort): Boolean {
         if (!ensureBufferFilled(UShort.SIZE_BYTES.toLong())) return false
         val crc16 = buffer.readUShortLe()
-        //if (crc16 != computedCrc16) throw InvalidChecksumException(crc16.toUInt(), computedCrc16.toUInt())
+        if (crc16 != computedCrc16) throw InvalidChecksumException(crc16.toUInt(), computedCrc16.toUInt())
         return true
     }
 
@@ -92,7 +111,7 @@ private class GZipUnarchiver( // @formatter:off
         }
         val flags = GZipEntryFlags(buffer.readUByte())
         val modificationTime = Instant.fromEpochSeconds(buffer.readUIntLe().toLong())
-        buffer.skip(UByte.SIZE_BYTES.toLong()) // Skip XFL, we don't care about it for decompression
+        val xfl = buffer.readUByte()
         val os = GZipOs.byEncodedValue(buffer.readUByte())
         // Read extra field if present
         var extraField: ByteArray? = null
@@ -109,7 +128,7 @@ private class GZipUnarchiver( // @formatter:off
             comment = comment,
             extraField = extraField
         )
-        if (flags.fhcrc && !checkHeaderChecksum(computeHeaderChecksum(entry))) return null
+        if (flags.fhcrc && !checkHeaderChecksum(computeHeaderChecksum(entry, flags, xfl))) return null
         return entry
     }
 
