@@ -15,3 +15,7 @@
  */
 
 package dev.karmakrafts.kompress.lz4
+
+import dev.karmakrafts.kompress.Compressor
+
+expect fun LZ4Compressor(): Compressor

@@ -61,12 +61,17 @@ kotlin {
     sourceSets {
         commonMain {
             dependencies {
-
+                api(projects.kompressCore)
             }
         }
         commonTest {
             dependencies {
                 implementation(libs.kotlin.test)
+            }
+        }
+        named("jvmAndAndroidMain") {
+            dependencies {
+                implementation(libs.lz4java)
             }
         }
     }
