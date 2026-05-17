@@ -133,7 +133,14 @@ private class GZipArchiver( // @formatter:off
     }
 }
 
-// TODO: document this
+/**
+ * Appends a new entry to the GZip archive from the given [path].
+ *
+ * @param path The path to the file to append.
+ * @param modificationTime The modification time of the file. Defaults to the actual modification time of the file or the current time if not available.
+ * @param comment An optional comment for the entry.
+ * @param isText Whether the entry is a text file.
+ */
 @OptIn(InternalKompressApi::class)
 fun Archiver<in GZipEntry, *>.appendEntry( // @formatter:off
     path: Path,
@@ -142,13 +149,25 @@ fun Archiver<in GZipEntry, *>.appendEntry( // @formatter:off
     isText: Boolean = false
 ) { // @formatter:on
     return SystemFileSystem.source(path).use { source ->
-        appendEntry(
-            modificationTime = modificationTime, name = path.name, comment = comment, isText = isText, source = source
-        )
+        appendEntry( // @formatter:off
+            modificationTime = modificationTime,
+            name = path.name,
+            comment = comment,
+            isText = isText,
+            source = source
+        ) // @formatter:on
     }
 }
 
-// TODO: document this
+/**
+ * Appends a new entry to the GZip archive with the given [name] and a [callback] to write the data.
+ *
+ * @param name The name of the entry.
+ * @param modificationTime The modification time of the entry. Defaults to the current time.
+ * @param comment An optional comment for the entry.
+ * @param isText Whether the entry is a text file.
+ * @param callback A callback to write the entry's data to the given [Sink].
+ */
 fun Archiver<in GZipEntry, *>.appendEntry( // @formatter:off
     name: String,
     modificationTime: Instant = Clock.System.now(),
@@ -164,7 +183,15 @@ fun Archiver<in GZipEntry, *>.appendEntry( // @formatter:off
 ), callback
 ) // @formatter:on
 
-// TODO: document this
+/**
+ * Appends a new entry to the GZip archive with the given [name] and [source].
+ *
+ * @param name The name of the entry.
+ * @param source The source to read the entry's data from.
+ * @param modificationTime The modification time of the entry. Defaults to the current time.
+ * @param comment An optional comment for the entry.
+ * @param isText Whether the entry is a text file.
+ */
 fun Archiver<in GZipEntry, *>.appendEntry( // @formatter:off
     name: String,
     source: RawSource,
@@ -186,7 +213,8 @@ fun Archiver<in GZipEntry, *>.appendEntry( // @formatter:off
  * Wraps this [RawSink] into a GZip [Archiver] using the given [deflater].
  *
  * @param deflater The [Deflater] to use for compression.
- * // TODO: document new parameters
+ * @param isSinkOwned Whether the [RawSink] is owned by the archiver and should be closed when the archiver is closed.
+ * @param isCompressorOwned Whether the [deflater] is owned by the archiver and should be closed when the archiver is closed.
  * @return A GZip [Archiver] for [GZipEntry]s.
  */
 fun RawSink.gzip( // @formatter:off
