@@ -82,6 +82,7 @@ interface Compressor : AutoCloseable {
      * @param output The buffer to compress the data into.
      * TODO: add parameter documentation
      * @return The actual number of compressed bytes.
+     * @throws DataFormatException when the compressor encounters invalid data.
      */
     fun compress( // @formatter:off
         output: ByteArray,
@@ -97,6 +98,7 @@ interface Compressor : AutoCloseable {
      * @param data The data to compress.
      * @param bufferSize The size of the intermediate buffer used during compression.
      * @return The compressed data.
+     * @throws DataFormatException when the compressor encounters invalid data.
      */
     fun compressBulk(data: ByteArray, bufferSize: Int = 4096): ByteArray {
         setInput(data)

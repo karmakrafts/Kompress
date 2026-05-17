@@ -18,7 +18,9 @@
 
 package dev.karmakrafts.kompress.lz4
 
+import dev.karmakrafts.kompress.DataFormatException
 import dev.karmakrafts.kompress.Decompressor
+import net.jpountz.lz4.LZ4Exception
 import net.jpountz.lz4.LZ4Factory
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -63,7 +65,7 @@ private class LZ4DecompressorImpl : Decompressor {
         offset: Int,
         size: Int,
         flush: Boolean
-    ): Int { // @formatter:on
+    ): Int = try { // @formatter:on
         if (finished) return 0
         outputBuffer.clear()
         delegate.decompress(inputBuffer, outputBuffer)
@@ -71,6 +73,8 @@ private class LZ4DecompressorImpl : Decompressor {
         if (compressed == 0) return 0
         outputBuffer.get(output, offset, size)
         return compressed
+    } catch (error: LZ4Exception) {
+        throw DataFormatException(error.message, error.cause) // Rethrow as our type
     }
 
     override fun finish() {

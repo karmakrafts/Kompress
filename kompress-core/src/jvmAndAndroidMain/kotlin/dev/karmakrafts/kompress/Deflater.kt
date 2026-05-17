@@ -18,6 +18,7 @@
 
 package dev.karmakrafts.kompress
 
+import java.util.zip.DataFormatException as JavaDataFormatException
 import java.util.zip.Deflater as JavaDeflater
 
 @Suppress("OVERRIDE_DEPRECATION")
@@ -64,9 +65,11 @@ private class DeflaterImpl( // @formatter:off
         offset: Int,
         size: Int,
         flush: Boolean
-    ): Int { // @formatter:on
+    ): Int = try { // @formatter:on
         val flushFlags = if (flush) JavaDeflater.SYNC_FLUSH else JavaDeflater.NO_FLUSH
-        return impl.deflate(output, offset, size, flushFlags)
+        impl.deflate(output, offset, size, flushFlags)
+    } catch (error: JavaDataFormatException) {
+        throw DataFormatException(error.message, error.cause) // Rethrow as our type
     }
 
     override fun close() {

@@ -140,7 +140,7 @@ private class DeflaterImpl( // @formatter:off
                 deflateEnd(stream.ptr)
             }
             else if (result != Z_OK) {
-                if (written == 0) return@usePinned 0
+                throw DataFormatException("Deflater encountered invalid data: code 0x${result.toHexString()}")
             }
 
             written

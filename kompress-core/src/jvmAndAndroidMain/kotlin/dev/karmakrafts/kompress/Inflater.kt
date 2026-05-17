@@ -18,6 +18,7 @@
 
 package dev.karmakrafts.kompress
 
+import java.util.zip.DataFormatException as JavaDataFormatException
 import java.util.zip.Inflater as JavaInflater
 
 @Suppress("OVERRIDE_DEPRECATION")
@@ -53,7 +54,11 @@ private class InflaterImpl(raw: Boolean) : Inflater {
         offset: Int,
         size: Int,
         flush: Boolean
-    ): Int = impl.inflate(output, offset, size) // @formatter:on
+    ): Int = try { // @formatter:on
+        impl.inflate(output, offset, size)
+    } catch (error: JavaDataFormatException) {
+        throw DataFormatException(error.message, error.cause) // Rethrow as our type
+    }
 
     override fun finish() = Unit
 

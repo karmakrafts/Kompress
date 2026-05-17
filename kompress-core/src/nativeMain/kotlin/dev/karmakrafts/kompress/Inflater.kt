@@ -120,7 +120,7 @@ private class InflaterImpl( // @formatter:off
                 _finished = true
             }
             else if (result != Z_OK && result != Z_BUF_ERROR) {
-                error("Inflater error: $result")
+                throw DataFormatException("Inflater encountered invalid data: code 0x${result.toHexString()}")
             }
 
             written

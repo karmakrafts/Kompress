@@ -36,6 +36,7 @@ interface Inflater : Decompressor {
          *  in order to support the compression format used in both GZIP and PKZIP.
          * @param bufferSize The size of the intermediate buffer used during compression.
          * @return The decompressed data.
+         * @throws DataFormatException when the decompressor encounters invalid data.
          */
         fun decompress( // @formatter:off
             data: ByteArray,
@@ -66,6 +67,7 @@ interface Inflater : Decompressor {
          * @param raw If true, the ZLIB header and checksum fields will not be used.
          * @param bufferSize The size of the intermediate buffer used during decompression.
          * @return The size of the compressed data that was actually consumed.
+         * @throws DataFormatException when the decompressor encounters invalid data.
          */
         fun computeCompressedSize( // @formatter:off
             data: ByteArray,
@@ -89,6 +91,7 @@ interface Inflater : Decompressor {
          * @param raw If true, the ZLIB header and checksum fields will not be used.
          * @param bufferSize The size of the intermediate buffer used during decompression.
          * @return The size of the compressed data that was actually consumed from the source.
+         * @throws DataFormatException when the decompressor encounters invalid data.
          */
         fun computeCompressedSize( // @formatter:off
             source: RawSource,

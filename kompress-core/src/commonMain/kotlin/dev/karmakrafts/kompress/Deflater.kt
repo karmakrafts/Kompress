@@ -37,6 +37,7 @@ interface Deflater : Compressor {
          * @param level The compression level between 0 and 9.
          * @param bufferSize The size of the intermediate buffer used during compression.
          * @return The compressed data.
+         * @throws DataFormatException when the compressor encounters invalid data.
          */
         fun compress( // @formatter:off
             data: ByteArray,
