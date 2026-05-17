@@ -20,6 +20,8 @@ import kotlinx.io.Buffer
 import kotlinx.io.readString
 import kotlinx.io.writeString
 import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 class GZipArchiverUnarchiverTest {
     @Test
@@ -90,6 +92,31 @@ class GZipArchiverUnarchiverTest {
             if (!entryFound) {
                 throw AssertionError("Entry with name $latin1Name not found or name mismatched")
             }
+        }
+    }
+
+    @Test
+    fun `Archive and unarchive empty file`() {
+        val inputBuffer = Buffer() // Empty buffer
+        val outputBuffer = Buffer()
+
+        // Archive the empty file
+        outputBuffer.gzip().use { archiver ->
+            archiver.appendEntry("empty.txt", source = inputBuffer)
+        }
+
+        // Unarchive the file
+        outputBuffer.ungzip().use { unarchiver ->
+            var entryFound = false
+            unarchiver.forEachEntry { entry, source, fetchMore ->
+                if (entry.name == "empty.txt") {
+                    entryFound = true
+                    val buffer = Buffer()
+                    while (fetchMore()) buffer.transferFrom(source)
+                    assertEquals(0, buffer.size, "Buffer should be empty")
+                }
+            }
+            assertTrue(entryFound, "Entry 'empty.txt' should be found")
         }
     }
 }
