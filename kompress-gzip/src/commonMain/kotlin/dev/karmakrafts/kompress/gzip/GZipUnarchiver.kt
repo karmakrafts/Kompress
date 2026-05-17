@@ -19,6 +19,7 @@ package dev.karmakrafts.kompress.gzip
 import dev.karmakrafts.kompress.CRC32_INITIAL_VALUE
 import dev.karmakrafts.kompress.Decompressor
 import dev.karmakrafts.kompress.Inflater
+import dev.karmakrafts.kompress.InternalKompressApi
 import dev.karmakrafts.kompress.archive.Unarchiver
 import dev.karmakrafts.kompress.archive.UnarchiverEntryCallback
 import dev.karmakrafts.kompress.crc32
@@ -35,6 +36,7 @@ import kotlinx.io.readUShort
 import kotlinx.io.readUShortLe
 import kotlin.time.Instant
 
+@OptIn(InternalKompressApi::class)
 private class GZipUnarchiver( // @formatter:off
     override val source: Source,
     override val decompressor: Inflater,

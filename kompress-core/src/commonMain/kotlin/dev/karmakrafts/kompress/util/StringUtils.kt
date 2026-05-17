@@ -16,21 +16,26 @@
 
 package dev.karmakrafts.kompress.util
 
+import dev.karmakrafts.kompress.InternalKompressApi
 import kotlinx.io.Sink
 import kotlinx.io.Source
 
 // TODO: optimize this
 // Just add a zero terminator to the end of the UTF-8 data
-internal fun String.encodeZeroTerminated(): ByteArray = encodeToByteArray() + 0x00.toByte()
+@InternalKompressApi
+fun String.encodeZeroTerminated(): ByteArray = encodeToByteArray() + 0x00.toByte()
 
-internal fun Sink.writeZeroTerminatedString(value: String) = write(value.encodeZeroTerminated())
+@InternalKompressApi
+fun Sink.writeZeroTerminatedString(value: String) = write(value.encodeZeroTerminated())
 
 // TODO: optimize this
 // We just assume zero-terminated UTF-8
-internal fun ByteArray.decodeZeroTerminated(): String = sliceArray(0..<lastIndex).decodeToString()
+@InternalKompressApi
+fun ByteArray.decodeZeroTerminated(): String = sliceArray(0..<lastIndex).decodeToString()
 
 // TODO: optimize this
-internal fun Source.readZeroTerminatedStringAsSize(): Long {
+@InternalKompressApi
+fun Source.readZeroTerminatedStringAsSize(): Long {
     val peeking = peek()
     var byte = peeking.readByte()
     var index = 0L
@@ -43,7 +48,8 @@ internal fun Source.readZeroTerminatedStringAsSize(): Long {
 }
 
 // TODO: optimize this
-internal fun Source.readZeroTerminatedString(): String {
+@InternalKompressApi
+fun Source.readZeroTerminatedString(): String {
     val peeking = peek()
     var byte = peeking.readByte()
     var index = 0

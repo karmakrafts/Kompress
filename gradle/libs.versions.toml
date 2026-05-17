@@ -7,13 +7,12 @@ kompress = "1.5.0"
 kotlin = "2.3.21" # https://github.com/JetBrains/kotlin/releases
 kotlinxIo = "0.9.0" # https://github.com/Kotlin/kotlinx-io/releases
 kotlinxBenchmark = "0.4.17" # https://github.com/Kotlin/kotlinx-benchmark/releases
-kotlinBrowser = "2026.5.3" # https://github.com/JetBrains/kotlin-wrappers/releases
+kotlinBrowser = "2026.5.4" # https://github.com/JetBrains/kotlin-wrappers/releases
 dokka = "2.2.0" # https://github.com/Kotlin/dokka/releases
 karmaConventions = "1.16.3" # https://github.com/karmakrafts/karma-conventions/tags
 gradleNexus = "2.0.0" # https://github.com/gradle-nexus/publish-plugin/releases
 fflate = "0.8.2" # https://github.com/101arrowz/fflate/releases
 oshi = "7.1.0" # https://github.com/oshi/oshi/releases
-jzlib = "1.1.3" # https://github.com/ymnk/jzlib/tags
 
 [libraries]
 
@@ -23,7 +22,6 @@ kotlinx-io-bytestring = { module = "org.jetbrains.kotlinx:kotlinx-io-bytestring"
 kotlinx-io-core = { module = "org.jetbrains.kotlinx:kotlinx-io-core", version.ref = "kotlinxIo" }
 kotlinx-benchmark-runtime = { module = "org.jetbrains.kotlinx:kotlinx-benchmark-runtime", version.ref = "kotlinxBenchmark" }
 oshi-core = { module = "com.github.oshi:oshi-core", version.ref = "oshi" }
-jzlib = { module = "com.jcraft:jzlib", version.ref = "jzlib" }
 
 [plugins]
 

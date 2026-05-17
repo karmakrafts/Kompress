@@ -18,6 +18,7 @@
 
 package dev.karmakrafts.kompress.util
 
+import dev.karmakrafts.kompress.InternalKompressApi
 import web.navigator.navigator
 import kotlin.js.ExperimentalWasmJsInterop
 import kotlin.js.js
@@ -32,6 +33,7 @@ private fun checkIsNode(): Boolean = js("""typeof process !== 'undefined' && pro
 
 internal val isNode: Boolean by lazy(::checkIsNode)
 
+@OptIn(InternalKompressApi::class)
 private fun getPlatformForName(name: String): Platform {
     return when { // @formatter:off
         name.contains("win32", ignoreCase = true)
@@ -48,10 +50,14 @@ private fun getPlatformForName(name: String): Platform {
     }
 }
 
+@OptIn(InternalKompressApi::class)
 private fun getNodePlatform(): Platform = getPlatformForName(process.platform)
+
+@OptIn(InternalKompressApi::class)
 private fun getBrowserPlatform(): Platform = getPlatformForName(navigator.platform)
 
-internal actual val currentPlatform: Platform by lazy {
+@InternalKompressApi
+actual val currentPlatform: Platform by lazy {
     if(isNode) getNodePlatform()
     else getBrowserPlatform()
 }

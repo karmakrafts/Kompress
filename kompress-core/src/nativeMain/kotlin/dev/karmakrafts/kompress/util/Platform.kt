@@ -16,11 +16,13 @@
 
 package dev.karmakrafts.kompress.util
 
+import dev.karmakrafts.kompress.InternalKompressApi
 import kotlin.experimental.ExperimentalNativeApi
 import kotlin.native.Platform as SystemPlatform
 
+@InternalKompressApi
 @OptIn(ExperimentalNativeApi::class)
-internal actual val currentPlatform: Platform by lazy {
+actual val currentPlatform: Platform by lazy {
     when (SystemPlatform.osFamily) {
         OsFamily.WINDOWS -> Platform.WINDOWS
         OsFamily.MACOSX -> Platform.MACOS

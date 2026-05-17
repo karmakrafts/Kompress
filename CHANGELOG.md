@@ -15,7 +15,8 @@
 
 ### Changed
 
-- Updated to Kotlin Wrappers 2026.5.3
+- Updated to Gradle 9.5.1
+- Updated to Kotlin Wrappers 2026.5.4
 - Updated to Android Gradle 9.2.1
 - Deprecated `Deflater.deflate` bulk compression function in favor of `Deflater.compress`/`Deflater.compressBulk`
 - Deprecated `Inflater.inflate` bulk decompression function in favor of `Inflater.decompress`/`Inflater.decompressBulk`

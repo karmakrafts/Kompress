@@ -16,4 +16,7 @@
 
 package dev.karmakrafts.kompress.util
 
-internal actual val currentPlatform: Platform = Platform.ANDROID
+import dev.karmakrafts.kompress.InternalKompressApi
+
+@InternalKompressApi
+actual val currentPlatform: Platform = Platform.ANDROID

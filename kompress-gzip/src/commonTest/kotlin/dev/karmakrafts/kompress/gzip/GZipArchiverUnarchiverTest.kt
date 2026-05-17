@@ -14,11 +14,8 @@
  * limitations under the License.
  */
 
-package dev.karmakrafts.kompress
+package dev.karmakrafts.kompress.gzip
 
-import dev.karmakrafts.kompress.gzip.appendEntry
-import dev.karmakrafts.kompress.gzip.gzip
-import dev.karmakrafts.kompress.gzip.ungzip
 import kotlinx.io.Buffer
 import kotlinx.io.readString
 import kotlinx.io.writeString

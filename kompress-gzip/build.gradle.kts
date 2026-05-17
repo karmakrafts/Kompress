@@ -47,7 +47,7 @@ configureDokka {
 kotlin {
     defaultCompilerOptions()
     withSourcesJar()
-    withAndroidLibrary("$group.core")
+    withAndroidLibrary("$group.gzip")
     withNative()
     withJvm()
     withWeb {
@@ -67,24 +67,12 @@ kotlin {
     sourceSets {
         commonMain {
             dependencies {
-                api(libs.kotlinx.io.bytestring)
-                api(libs.kotlinx.io.core)
-            }
-        }
-        jvmMain {
-            dependencies {
-                implementation(libs.oshi.core)
+                api(projects.kompressCore)
             }
         }
         commonTest {
             dependencies {
                 implementation(libs.kotlin.test)
-            }
-        }
-        webMain {
-            dependencies {
-                implementation(libs.kotlin.wrappers.browser)
-                implementation(npm("fflate", libs.versions.fflate.get()))
             }
         }
     }
@@ -98,8 +86,8 @@ tasks {
 
 publishing {
     setProjectInfo(
-        name = "Kompress Core",
-        description = "Lightweight compression API for Kotlin Multiplatform",
+        name = "Kompress GZip",
+        description = "Streaming GZip implementation based on Kompress Core",
         url = "https://git.karmakrafts.dev/kk/kompress"
     )
 }
