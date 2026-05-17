@@ -2,16 +2,18 @@
 
 ### Added
 
-- Added `Archiver<E>` interface for modeling streaming archivers
-- Added `Unarchiver<E>` interface for modeling streaming unarchivers
+- Added `Archiver<E, D>` interface for modeling streaming archivers
+- Added `Unarchiver<E, D>` interface for modeling streaming unarchivers
+- Added `Unarchiver<E, D>.extract` extension function
 - Added `Compressor` interface for modeling streaming compressors
 - Added `Decompressor` interface for modeling streaming decompressors
-- Added `RawSource.compressing()` extension function
-- Added `RawSource.decompressing()` extension function
+- Added `RawSource.compressingSource` and `RawSink.compressingSink` extension functions
+- Added `RawSource.decompressingSource` and `RawSink.decompressingSink` extension functions
 - Added `Source.crc32` extension function
+- Added `RawSink.crc32Sink` and `RawSource.crc32Source` extension functions
 - Added `crc32(ByteArray)` function
-- Added `kompress-lz4` module for high-throughput compression
-- Support for GZIP compression via `RawSink.gzip()` extension function
+- Added `kompress-gzip` module for GZip archive support via `RawSink.gzip` and `Source.ungzip` extensions
+- Added `kompress-lz4` module for LZ4 compression support via `LZ4Compressor` and `LZ4Decompressor`
 
 ### Changed
 
