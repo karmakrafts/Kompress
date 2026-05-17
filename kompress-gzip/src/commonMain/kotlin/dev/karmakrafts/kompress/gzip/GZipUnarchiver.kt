@@ -25,8 +25,8 @@ import dev.karmakrafts.kompress.archive.Unarchiver
 import dev.karmakrafts.kompress.archive.UnarchiverEntryCallback
 import dev.karmakrafts.kompress.crc32
 import dev.karmakrafts.kompress.decompressingSource
-import dev.karmakrafts.kompress.util.readZeroTerminatedString
-import dev.karmakrafts.kompress.util.writeZeroTerminatedString
+import dev.karmakrafts.kompress.util.readZTLatin1String
+import dev.karmakrafts.kompress.util.writeZTLatin1String
 import kotlinx.io.Buffer
 import kotlinx.io.RawSource
 import kotlinx.io.Source
@@ -87,8 +87,8 @@ private class GZipUnarchiver( // @formatter:off
             buffer.writeUShortLe(extraField.size.toUShort())
             buffer.write(extraField)
         }
-        entry.name?.let(buffer::writeZeroTerminatedString)
-        entry.comment?.let(buffer::writeZeroTerminatedString)
+        entry.name?.let(buffer::writeZTLatin1String)
+        entry.comment?.let(buffer::writeZTLatin1String)
         return (buffer.crc32() and 0xFFFFU).toUShort()
     }
 
@@ -117,9 +117,9 @@ private class GZipUnarchiver( // @formatter:off
         var extraField: ByteArray? = null
         if (flags.fextra) extraField = parseExtraField() ?: return null
         var name: String? = null
-        if (flags.fname) name = source.readZeroTerminatedString()
+        if (flags.fname) name = source.readZTLatin1String()
         var comment: String? = null
-        if (flags.fcomment) comment = source.readZeroTerminatedString()
+        if (flags.fcomment) comment = source.readZTLatin1String()
         val entry = GZipEntry(
             modificationTime = modificationTime,
             os = os,

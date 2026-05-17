@@ -20,22 +20,31 @@ import dev.karmakrafts.kompress.InternalKompressApi
 import kotlinx.io.Sink
 import kotlinx.io.Source
 
-// TODO: optimize this
-// Just add a zero terminator to the end of the UTF-8 data
 @InternalKompressApi
-fun String.encodeZeroTerminated(): ByteArray = encodeToByteArray() + 0x00.toByte()
+fun String.encodeToZTLatin1(): ByteArray {
+    val result = ByteArray(length + 1)
+    for (index in indices) {
+        result[index] = (this[index].code and 0xFF).toByte()
+    }
+    return result
+}
 
 @InternalKompressApi
-fun Sink.writeZeroTerminatedString(value: String) = write(value.encodeZeroTerminated())
+fun Sink.writeZTLatin1String(value: String) = write(value.encodeToZTLatin1())
+
+// TODO: check this
+@InternalKompressApi
+fun ByteArray.decodeFromZTLatin1(): String {
+    val chars = CharArray(size - 1)
+    for (index in 0..<lastIndex) { // Skip null terminator
+        chars[index] = (this[index].toInt() and 0xFF).toChar()
+    }
+    return chars.concatToString()
+}
 
 // TODO: optimize this
-// We just assume zero-terminated UTF-8
 @InternalKompressApi
-fun ByteArray.decodeZeroTerminated(): String = sliceArray(0..<lastIndex).decodeToString()
-
-// TODO: optimize this
-@InternalKompressApi
-fun Source.readZeroTerminatedStringAsSize(): Long {
+fun Source.readZTStringAsSize(): Long {
     var byte = readByte()
     var index = 0L
     // First probe for length of the string
@@ -46,9 +55,10 @@ fun Source.readZeroTerminatedStringAsSize(): Long {
     return index
 }
 
+// TODO: check this
 // TODO: optimize this
 @InternalKompressApi
-fun Source.readZeroTerminatedString(): String {
+fun Source.readZTLatin1String(): String {
     val peeking = peek()
     var byte = peeking.readByte()
     var index = 0
@@ -58,12 +68,12 @@ fun Source.readZeroTerminatedString(): String {
         byte = peeking.readByte()
     }
     // Then allocate array and copy
-    val result = ByteArray(index)
+    val result = CharArray(index)
     byte = readByte()
     index = 0
     while (byte != 0.toByte()) {
-        result[index++] = byte
+        result[index++] = (byte.toInt() and 0xFF).toChar()
         byte = readByte()
     }
-    return result.decodeToString()
+    return result.concatToString()
 }

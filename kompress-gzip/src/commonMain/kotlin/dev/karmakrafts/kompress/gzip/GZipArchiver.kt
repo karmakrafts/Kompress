@@ -23,7 +23,7 @@ import dev.karmakrafts.kompress.archive.Archiver
 import dev.karmakrafts.kompress.compressingSink
 import dev.karmakrafts.kompress.crc32
 import dev.karmakrafts.kompress.util.FileUtils
-import dev.karmakrafts.kompress.util.writeZeroTerminatedString
+import dev.karmakrafts.kompress.util.writeZTLatin1String
 import kotlinx.io.Buffer
 import kotlinx.io.RawSink
 import kotlinx.io.RawSource
@@ -82,8 +82,8 @@ private class GZipArchiver( // @formatter:off
         buffer.writeUByte(getCurrentXFL())
         buffer.writeUByte(entry.os.encodedValue)
         entry.extraField?.let(::appendExtraField)
-        entry.name?.let(buffer::writeZeroTerminatedString)
-        entry.comment?.let(buffer::writeZeroTerminatedString)
+        entry.name?.let(buffer::writeZTLatin1String)
+        entry.comment?.let(buffer::writeZTLatin1String)
         if (flags.fhcrc) appendHeaderChecksum()
         sink.write(buffer, buffer.size)
     }
