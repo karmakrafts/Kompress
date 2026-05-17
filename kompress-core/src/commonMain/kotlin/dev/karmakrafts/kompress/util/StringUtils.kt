@@ -16,19 +16,30 @@
 
 package dev.karmakrafts.kompress.util
 
+import dev.karmakrafts.kompress.DataFormatException
 import dev.karmakrafts.kompress.InternalKompressApi
 import kotlinx.io.Sink
 import kotlinx.io.Source
 
+/**
+ * @throws dev.karmakrafts.kompress.DataFormatException when this String contains characters
+ *  outside the valid LATIN-1 range.
+ */
 @InternalKompressApi
 fun String.encodeToZTLatin1(): ByteArray {
     val result = ByteArray(length + 1)
     for (index in indices) {
-        result[index] = (this[index].code and 0xFF).toByte()
+        val codepoint = this[index].code
+        if (codepoint > 0xFF) throw DataFormatException("Character outside LATIN-1 range")
+        result[index] = (codepoint and 0xFF).toByte()
     }
     return result
 }
 
+/**
+ * @throws dev.karmakrafts.kompress.DataFormatException when the given String contains characters
+ *  outside the valid LATIN-1 range.
+ */
 @InternalKompressApi
 fun Sink.writeZTLatin1String(value: String) = write(value.encodeToZTLatin1())
 

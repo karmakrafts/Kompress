@@ -17,15 +17,7 @@
 package dev.karmakrafts.kompress
 
 /**
- * Exception thrown when a checksum validation fails during a Kompress operation.
- *
- * @property expectedChecksum The expected checksum value.
- * @property actualChecksum The actual checksum value that was calculated.
- * @constructor Creates a new [InvalidChecksumException] with the given [expectedChecksum] and [actualChecksum].
+ * Base type for all Kompress exceptions that may be raised by instances of
+ * [Compressor], [Decompressor], [dev.karmakrafts.kompress.archive.Archiver] or [dev.karmakrafts.kompress.archive.Unarchiver].
  */
-open class InvalidChecksumException(
-    val expectedChecksum: UInt,
-    val actualChecksum: UInt,
-    message: String? = "Invalid checksum, expected 0x${expectedChecksum.toHexString()} but got 0x${actualChecksum.toHexString()}",
-    cause: Throwable? = null
-) : KompressException(message, cause)
+open class KompressException(message: String?, cause: Throwable?) : RuntimeException(message, cause)

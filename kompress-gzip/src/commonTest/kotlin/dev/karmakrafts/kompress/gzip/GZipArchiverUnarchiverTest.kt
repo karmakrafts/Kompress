@@ -64,4 +64,32 @@ class GZipArchiverUnarchiverTest {
             }
         }
     }
+
+    @Test
+    fun `Archive and unarchive with LATIN-1 name`() {
+        val inputBuffer = Buffer()
+        inputBuffer.writeString("LATIN-1 test")
+        val outputBuffer = Buffer()
+        // RFC 1952 says ISO 8859-1 (LATIN-1) for FNAME and FCOMMENT.
+        val latin1Name = "täst-lâtìn1-ÿ.txt"
+
+        // Archive the file
+        outputBuffer.gzip().use { archiver ->
+            archiver.appendEntry(latin1Name, source = inputBuffer)
+        }
+
+        // Unarchive the file
+        outputBuffer.ungzip().use { unarchiver ->
+            var entryFound = false
+            unarchiver.forEachEntry { entry, source, fetchMore ->
+                if (entry.name == latin1Name) {
+                    entryFound = true
+                }
+                while (fetchMore()) source.clear() // skip data
+            }
+            if (!entryFound) {
+                throw AssertionError("Entry with name $latin1Name not found or name mismatched")
+            }
+        }
+    }
 }
