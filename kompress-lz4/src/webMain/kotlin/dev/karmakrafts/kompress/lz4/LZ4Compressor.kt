@@ -18,4 +18,4 @@ package dev.karmakrafts.kompress.lz4
 
 import dev.karmakrafts.kompress.Compressor
 
-actual fun LZ4Compressor(): Compressor = TODO()
+actual fun LZ4Compressor(): Compressor = TODO("Not implemented yet")
