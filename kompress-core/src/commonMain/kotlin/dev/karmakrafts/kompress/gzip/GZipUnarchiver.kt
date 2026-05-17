@@ -16,9 +16,13 @@
 
 package dev.karmakrafts.kompress.gzip
 
+import dev.karmakrafts.kompress.CRC32_INITIAL_VALUE
+import dev.karmakrafts.kompress.Decompressor
 import dev.karmakrafts.kompress.Inflater
 import dev.karmakrafts.kompress.archive.Unarchiver
 import dev.karmakrafts.kompress.archive.UnarchiverEntryCallback
+import dev.karmakrafts.kompress.crc32
+import dev.karmakrafts.kompress.decompressingSource
 import dev.karmakrafts.kompress.util.readZeroTerminatedString
 import kotlinx.io.Buffer
 import kotlinx.io.RawSource
@@ -106,12 +110,25 @@ private class GZipUnarchiver( // @formatter:off
             decompressionBuffer.clear()
             // Discard compressed data
             ensureBufferFilled(compressedSize)
-            buffer.clear()
+            var computedCrc32 = CRC32_INITIAL_VALUE
+            buffer.decompressingSource( // @formatter:off
+                decompressor = decompressor,
+                isSourceOwned = false,
+                isDecompressorOwned = false
+            ).use { decompressingSource -> // @formatter:on
+                callback(header, decompressionBuffer) {
+                    val result = decompressingSource.readAtMostTo(
+                        decompressionBuffer, Decompressor.DEFAULT_BUFFER_SIZE.toLong()
+                    )
+                    if (result != -1L) computedCrc32 = decompressionBuffer.peek().crc32(initialValue = computedCrc32)
+                    result != -1L
+                }
+            }
             // Read trailer
             if (!ensureBufferFilled(GZipConstants.TRAILER_SIZE.toLong())) break // Source is exhausted
             val crc32 = buffer.readUIntLe()
-            // TODO: implement checksum validation
-            buffer.skip(UInt.SIZE_BYTES.toLong()) // We don't care about the embedded size
+            check(crc32 == computedCrc32) { "Invalid GZip checksum, expected 0x${crc32.toHexString()} but got 0x${computedCrc32.toHexString()}" }
+            buffer.skip(UInt.SIZE_BYTES.toLong()) // Skip decompressed size
         }
     }
 

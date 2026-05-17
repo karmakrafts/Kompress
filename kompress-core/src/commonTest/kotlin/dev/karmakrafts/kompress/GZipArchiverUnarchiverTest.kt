@@ -18,7 +18,9 @@ package dev.karmakrafts.kompress
 
 import dev.karmakrafts.kompress.gzip.appendEntry
 import dev.karmakrafts.kompress.gzip.gzip
+import dev.karmakrafts.kompress.gzip.ungzip
 import kotlinx.io.Buffer
+import kotlinx.io.readString
 import kotlinx.io.writeString
 import kotlin.test.Test
 
@@ -31,6 +33,15 @@ class GZipArchiverUnarchiverTest {
         // Archive the file
         outputBuffer.gzip().use { archiver ->
             archiver.appendEntry("test.txt", source = inputBuffer)
+        }
+        // Unarchive the file
+        outputBuffer.ungzip().use { unarchiver ->
+            unarchiver.forEachEntry { entry, source, fetchMore ->
+                println(entry)
+                val buffer = Buffer()
+                while (fetchMore()) buffer.transferFrom(source)
+                println("Value: ${buffer.readString()}")
+            }
         }
     }
 }
