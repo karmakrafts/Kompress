@@ -41,4 +41,27 @@ class GZipArchiverUnarchiverTest {
             }
         }
     }
+
+    @Test
+    fun `Archive and unarchive multiple text files`() {
+        val inputBuffer1 = Buffer()
+        inputBuffer1.writeString("HELLO, WORLD!")
+        val inputBuffer2 = Buffer()
+        inputBuffer2.writeString("The fox goes yap!")
+        val outputBuffer = Buffer()
+        // Archive the file
+        outputBuffer.gzip().use { archiver ->
+            archiver.appendEntry("test1.txt", source = inputBuffer1)
+            archiver.appendEntry("test2.txt", source = inputBuffer2)
+        }
+        // Unarchive the file
+        outputBuffer.ungzip().use { unarchiver ->
+            unarchiver.forEachEntry { entry, source, fetchMore ->
+                println(entry)
+                val buffer = Buffer()
+                while (fetchMore()) buffer.transferFrom(source)
+                println("Value: ${buffer.readString()}")
+            }
+        }
+    }
 }

@@ -37,14 +37,16 @@ import platform.zlib.deflate
 import platform.zlib.deflateEnd
 import platform.zlib.deflateInit2
 import platform.zlib.deflateParams
-import platform.zlib.deflateReset
 import platform.zlib.z_stream
 import kotlin.math.max
 import kotlin.math.min
 
 @Suppress("OVERRIDE_DEPRECATION")
 @OptIn(ExperimentalForeignApi::class)
-private class DeflaterImpl(raw: Boolean, initialLevel: Int) : Deflater {
+private class DeflaterImpl( // @formatter:off
+    private val raw: Boolean,
+    initialLevel: Int
+) : Deflater { // @formatter:on
     override var level: Int = initialLevel
         set(value) {
             check(deflateParams(stream.ptr, value, Z_DEFAULT_STRATEGY) == Z_OK) { "Could not adjust Deflater level" }
@@ -154,8 +156,19 @@ private class DeflaterImpl(raw: Boolean, initialLevel: Int) : Deflater {
     }
 
     override fun reset() {
-        check(deflateReset(stream.ptr) == Z_OK) { "Could not reset deflater" }
-        input = ByteArray(0)
+        check(
+            deflateInit2(
+                strm = stream.ptr,
+                level = level,
+                method = Z_DEFLATED,
+                windowBits = if (raw) -15 else 15,
+                memLevel = 8,
+                strategy = Z_DEFAULT_STRATEGY
+            ) == Z_OK
+        ) { "Could not initialize Deflater" }
+        setInput(ByteArray(0))
+        finishRequested = false
+        _finished = false
     }
 }
 

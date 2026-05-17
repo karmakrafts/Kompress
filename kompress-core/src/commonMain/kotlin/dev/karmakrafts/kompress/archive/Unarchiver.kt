@@ -17,6 +17,7 @@
 package dev.karmakrafts.kompress.archive
 
 import dev.karmakrafts.kompress.Decompressor
+import dev.karmakrafts.kompress.InvalidChecksumException
 import kotlinx.io.Buffer
 import kotlinx.io.Source
 
@@ -56,6 +57,7 @@ interface Unarchiver<E, D : Decompressor> : AutoCloseable {
      * since it is backed by the current internal buffer state.
      *
      * @param callback The callback to invoke for each entry.
+     * @throws InvalidChecksumException when a checksum validation fails for the current entry.
      */
     fun forEachEntry(callback: UnarchiverEntryCallback<E>)
 }
@@ -70,6 +72,7 @@ interface Unarchiver<E, D : Decompressor> : AutoCloseable {
  * @param chunkSize The maximum size of each transferred data chunk in bytes.
  * @param filter A filter to match all entries in this archive against.
  * @return A new list containing all extracted entries which matched the given predicate.
+ * @throws InvalidChecksumException when a checksum validation fails for the current entry.
  */
 inline fun <E, D : Decompressor> Unarchiver<E, D>.extract( // @formatter:off
     chunkSize: Int = 4096,

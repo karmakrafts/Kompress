@@ -35,14 +35,15 @@ import platform.zlib.Z_SYNC_FLUSH
 import platform.zlib.inflate
 import platform.zlib.inflateEnd
 import platform.zlib.inflateInit2
-import platform.zlib.inflateReset
 import platform.zlib.z_stream
 import kotlin.math.max
 import kotlin.math.min
 
 @Suppress("OVERRIDE_DEPRECATION")
 @OptIn(ExperimentalForeignApi::class)
-private class InflaterImpl(raw: Boolean) : Inflater {
+private class InflaterImpl( // @formatter:off
+    private val raw: Boolean
+) : Inflater { // @formatter:on
     private val stream: z_stream = nativeHeap.alloc<z_stream>().apply {
         check(
             inflateInit2(
@@ -135,8 +136,14 @@ private class InflaterImpl(raw: Boolean) : Inflater {
     }
 
     override fun reset() {
-        check(inflateReset(stream.ptr) == Z_OK) { "Could not reset inflater" }
-        input = ByteArray(0)
+        check(
+            inflateInit2(
+                strm = stream.ptr, windowBits = if (raw) -15 else 15
+            ) == Z_OK
+        ) { "Could not initialize Inflater" }
+        setInput(ByteArray(0))
+        finishRequested = false
+        _finished = false
     }
 }
 

@@ -36,13 +36,12 @@ fun ByteArray.decodeZeroTerminated(): String = sliceArray(0..<lastIndex).decodeT
 // TODO: optimize this
 @InternalKompressApi
 fun Source.readZeroTerminatedStringAsSize(): Long {
-    val peeking = peek()
-    var byte = peeking.readByte()
+    var byte = readByte()
     var index = 0L
     // First probe for length of the string
     while (byte != 0.toByte()) {
         index++
-        byte = peeking.readByte()
+        byte = readByte()
     }
     return index
 }

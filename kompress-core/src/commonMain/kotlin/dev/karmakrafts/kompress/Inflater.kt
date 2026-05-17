@@ -20,7 +20,6 @@ import dev.karmakrafts.kompress.Inflater.Companion.decompress
 import kotlinx.io.Buffer
 import kotlinx.io.RawSink
 import kotlinx.io.RawSource
-import kotlinx.io.Source
 import kotlinx.io.readByteArray
 
 /**
@@ -76,15 +75,15 @@ interface Inflater : Decompressor {
 
         // TODO: document this
         fun computeCompressedSize( // @formatter:off
-            source: Source,
+            source: RawSource,
             raw: Boolean = true,
             bufferSize: Int = Decompressor.DEFAULT_BUFFER_SIZE
         ): Long = Inflater(raw).use { inflater -> // @formatter:on
             val outputBuffer = ByteArray(bufferSize)
+            val buffer = Buffer()
             var totalRead = 0L
             while (!inflater.finished) {
                 if (inflater.needsInput) {
-                    val buffer = Buffer()
                     val read = source.readAtMostTo(buffer, bufferSize.toLong())
                     if (read == -1L) {
                         inflater.finish()
@@ -94,7 +93,7 @@ interface Inflater : Decompressor {
                         inflater.setInput(buffer.readByteArray())
                     }
                 }
-                if (inflater.decompress(outputBuffer) == 0 && !inflater.needsInput) break
+                if (inflater.decompress(outputBuffer) == 0) break
             }
             totalRead - inflater.remaining
         }

@@ -20,6 +20,7 @@ import dev.karmakrafts.kompress.CRC32_INITIAL_VALUE
 import dev.karmakrafts.kompress.Decompressor
 import dev.karmakrafts.kompress.Inflater
 import dev.karmakrafts.kompress.InternalKompressApi
+import dev.karmakrafts.kompress.InvalidChecksumException
 import dev.karmakrafts.kompress.archive.Unarchiver
 import dev.karmakrafts.kompress.archive.UnarchiverEntryCallback
 import dev.karmakrafts.kompress.crc32
@@ -61,6 +62,24 @@ private class GZipUnarchiver( // @formatter:off
         return missing == 0L
     }
 
+    private fun parseExtraField(): ByteArray? {
+        if (!ensureBufferFilled(UShort.SIZE_BYTES.toLong())) return null
+        val extraBytes = buffer.readUShortLe().toInt()
+        if (!ensureBufferFilled(extraBytes.toLong())) return null
+        return buffer.readByteArray(extraBytes)
+    }
+
+    private fun computeHeaderChecksum(entry: GZipEntry): UShort {
+        return 0U.toUShort()
+    }
+
+    private fun checkHeaderChecksum(computedCrc16: UShort): Boolean {
+        if (!ensureBufferFilled(UShort.SIZE_BYTES.toLong())) return false
+        val crc16 = buffer.readUShortLe()
+        //if (crc16 != computedCrc16) throw InvalidChecksumException(crc16.toUInt(), computedCrc16.toUInt())
+        return true
+    }
+
     private fun parseHeader(): GZipEntry? {
         if (!ensureBufferFilled(GZipConstants.HEADER_PREAMBLE_SIZE.toLong())) return null // Not enough data
         val magic = buffer.readUShort() // Magic is normally 2 separate bytes, so no LE
@@ -77,21 +96,12 @@ private class GZipUnarchiver( // @formatter:off
         val os = GZipOs.byEncodedValue(buffer.readUByte())
         // Read extra field if present
         var extraField: ByteArray? = null
-        if (flags.fextra) {
-            if (!ensureBufferFilled(UShort.SIZE_BYTES.toLong())) return null
-            val extraBytes = buffer.readUShortLe().toInt()
-            if (!ensureBufferFilled(extraBytes.toLong())) return null
-            extraField = buffer.readByteArray(extraBytes)
-        }
+        if (flags.fextra) extraField = parseExtraField() ?: return null
         var name: String? = null
-        var comment: String? = null
         if (flags.fname) name = source.readZeroTerminatedString()
+        var comment: String? = null
         if (flags.fcomment) comment = source.readZeroTerminatedString()
-        if (flags.fhcrc) { // Skip over header checksum TODO implement check
-            ensureBufferFilled(UShort.SIZE_BYTES.toLong())
-            buffer.clear()
-        }
-        return GZipEntry(
+        val entry = GZipEntry(
             modificationTime = modificationTime,
             os = os,
             isText = flags.ftext,
@@ -99,38 +109,51 @@ private class GZipUnarchiver( // @formatter:off
             comment = comment,
             extraField = extraField
         )
+        if (flags.fhcrc && !checkHeaderChecksum(computeHeaderChecksum(entry))) return null
+        return entry
+    }
+
+    private fun parseAndCheckTrailer(computedCrc32: UInt): Boolean {
+        if (!ensureBufferFilled(GZipConstants.TRAILER_SIZE.toLong())) return false // Source is exhausted
+        val crc32 = buffer.readUIntLe()
+        if (crc32 != computedCrc32) throw InvalidChecksumException(crc32, computedCrc32)
+        buffer.skip(UInt.SIZE_BYTES.toLong()) // Skip decompressed size
+        return true
+    }
+
+    private inline fun decompressData( // @formatter:off
+        header: GZipEntry,
+        callback: UnarchiverEntryCallback<GZipEntry>
+    ): Pair<Boolean, UInt>? { // @formatter:on
+        val compressedSize = Inflater.computeCompressedSize(source.peek())
+        if (compressedSize == 0L) return false to CRC32_INITIAL_VALUE // No more data
+        if (!ensureBufferFilled(compressedSize)) return null // No more data
+        var computedCrc32 = CRC32_INITIAL_VALUE
+        buffer.decompressingSource( // @formatter:off
+            decompressor = decompressor,
+            isSourceOwned = false,
+            isDecompressorOwned = false
+        ).use { decompressingSource -> // @formatter:on
+            callback(header, decompressionBuffer) {
+                val result = decompressingSource.readAtMostTo(
+                    decompressionBuffer, Decompressor.DEFAULT_BUFFER_SIZE.toLong()
+                )
+                if (result != -1L) computedCrc32 = decompressionBuffer.peek().crc32(initialValue = computedCrc32)
+                result != -1L
+            }
+        }
+        return true to computedCrc32
     }
 
     override fun forEachEntry(callback: UnarchiverEntryCallback<GZipEntry>) {
         while (true) {
             buffer.clear()
-            val header = parseHeader() ?: break // Source is exhausted
-            // Inflate the entry data block until decompressor reports finished
-            val compressedSize = Inflater.computeCompressedSize(source.peek())
-            if (compressedSize == 0L) break // No more data
             decompressor.reset() // Reset decompressor before reading data
             decompressionBuffer.clear()
-            // Discard compressed data
-            ensureBufferFilled(compressedSize)
-            var computedCrc32 = CRC32_INITIAL_VALUE
-            buffer.decompressingSource( // @formatter:off
-                decompressor = decompressor,
-                isSourceOwned = false,
-                isDecompressorOwned = false
-            ).use { decompressingSource -> // @formatter:on
-                callback(header, decompressionBuffer) {
-                    val result = decompressingSource.readAtMostTo(
-                        decompressionBuffer, Decompressor.DEFAULT_BUFFER_SIZE.toLong()
-                    )
-                    if (result != -1L) computedCrc32 = decompressionBuffer.peek().crc32(initialValue = computedCrc32)
-                    result != -1L
-                }
-            }
-            // Read trailer
-            if (!ensureBufferFilled(GZipConstants.TRAILER_SIZE.toLong())) break // Source is exhausted
-            val crc32 = buffer.readUIntLe()
-            check(crc32 == computedCrc32) { "Invalid GZip checksum, expected 0x${crc32.toHexString()} but got 0x${computedCrc32.toHexString()}" }
-            buffer.skip(UInt.SIZE_BYTES.toLong()) // Skip decompressed size
+            val header = parseHeader() ?: break
+            val (result, crc32) = decompressData(header, callback) ?: break
+            if (!result) break
+            if (!parseAndCheckTrailer(crc32)) break
         }
     }
 

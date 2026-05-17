@@ -22,16 +22,20 @@ import dev.karmakrafts.kompress.InternalKompressApi
 import dev.karmakrafts.kompress.archive.Archiver
 import dev.karmakrafts.kompress.compressingSink
 import dev.karmakrafts.kompress.crc32
+import dev.karmakrafts.kompress.util.FileUtils
 import dev.karmakrafts.kompress.util.writeZeroTerminatedString
 import kotlinx.io.Buffer
 import kotlinx.io.RawSink
 import kotlinx.io.RawSource
 import kotlinx.io.Sink
+import kotlinx.io.files.Path
+import kotlinx.io.files.SystemFileSystem
 import kotlinx.io.writeUByte
 import kotlinx.io.writeUIntLe
 import kotlinx.io.writeUShort
 import kotlinx.io.writeUShortLe
-import kotlin.time.Clock.System
+import kotlin.time.Clock
+import kotlin.time.Instant
 
 @OptIn(InternalKompressApi::class)
 private class GZipArchiver( // @formatter:off
@@ -53,6 +57,19 @@ private class GZipArchiver( // @formatter:off
         else -> GZipConstants.XFL_NONE
     }
 
+    private fun appendExtraField(extraField: ByteArray) {
+        check(extraField.size.toUShort() <= UShort.MAX_VALUE) { "Extra field size exceeds GZip maximum" }
+        buffer.writeUShortLe(extraField.size.toUShort())
+        buffer.write(extraField)
+    }
+
+    private fun appendHeaderChecksum() {
+        // HCRC is two least significant bytes of header CRC32 up until self
+        val crc32 = buffer.peek().crc32(buffer.size)
+        val crc16 = (crc32 and 0xFFFFU).toUShort()
+        buffer.writeUShortLe(crc16)
+    }
+
     /**
      * See [RFC1952](https://datatracker.ietf.org/doc/html/rfc1952) 2.3.
      * start of page 5.
@@ -64,36 +81,20 @@ private class GZipArchiver( // @formatter:off
         buffer.writeUIntLe(entry.modificationTime.epochSeconds.toUInt())
         buffer.writeUByte(getCurrentXFL())
         buffer.writeUByte(entry.os.encodedValue)
-        // Write extra field if present
-        entry.extraField?.let { extraField ->
-            check(extraField.size.toUShort() <= UShort.MAX_VALUE) { "Extra field size exceeds GZip maximum" }
-            buffer.writeUShortLe(extraField.size.toUShort())
-            buffer.write(extraField)
-        }
-        // Write original file name if present
+        entry.extraField?.let(::appendExtraField)
         entry.name?.let(buffer::writeZeroTerminatedString)
-        // Write file comment if present
         entry.comment?.let(buffer::writeZeroTerminatedString)
-        // Compute and write entry header CRC16 sum if flag bit is set
-        if (flags.fhcrc) {
-            // HCRC is two least significant bytes of header CRC32 up until self
-            val crc32 = buffer.peek().crc32(buffer.size)
-            val crc16 = (crc32 and 0xFFFFU).toUShort()
-            buffer.writeUShortLe(crc16)
-        }
-        // Flush the entry header into the sink
+        if (flags.fhcrc) appendHeaderChecksum()
         sink.write(buffer, buffer.size)
-        buffer.clear()
     }
 
-    /**
-     * See [RFC1952](https://datatracker.ietf.org/doc/html/rfc1952) 2.3.
-     * start of page 5.
-     */
-    override fun appendEntry(entry: GZipEntry, callback: (Sink) -> Boolean) {
-        val flags = entry.computeFlags()
-        appendHeader(entry, flags)
-        // We chunk the entry data and compute the CRC32 of the uncompressed data at the same time
+    private fun appendTrailer(crc32: UInt, uncompressedSize: Long) {
+        buffer.writeUIntLe(crc32)
+        buffer.writeUIntLe(uncompressedSize.toUInt())
+        sink.write(buffer, buffer.size)
+    }
+
+    private inline fun appendData(callback: (Sink) -> Boolean): Pair<UInt, Long> {
         var crc32 = CRC32_INITIAL_VALUE
         var uncompressedSize = 0L
         sink.compressingSink( // @formatter:off
@@ -105,15 +106,22 @@ private class GZipArchiver( // @formatter:off
                 crc32 = buffer.peek().crc32(buffer.size, crc32)
                 val chunkSize = buffer.size
                 compressingSink.write(buffer, chunkSize)
-                buffer.clear()
                 uncompressedSize += chunkSize
             }
         }
-        // Append the CRC32 of the uncompressed data and the uncompressed size (breaks over 4GB)
-        buffer.writeUIntLe(crc32)
-        buffer.writeUIntLe(uncompressedSize.toUInt())
-        sink.write(buffer, buffer.size)
-        buffer.clear()
+        return crc32 to uncompressedSize
+    }
+
+    /**
+     * See [RFC1952](https://datatracker.ietf.org/doc/html/rfc1952) 2.3.
+     * start of page 5.
+     */
+    override fun appendEntry(entry: GZipEntry, callback: (Sink) -> Boolean) {
+        compressor.reset()
+        val flags = entry.computeFlags()
+        appendHeader(entry, flags)
+        val (crc32, uncompressedSize) = appendData(callback)
+        appendTrailer(crc32, uncompressedSize)
     }
 
     override fun close() {
@@ -126,13 +134,29 @@ private class GZipArchiver( // @formatter:off
 }
 
 // TODO: document this
+@OptIn(InternalKompressApi::class)
+fun Archiver<in GZipEntry, *>.appendEntry( // @formatter:off
+    path: Path,
+    modificationTime: Instant = FileUtils.getModificationTime(path) ?: Clock.System.now(),
+    comment: String? = null,
+    isText: Boolean = false
+) { // @formatter:on
+    return SystemFileSystem.source(path).use { source ->
+        appendEntry(
+            modificationTime = modificationTime, name = path.name, comment = comment, isText = isText, source = source
+        )
+    }
+}
+
+// TODO: document this
 fun Archiver<in GZipEntry, *>.appendEntry( // @formatter:off
     name: String,
+    modificationTime: Instant = Clock.System.now(),
     comment: String? = null,
     isText: Boolean = false,
     callback: (Sink) -> Boolean
 ) = appendEntry(GZipEntry(
-    modificationTime = System.now(),
+    modificationTime = modificationTime,
     os = GZipOs.guessCurrent(),
     isText = isText,
     name = name,
@@ -143,11 +167,12 @@ fun Archiver<in GZipEntry, *>.appendEntry( // @formatter:off
 // TODO: document this
 fun Archiver<in GZipEntry, *>.appendEntry( // @formatter:off
     name: String,
+    source: RawSource,
+    modificationTime: Instant = Clock.System.now(),
     comment: String? = null,
     isText: Boolean = false,
-    source: RawSource
 ) = appendEntry(GZipEntry(
-    modificationTime = System.now(),
+    modificationTime = modificationTime,
     os = GZipOs.guessCurrent(),
     isText = isText,
     name = name,
