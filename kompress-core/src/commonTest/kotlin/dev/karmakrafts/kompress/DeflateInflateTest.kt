@@ -49,9 +49,9 @@ class DeflateInflateTest {
         val buffer = Buffer()
         buffer.writeString(value)
         val compressedBuffer = Buffer()
-        compressedBuffer.transferFrom((buffer as RawSource).deflating())
+        compressedBuffer.transferFrom((buffer as RawSource).deflatingSource())
         val decompressedBuffer = Buffer()
-        decompressedBuffer.transferFrom(compressedBuffer.inflating())
+        decompressedBuffer.transferFrom(compressedBuffer.inflatingSource())
         assertEquals(value, decompressedBuffer.readString())
     }
 
@@ -61,9 +61,9 @@ class DeflateInflateTest {
         val buffer = Buffer()
         buffer.writeString(value)
         val compressedBuffer = Buffer()
-        compressedBuffer.transferFrom((buffer as RawSource).deflating(false))
+        compressedBuffer.transferFrom((buffer as RawSource).deflatingSource(false))
         val decompressedBuffer = Buffer()
-        decompressedBuffer.transferFrom(compressedBuffer.inflating(false))
+        decompressedBuffer.transferFrom(compressedBuffer.inflatingSource(false))
         assertEquals(value, decompressedBuffer.readString())
     }
 
@@ -89,9 +89,9 @@ class DeflateInflateTest {
         val buffer = Buffer()
         buffer.write(value)
         val compressedBuffer = Buffer()
-        compressedBuffer.transferFrom((buffer as RawSource).deflating())
+        compressedBuffer.transferFrom((buffer as RawSource).deflatingSource())
         val decompressedBuffer = Buffer()
-        decompressedBuffer.transferFrom(compressedBuffer.inflating())
+        decompressedBuffer.transferFrom(compressedBuffer.inflatingSource())
         assertContentEquals(value, decompressedBuffer.readByteArray())
     }
 
@@ -101,9 +101,9 @@ class DeflateInflateTest {
         val buffer = Buffer()
         buffer.write(value)
         val compressedBuffer = Buffer()
-        compressedBuffer.transferFrom((buffer as RawSource).deflating(false))
+        compressedBuffer.transferFrom((buffer as RawSource).deflatingSource(false))
         val decompressedBuffer = Buffer()
-        decompressedBuffer.transferFrom(compressedBuffer.inflating(false))
+        decompressedBuffer.transferFrom(compressedBuffer.inflatingSource(false))
         assertContentEquals(value, decompressedBuffer.readByteArray())
     }
 
@@ -127,9 +127,9 @@ class DeflateInflateTest {
     fun `deflate and inflate empty buffer raw`() {
         val buffer = Buffer()
         val compressedBuffer = Buffer()
-        compressedBuffer.transferFrom((buffer as RawSource).deflating())
+        compressedBuffer.transferFrom((buffer as RawSource).deflatingSource())
         val decompressedBuffer = Buffer()
-        decompressedBuffer.transferFrom(compressedBuffer.inflating())
+        decompressedBuffer.transferFrom(compressedBuffer.inflatingSource())
         assertEquals(0, decompressedBuffer.size)
     }
 
@@ -137,9 +137,9 @@ class DeflateInflateTest {
     fun `deflate and inflate empty buffer`() {
         val buffer = Buffer()
         val compressedBuffer = Buffer()
-        compressedBuffer.transferFrom((buffer as RawSource).deflating(false))
+        compressedBuffer.transferFrom((buffer as RawSource).deflatingSource(false))
         val decompressedBuffer = Buffer()
-        decompressedBuffer.transferFrom(compressedBuffer.inflating(false))
+        decompressedBuffer.transferFrom(compressedBuffer.inflatingSource(false))
         assertEquals(0, decompressedBuffer.size)
     }
 }

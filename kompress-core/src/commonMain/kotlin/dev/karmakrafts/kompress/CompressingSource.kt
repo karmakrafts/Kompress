@@ -24,17 +24,20 @@ import kotlin.math.min
 private class CompressingSource( // @formatter:off
     private val compressor: Compressor,
     private val delegate: RawSource,
-    private val bufferSize: Int = Compressor.DEFAULT_BUFFER_SIZE
+    private val bufferSize: Int = Compressor.DEFAULT_BUFFER_SIZE,
+    private val isSourceOwned: Boolean = true,
+    private val isCompressorOwned: Boolean = true
 ) : RawSource { // @formatter:on
     private val buffer: Buffer = Buffer()
     private val chunkBuffer: ByteArray = ByteArray(bufferSize)
+    private var isClosed: Boolean = false
 
     override fun readAtMostTo(sink: Buffer, byteCount: Long): Long {
         if (byteCount == 0L) return 0L
         var totalWritten = 0L
         var inputExhausted = false
         while (totalWritten < byteCount) {
-            // If the deflater needs input, try to read more uncompressed data from the delegate.
+            // If the compressor needs input, try to read more uncompressed data from the delegate.
             if (compressor.needsInput && !inputExhausted) {
                 if (buffer.size == 0L && delegate.readAtMostTo(buffer, bufferSize.toLong()) == -1L) {
                     // No more input; finish the stream and drain remaining compressed bytes.
@@ -44,7 +47,7 @@ private class CompressingSource( // @formatter:off
                 if (!inputExhausted && buffer.size > 0L) {
                     val toProvide = min(buffer.size, bufferSize.toLong()).toInt()
                     val provided = buffer.readByteArray(toProvide)
-                    compressor.input = provided
+                    compressor.setInput(provided)
                 }
             }
             // Compress into the output buffer, up to the requested byteCount.
@@ -62,7 +65,12 @@ private class CompressingSource( // @formatter:off
         return if (totalWritten == 0L && compressor.finished) -1L else totalWritten
     }
 
-    override fun close() = compressor.close()
+    override fun close() {
+        if (isClosed) return
+        if (isCompressorOwned) compressor.close()
+        if (isSourceOwned) delegate.close()
+        isClosed = true
+    }
 }
 
 /**
@@ -70,9 +78,15 @@ private class CompressingSource( // @formatter:off
  *
  * @param compressor The compressor to use.
  * @param bufferSize The size of the buffer used for compression.
+ * @param isSourceOwned If the given source is owned by the wrapper instance.
+ *  This will automatically close the wrapped source when the wrapper is closed.
+ * @param isCompressorOwned If the given compressor is owned by the wrapper instance.
+ *  This will automatically close the wrapped compressor when the wrapper is closed.
  * @return A compressing [RawSource].
  */
-fun RawSource.compressing( // @formatter:off
+fun RawSource.compressingSource( // @formatter:off
     compressor: Compressor,
-    bufferSize: Int = Compressor.DEFAULT_BUFFER_SIZE
-): RawSource = CompressingSource(compressor, this, bufferSize) // @formatter:on
+    bufferSize: Int = Compressor.DEFAULT_BUFFER_SIZE,
+    isSourceOwned: Boolean = true,
+    isCompressorOwned: Boolean = true
+): RawSource = CompressingSource(compressor, this, bufferSize, isSourceOwned, isCompressorOwned) // @formatter:on

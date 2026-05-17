@@ -17,6 +17,9 @@
 package dev.karmakrafts.kompress.gzip
 
 object GZipConstants {
+    const val HEADER_PREAMBLE_SIZE: Int = 10
+    const val TRAILER_SIZE: Int = 8
+
     /**
      * See [RFC1952](https://datatracker.ietf.org/doc/html/rfc1952) 2.3.1.
      * start of page 6.

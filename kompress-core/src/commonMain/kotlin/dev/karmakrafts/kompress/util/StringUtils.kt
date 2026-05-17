@@ -30,6 +30,19 @@ internal fun Sink.writeZeroTerminatedString(value: String) = write(value.encodeZ
 internal fun ByteArray.decodeZeroTerminated(): String = sliceArray(0..<lastIndex).decodeToString()
 
 // TODO: optimize this
+internal fun Source.readZeroTerminatedStringAsSize(): Long {
+    val peeking = peek()
+    var byte = peeking.readByte()
+    var index = 0L
+    // First probe for length of the string
+    while (byte != 0.toByte()) {
+        index++
+        byte = peeking.readByte()
+    }
+    return index
+}
+
+// TODO: optimize this
 internal fun Source.readZeroTerminatedString(): String {
     val peeking = peek()
     var byte = peeking.readByte()

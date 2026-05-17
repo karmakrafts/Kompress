@@ -14,12 +14,10 @@
  * limitations under the License.
  */
 
-package dev.karmakrafts.kompress.archiver
+package dev.karmakrafts.kompress.archive
 
 import dev.karmakrafts.kompress.Decompressor
-import dev.karmakrafts.kompress.InternalKompressApi
 import kotlinx.io.Buffer
-import kotlinx.io.RawSource
 import kotlinx.io.Source
 
 /**
@@ -32,27 +30,25 @@ import kotlinx.io.Source
  */
 typealias UnarchiverEntryCallback<E> = ( // @formatter:off
     entry: E,
-    source: Source,
+    source: Buffer,
     fetchMore: () -> Boolean
 ) -> Unit // @formatter:on
 
 /**
  * Base interface for all unarchiver implementations.
- * Provides access to the source [RawSource], the [Decompressor] used to decompress entries,
+ * Provides access to the source [Source], the [Decompressor] used to decompress entries,
  * and functions to read entries from the archive.
  */
 interface Unarchiver<E, D : Decompressor> : AutoCloseable {
     /**
      * The source being read from.
      */
-    @set:InternalKompressApi
-    var source: RawSource
+    val source: Source
 
     /**
      * The decompressor used for decompressing entry data blocks.
      */
-    @set:InternalKompressApi
-    var decompressor: D
+    val decompressor: D
 
     /**
      * Iterates over all entries in the current archive in a streaming
@@ -77,17 +73,18 @@ interface Unarchiver<E, D : Decompressor> : AutoCloseable {
  */
 inline fun <E, D : Decompressor> Unarchiver<E, D>.extract( // @formatter:off
     chunkSize: Int = 4096,
-    crossinline filter: (E, Source) -> Boolean = { _, _ -> true }
+    crossinline filter: (E, Buffer) -> Boolean = { _, _ -> true }
 ): List<Pair<E, Buffer>> { // @formatter:on
     val entries = ArrayList<Pair<E, Buffer>>()
     forEachEntry { entry, source, fetchMore ->
         if (!filter(entry, source)) return@forEachEntry
-        val buffer = Buffer()
-        while (!source.exhausted() || fetchMore()) {
-            val read = source.readAtMostTo(buffer, chunkSize.toLong())
-            if (read == -1L) break // Reached EOF somehow
+        val ownedBuffer = Buffer()
+        fetchMore()
+        var read = source.readAtMostTo(ownedBuffer, chunkSize.toLong())
+        while (read != -1L || fetchMore()) {
+            read = source.readAtMostTo(ownedBuffer, chunkSize.toLong())
         }
-        entries += entry to buffer
+        entries += entry to ownedBuffer
     }
     return entries
 }

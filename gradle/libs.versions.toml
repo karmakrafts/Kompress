@@ -12,6 +12,8 @@ dokka = "2.2.0" # https://github.com/Kotlin/dokka/releases
 karmaConventions = "1.16.3" # https://github.com/karmakrafts/karma-conventions/tags
 gradleNexus = "2.0.0" # https://github.com/gradle-nexus/publish-plugin/releases
 fflate = "0.8.2" # https://github.com/101arrowz/fflate/releases
+oshi = "7.1.0" # https://github.com/oshi/oshi/releases
+jzlib = "1.1.3" # https://github.com/ymnk/jzlib/tags
 
 [libraries]
 
@@ -20,6 +22,8 @@ kotlin-wrappers-browser = { module = "org.jetbrains.kotlin-wrappers:kotlin-brows
 kotlinx-io-bytestring = { module = "org.jetbrains.kotlinx:kotlinx-io-bytestring", version.ref = "kotlinxIo" }
 kotlinx-io-core = { module = "org.jetbrains.kotlinx:kotlinx-io-core", version.ref = "kotlinxIo" }
 kotlinx-benchmark-runtime = { module = "org.jetbrains.kotlinx:kotlinx-benchmark-runtime", version.ref = "kotlinxBenchmark" }
+oshi-core = { module = "com.github.oshi:oshi-core", version.ref = "oshi" }
+jzlib = { module = "com.jcraft:jzlib", version.ref = "jzlib" }
 
 [plugins]
 

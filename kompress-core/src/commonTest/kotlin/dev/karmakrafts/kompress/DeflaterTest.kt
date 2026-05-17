@@ -47,7 +47,7 @@ class DeflaterTest {
         val sourceBuffer = Buffer()
         sourceBuffer.write(value)
         val compressedBuffer = Buffer()
-        compressedBuffer.transferFrom((sourceBuffer as RawSource).deflating())
+        compressedBuffer.transferFrom((sourceBuffer as RawSource).deflatingSource())
         val compressedData = compressedBuffer.readByteArray()
         val decompressedData = Inflater.decompress(compressedData)
         assertTrue(compressedData.isNotEmpty())
@@ -59,7 +59,7 @@ class DeflaterTest {
     fun `raw deflating source buffered immediate read`() {
         val value = "Hello, World!".encodeToByteArray()
         val source = Buffer().apply { write(value) }
-        val compressed = (source as RawSource).deflating(raw = true).buffered()
+        val compressed = (source as RawSource).deflatingSource(raw = true).buffered()
         val compressedBytes = compressed.readByteArray()
         val decompressedBytes = Inflater.decompress(compressedBytes, raw = true)
         assertContentEquals(value, decompressedBytes)
@@ -69,7 +69,7 @@ class DeflaterTest {
     fun `deflating source buffered immediate read`() {
         val value = "Hello, World!".encodeToByteArray()
         val source = Buffer().apply { write(value) }
-        val compressed = (source as RawSource).deflating(raw = false).buffered()
+        val compressed = (source as RawSource).deflatingSource(raw = false).buffered()
         val compressedBytes = compressed.readByteArray()
         val decompressedBytes = Inflater.decompress(compressedBytes, raw = false)
         assertContentEquals(value, decompressedBytes)

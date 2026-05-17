@@ -18,23 +18,28 @@ package dev.karmakrafts.kompress.gzip
 
 import dev.karmakrafts.kompress.CRC32_INITIAL_VALUE
 import dev.karmakrafts.kompress.Deflater
-import dev.karmakrafts.kompress.archiver.Archiver
-import dev.karmakrafts.kompress.compressing
+import dev.karmakrafts.kompress.archive.Archiver
+import dev.karmakrafts.kompress.compressingSink
 import dev.karmakrafts.kompress.crc32
 import dev.karmakrafts.kompress.util.writeZeroTerminatedString
 import kotlinx.io.Buffer
 import kotlinx.io.RawSink
+import kotlinx.io.RawSource
 import kotlinx.io.Sink
 import kotlinx.io.writeUByte
 import kotlinx.io.writeUIntLe
 import kotlinx.io.writeUShort
 import kotlinx.io.writeUShortLe
+import kotlin.time.Clock
 
 private class GZipArchiver( // @formatter:off
-    override var sink: RawSink,
-    override var compressor: Deflater
+    override val sink: RawSink,
+    override val compressor: Deflater,
+    private val isSinkOwned: Boolean,
+    private val isCompressorOwned: Boolean
 ) : Archiver<GZipEntry, Deflater> { // @formatter:on
     private val buffer: Buffer = Buffer()
+    private var isClosed: Boolean = false
 
     /**
      * See [RFC1952](https://datatracker.ietf.org/doc/html/rfc1952) 2.3.1.
@@ -89,7 +94,11 @@ private class GZipArchiver( // @formatter:off
         // We chunk the entry data and compute the CRC32 of the uncompressed data at the same time
         var crc32 = CRC32_INITIAL_VALUE
         var uncompressedSize = 0L
-        sink.compressing(compressor).use { compressingSink ->
+        sink.compressingSink( // @formatter:off
+            compressor = compressor,
+            isSinkOwned = false,
+            isCompressorOwned = false
+        ).use { compressingSink -> // @formatter:on
             while (callback(buffer)) {
                 crc32 = buffer.peek().crc32(buffer.size, crc32)
                 val chunkSize = buffer.size
@@ -106,18 +115,55 @@ private class GZipArchiver( // @formatter:off
     }
 
     override fun close() {
-        sink.close()
-        compressor.close()
+        if (isClosed) return
+        if (isSinkOwned) sink.close()
+        if (isCompressorOwned) compressor.close()
         buffer.clear()
+        isClosed = true
     }
+}
+
+// TODO: document this
+fun Archiver<in GZipEntry, *>.appendEntry( // @formatter:off
+    name: String,
+    comment: String? = null,
+    isText: Boolean = false,
+    callback: (Sink) -> Boolean
+) = appendEntry(GZipEntry(
+    modificationTime = Clock.System.now(),
+    os = GZipOs.guessCurrent(),
+    isText = isText,
+    name = name,
+    comment = comment
+), callback
+) // @formatter:on
+
+// TODO: document this
+fun Archiver<in GZipEntry, *>.appendEntry( // @formatter:off
+    name: String,
+    comment: String? = null,
+    isText: Boolean = false,
+    source: RawSource
+) = appendEntry(GZipEntry(
+    modificationTime = Clock.System.now(),
+    os = GZipOs.guessCurrent(),
+    isText = isText,
+    name = name,
+    comment = comment
+)
+) { sink -> // @formatter:on
+    sink.transferFrom(source) > 0
 }
 
 /**
  * Wraps this [RawSink] into a GZip [Archiver] using the given [deflater].
  *
  * @param deflater The [Deflater] to use for compression.
+ * // TODO: document new parameters
  * @return A GZip [Archiver] for [GZipEntry]s.
  */
-fun RawSink.gzip(
-    deflater: Deflater = Deflater()
-): Archiver<GZipEntry, Deflater> = GZipArchiver(this, deflater)
+fun RawSink.gzip( // @formatter:off
+    deflater: Deflater = Deflater(),
+    isSinkOwned: Boolean = true,
+    isCompressorOwned: Boolean = true
+): Archiver<GZipEntry, Deflater> = GZipArchiver(this, deflater, isSinkOwned, isCompressorOwned) // @formatter:on

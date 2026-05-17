@@ -24,10 +24,13 @@ import kotlin.math.min
 private class DecompressingSink( // @formatter:off
     private val decompressor: Decompressor,
     private val delegate: RawSink,
-    private val bufferSize: Int = Decompressor.DEFAULT_BUFFER_SIZE
+    private val bufferSize: Int = Decompressor.DEFAULT_BUFFER_SIZE,
+    private val isSinkOwned: Boolean = true,
+    private val isDecompressorOwned: Boolean = true
 ) : RawSink { // @formatter:on
     private val chunkBuffer: ByteArray = ByteArray(bufferSize)
     private val drainBuffer: Buffer = Buffer()
+    private var isClosed: Boolean = false
 
     override fun write(source: Buffer, byteCount: Long) {
         if (byteCount == 0L) return
@@ -36,7 +39,7 @@ private class DecompressingSink( // @formatter:off
             if (decompressor.needsInput) {
                 val toRead = min(remaining, bufferSize.toLong()).toInt()
                 val data = source.readByteArray(toRead)
-                decompressor.input = data
+                decompressor.setInput(data)
                 remaining -= toRead
             }
             drain()
@@ -60,6 +63,7 @@ private class DecompressingSink( // @formatter:off
     }
 
     override fun close() {
+        if (isClosed) return
         decompressor.finish()
         while (!decompressor.finished) {
             val written = decompressor.decompress(chunkBuffer)
@@ -70,7 +74,9 @@ private class DecompressingSink( // @formatter:off
             else if (decompressor.needsInput) break
         }
         delegate.flush()
-        decompressor.close()
+        if (isDecompressorOwned) decompressor.close()
+        if (isSinkOwned) delegate.close()
+        isClosed = true
     }
 }
 
@@ -79,9 +85,15 @@ private class DecompressingSink( // @formatter:off
  *
  * @param decompressor The decompressor to use.
  * @param bufferSize The size of the buffer used for decompression.
+ * @param isSinkOwned If the given sink is owned by the wrapper instance.
+ *  This will automatically close the wrapped sink when the wrapper is closed.
+ * @param isDecompressorOwned If the given decompressor is owned by the wrapper instance.
+ *  This will automatically close the wrapped decompressor when the wrapper is closed.
  * @return A decompressing [RawSink].
  */
-fun RawSink.decompressing( // @formatter:off
+fun RawSink.decompressingSink( // @formatter:off
     decompressor: Decompressor,
-    bufferSize: Int = Decompressor.DEFAULT_BUFFER_SIZE
-): RawSink = DecompressingSink(decompressor, this, bufferSize) // @formatter:on
+    bufferSize: Int = Decompressor.DEFAULT_BUFFER_SIZE,
+    isSinkOwned: Boolean = true,
+    isDecompressorOwned: Boolean = true
+): RawSink = DecompressingSink(decompressor, this, bufferSize, isSinkOwned, isDecompressorOwned) // @formatter:on

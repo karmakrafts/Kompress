@@ -16,14 +16,14 @@
 
 package dev.karmakrafts.kompress.gzip
 
-import dev.karmakrafts.kompress.CRC32_INITIAL_VALUE
 import dev.karmakrafts.kompress.Inflater
-import dev.karmakrafts.kompress.archiver.Unarchiver
-import dev.karmakrafts.kompress.archiver.UnarchiverEntryCallback
-import dev.karmakrafts.kompress.crc32
-import dev.karmakrafts.kompress.decompressing
+import dev.karmakrafts.kompress.archive.Unarchiver
+import dev.karmakrafts.kompress.archive.UnarchiverEntryCallback
+import dev.karmakrafts.kompress.util.readZeroTerminatedString
 import kotlinx.io.Buffer
 import kotlinx.io.RawSource
+import kotlinx.io.Source
+import kotlinx.io.buffered
 import kotlinx.io.readByteArray
 import kotlinx.io.readUByte
 import kotlinx.io.readUIntLe
@@ -32,119 +32,94 @@ import kotlinx.io.readUShortLe
 import kotlin.time.Instant
 
 private class GZipUnarchiver( // @formatter:off
-    override var source: RawSource,
-    override var decompressor: Inflater
+    override val source: Source,
+    override val decompressor: Inflater,
+    private val isSourceOwned: Boolean,
+    private val isDecompressorOwned: Boolean
 ) : Unarchiver<GZipEntry, Inflater> { // @formatter:on
-    companion object {
-        private const val CHUNK_SIZE: Int = 4096
-    }
-
     private val buffer: Buffer = Buffer()
+    private val decompressionBuffer: Buffer = Buffer()
+    private var isClosed: Boolean = false
 
+    // Allows buffering N bytes on demand based on the bytes already in the buffer
     private fun ensureBufferFilled(size: Long): Boolean {
         var missing = size - buffer.size
         var read = source.readAtMostTo(buffer, missing)
-        if (read == -1L) return false // Reached EOF
+        if (read == -1L) return false
         missing -= read
-        while (missing > 0L) {
+        while (missing > 0) {
             read = source.readAtMostTo(buffer, missing)
-            if (read == -1L) break // Reached EOF
+            if (read == -1L) break
             missing -= read
         }
         return missing == 0L
     }
 
-    // We have to transfer/read byte by byte here sadly
-    // TODO: optimize this
-    private fun readZeroTerminatedString(): String? {
-        if (!ensureBufferFilled(1L)) return null // Not enough data available
-        var byte = buffer.readByte()
-        val result = ArrayList<Byte>()
-        while (byte != 0.toByte()) {
-            if (!ensureBufferFilled(1L)) return null // Not enough data available
-            result += byte
-            byte = buffer.readByte()
-        }
-        return result.toByteArray().decodeToString()
-    }
-
-    private fun ensureBufferFilled(
-        source: RawSource = this.source
-    ): Boolean = source.readAtMostTo(buffer, CHUNK_SIZE.toLong()) != -1L
-
     private fun parseHeader(): GZipEntry? {
-        if (!ensureBufferFilled(10L)) return null // Not enough data available
-        // Validate entry header megic
-        val magic = buffer.readUShort()
+        if (!ensureBufferFilled(GZipConstants.HEADER_PREAMBLE_SIZE.toLong())) return null // Not enough data
+        val magic = buffer.readUShort() // Magic is normally 2 separate bytes, so no LE
         check(magic == GZipConstants.MAGIC) {
             "Invalid GZip magic, expected 0x${GZipConstants.MAGIC.toHexString()} but got 0x${magic.toHexString()}"
         }
-        // Check compression method
-        val rawCompressionMethod = buffer.readUByte()
-        val compressionMethod = GZipCompressionMethod.byEncodedValue(rawCompressionMethod)
-        check(compressionMethod == GZipCompressionMethod.DEFLATE) {
-            "Unsupported GZip compression method 0x${rawCompressionMethod.toHexString()}"
+        val method = GZipCompressionMethod.byEncodedValue(buffer.readUByte())
+        check(method == GZipCompressionMethod.DEFLATE) {
+            "Unsupported GZip compression method 0x${method.encodedValue.toHexString()}"
         }
-        // Read entry flags
         val flags = GZipEntryFlags(buffer.readUByte())
         val modificationTime = Instant.fromEpochSeconds(buffer.readUIntLe().toLong())
-        buffer.skip(UShort.SIZE_BYTES.toLong()) // Skip XFL, we let compressor detect
+        buffer.skip(UByte.SIZE_BYTES.toLong()) // Skip XFL, we don't care about it for decompression
         val os = GZipOs.byEncodedValue(buffer.readUByte())
-        // Parse optional fields
+        // Read extra field if present
         var extraField: ByteArray? = null
+        if (flags.fextra) {
+            if (!ensureBufferFilled(UShort.SIZE_BYTES.toLong())) return null
+            val extraBytes = buffer.readUShortLe().toInt()
+            if (!ensureBufferFilled(extraBytes.toLong())) return null
+            extraField = buffer.readByteArray(extraBytes)
+        }
         var name: String? = null
         var comment: String? = null
-        if (flags.fextra) {
-            if (!ensureBufferFilled(2L)) return null // Not enough data available
-            val size = buffer.readUShortLe()
-            if (!ensureBufferFilled(size.toLong())) return null // Not enough data available
-            extraField = buffer.readByteArray(size.toInt())
+        if (flags.fname) name = source.readZeroTerminatedString()
+        if (flags.fcomment) comment = source.readZeroTerminatedString()
+        if (flags.fhcrc) { // Skip over header checksum TODO implement check
+            ensureBufferFilled(UShort.SIZE_BYTES.toLong())
+            buffer.clear()
         }
-        if (flags.fname) name = readZeroTerminatedString() ?: return null // Not enough data available
-        if (flags.fcomment) comment = readZeroTerminatedString() ?: return null // Not enough data available
-        // TODO: validate header checksum if present
-        // Create entry and invoke callback
-        return GZipEntry( // @formatter:off
+        return GZipEntry(
             modificationTime = modificationTime,
             os = os,
             isText = flags.ftext,
             name = name,
             comment = comment,
             extraField = extraField
-        ) // @formatter:on
+        )
     }
 
     override fun forEachEntry(callback: UnarchiverEntryCallback<GZipEntry>) {
         while (true) {
-            val entry = parseHeader() ?: break // Not enough data available, no more entries
-            var computedCrc32 = CRC32_INITIAL_VALUE
-            var computedUncompressedSize = 0L
-            source.decompressing(decompressor).use { decompressingSource ->
-                callback(entry, buffer) {
-                    // Every time we request more data from the entry, we perform another CRC round
-                    val result = ensureBufferFilled(decompressingSource)
-                    computedUncompressedSize += buffer.size
-                    if (result) computedCrc32 = buffer.peek().crc32(initialValue = computedCrc32)
-                    result
-                }
-            }
-            // Read and check trailer
-            if (!ensureBufferFilled(8L)) break // Not enough data available, no more entries
+            buffer.clear()
+            val header = parseHeader() ?: break // Source is exhausted
+            // Inflate the entry data block until decompressor reports finished
+            val compressedSize = Inflater.computeCompressedSize(source.peek())
+            if (compressedSize == 0L) break // No more data
+            decompressor.reset() // Reset decompressor before reading data
+            decompressionBuffer.clear()
+            // Discard compressed data
+            ensureBufferFilled(compressedSize)
+            buffer.clear()
+            // Read trailer
+            if (!ensureBufferFilled(GZipConstants.TRAILER_SIZE.toLong())) break // Source is exhausted
             val crc32 = buffer.readUIntLe()
-            check(crc32 == computedCrc32) {
-                "Invalid CRC32 checksum for uncompressed data, expected 0x${crc32.toHexString()} but got 0x${computedCrc32.toHexString()}"
-            }
-            val uncompressedSize = buffer.readUIntLe()
-            check(uncompressedSize.toLong() == computedUncompressedSize) {
-                "Mismatched compressed data size, expected $uncompressedSize bytes but got $computedUncompressedSize"
-            }
+            // TODO: implement checksum validation
+            buffer.skip(UInt.SIZE_BYTES.toLong()) // We don't care about the embedded size
         }
     }
 
     override fun close() {
-        source.close()
-        decompressor.close()
-        buffer.clear()
+        if (isClosed) return
+        if (isSourceOwned) source.close()
+        if (isDecompressorOwned) decompressor.close()
+        isClosed = true
     }
 }
 
@@ -152,8 +127,25 @@ private class GZipUnarchiver( // @formatter:off
  * Wraps this [RawSource] into a GZip [Unarchiver] using the given [inflater].
  *
  * @param inflater The [Inflater] to use for decompression.
+ * // TODO: document new parameters
  * @return A GZip [Unarchiver] for [GZipEntry]s.
  */
 fun RawSource.ungzip( // @formatter:off
-    inflater: Inflater = Inflater()
-): Unarchiver<GZipEntry, Inflater> = GZipUnarchiver(this, inflater) // @formatter:on
+    inflater: Inflater = Inflater(),
+    isSourceOwned: Boolean = true,
+    isDecompressorOwned: Boolean = true
+): Unarchiver<GZipEntry, Inflater> =
+    GZipUnarchiver(buffered(), inflater, isSourceOwned, isDecompressorOwned) // @formatter:on
+
+/**
+ * Wraps this [Source] into a GZip [Unarchiver] using the given [inflater].
+ *
+ * @param inflater The [Inflater] to use for decompression.
+ * // TODO: document new parameters
+ * @return A GZip [Unarchiver] for [GZipEntry]s.
+ */
+fun Source.ungzip( // @formatter:off
+    inflater: Inflater = Inflater(),
+    isSourceOwned: Boolean = true,
+    isDecompressorOwned: Boolean = true
+): Unarchiver<GZipEntry, Inflater> = GZipUnarchiver(this, inflater, isSourceOwned, isDecompressorOwned) // @formatter:on

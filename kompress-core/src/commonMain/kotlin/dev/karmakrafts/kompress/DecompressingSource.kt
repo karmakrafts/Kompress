@@ -24,29 +24,32 @@ import kotlin.math.min
 private class DecompressingSource( // @formatter:off
     private val decompressor: Decompressor,
     private val delegate: RawSource,
-    private val bufferSize: Int = Decompressor.DEFAULT_BUFFER_SIZE
+    private val bufferSize: Int = Decompressor.DEFAULT_BUFFER_SIZE,
+    private val isSourceOwned: Boolean = true,
+    private val isDecompressorOwned: Boolean = true
 ) : RawSource { // @formatter:on
     private val buffer: Buffer = Buffer()
     private val chunkBuffer: ByteArray = ByteArray(bufferSize)
+    private var isClosed: Boolean = false
 
     override fun readAtMostTo(sink: Buffer, byteCount: Long): Long {
         if (byteCount == 0L) return 0L
         var totalWritten = 0L
         while (totalWritten < byteCount) {
-            // If the inflater needs input, try to read more compressed data from the delegate.
+            // If the decompressor needs input, try to read more compressed data from the delegate.
             if (decompressor.needsInput) {
                 if (buffer.size == 0L && delegate.readAtMostTo(buffer, bufferSize.toLong()) == -1L) {
                     // No more compressed input available.
                     decompressor.finish()
                 }
                 else {
-                    // Provide a chunk of compressed data to the inflater.
+                    // Provide a chunk of compressed data to the decompressor.
                     val toProvide = min(buffer.size, bufferSize.toLong()).toInt()
                     val provided = buffer.readByteArray(toProvide)
-                    decompressor.input = provided
+                    decompressor.setInput(provided)
                 }
             }
-            // Inflate into the output buffer, respecting the requested byteCount.
+            // Decompress into the output buffer, respecting the requested byteCount.
             val remaining = (byteCount - totalWritten).toInt()
             val outLimit = if (remaining < bufferSize) remaining else bufferSize
             val outBuf = if (outLimit == bufferSize) chunkBuffer else ByteArray(outLimit)
@@ -61,7 +64,12 @@ private class DecompressingSource( // @formatter:off
         return if (totalWritten == 0L && decompressor.finished) -1L else totalWritten
     }
 
-    override fun close() = decompressor.close()
+    override fun close() {
+        if (isClosed) return
+        if (isDecompressorOwned) decompressor.close()
+        if (isSourceOwned) delegate.close()
+        isClosed = true
+    }
 }
 
 /**
@@ -69,9 +77,15 @@ private class DecompressingSource( // @formatter:off
  *
  * @param decompressor The decompressor to use.
  * @param bufferSize The size of the buffer used for decompression.
+ * @param isSourceOwned If the given source is owned by the wrapper instance.
+ *  This will automatically close the wrapped source when the wrapper is closed.
+ * @param isDecompressorOwned If the given decompressor is owned by the wrapper instance.
+ *  This will automatically close the wrapped decompressor when the wrapper is closed.
  * @return A decompressing [RawSource].
  */
-fun RawSource.decompressing( // @formatter:off
+fun RawSource.decompressingSource( // @formatter:off
     decompressor: Decompressor,
-    bufferSize: Int = Decompressor.DEFAULT_BUFFER_SIZE
-): RawSource = DecompressingSource(decompressor, this, bufferSize) // @formatter:on
+    bufferSize: Int = Decompressor.DEFAULT_BUFFER_SIZE,
+    isSourceOwned: Boolean = true,
+    isDecompressorOwned: Boolean = true
+): RawSource = DecompressingSource(decompressor, this, bufferSize, isSourceOwned, isDecompressorOwned) // @formatter:on

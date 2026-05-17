@@ -45,13 +45,13 @@ class InflaterTest {
     }
 
     @Test
-    fun `inflating source flushes pending output when delegate reaches eof`() {
+    fun `inflating source flushes pending output when delegate reaches EOF`() {
         val value = Random(4).nextBytes(3 * 1024 * 1024)
         val compressedData = Deflater.compress(value)
         val compressedBuffer = Buffer()
         compressedBuffer.write(compressedData)
         val decompressedBuffer = Buffer()
-        decompressedBuffer.transferFrom(compressedBuffer.inflating())
+        decompressedBuffer.transferFrom(compressedBuffer.inflatingSource())
         val decompressedData = decompressedBuffer.readByteArray()
         assertTrue(decompressedData.isNotEmpty())
         assertEquals(value.size, decompressedData.size)
@@ -63,7 +63,7 @@ class InflaterTest {
         val value = "Hello, World!".encodeToByteArray()
         val compressedBytes = Deflater.compress(value)
         val buffer = Buffer().apply { write(compressedBytes) }
-        val decompressed = buffer.inflating(raw = true).buffered()
+        val decompressed = buffer.inflatingSource(raw = true).buffered()
         val decompressedBytes = decompressed.readByteArray()
         assertContentEquals(value, decompressedBytes)
     }
@@ -73,8 +73,32 @@ class InflaterTest {
         val value = "Hello, World!".encodeToByteArray()
         val compressedBytes = Deflater.compress(value, raw = false)
         val buffer = Buffer().apply { write(compressedBytes) }
-        val decompressed = buffer.inflating(raw = false).buffered()
+        val decompressed = buffer.inflatingSource(raw = false).buffered()
         val decompressedBytes = decompressed.readByteArray()
         assertContentEquals(value, decompressedBytes)
+    }
+
+    @Test
+    fun `compute compressed size of sequential data from Source`() {
+        val rand = Random(4)
+        val value = rand.nextBytes(3 * 1024 * 1024)
+        val trailer = rand.nextBytes(128)
+        val compressedData = Deflater.compress(value)
+        val buffer = Buffer()
+        buffer.write(compressedData)
+        buffer.write(trailer)
+        val compressedSize = Inflater.computeCompressedSize(buffer.peek())
+        assertEquals(compressedData.size, compressedSize.toInt())
+    }
+
+    @Test
+    fun `compute compressed size of sequential data from ByteArray`() {
+        val rand = Random(4)
+        val value = rand.nextBytes(3 * 1024 * 1024)
+        val trailer = rand.nextBytes(128)
+        val compressedData = Deflater.compress(value)
+        val combinedData = compressedData + trailer
+        val compressedSize = Inflater.computeCompressedSize(combinedData)
+        assertEquals(compressedData.size, compressedSize)
     }
 }

@@ -14,10 +14,9 @@
  * limitations under the License.
  */
 
-package dev.karmakrafts.kompress.archiver
+package dev.karmakrafts.kompress.archive
 
 import dev.karmakrafts.kompress.Compressor
-import dev.karmakrafts.kompress.InternalKompressApi
 import kotlinx.io.RawSink
 import kotlinx.io.RawSource
 import kotlinx.io.Sink
@@ -31,14 +30,12 @@ interface Archiver<E, C : Compressor> : AutoCloseable {
     /**
      * The target sink being written to.
      */
-    @set:InternalKompressApi
-    var sink: RawSink
+    val sink: RawSink
 
     /**
      * The compressor used for compressing entry data blocks.
      */
-    @set:InternalKompressApi
-    var compressor: C
+    val compressor: C
 
     /**
      * Append a new entry to the archive.

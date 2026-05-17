@@ -28,10 +28,26 @@ interface Decompressor : AutoCloseable {
     }
 
     /**
-     * The current input data chunk to be decompressed.
-     * Should be updated whenever [needsInput] is true.
+     * The current input buffer.
      */
+    @set:Deprecated(message = "This API will be removed in 2.0", replaceWith = ReplaceWith("setInput(input)"))
     var input: ByteArray
+
+    /**
+     * The offset into the current input buffer in bytes.
+     */
+    val inputOffset: Int
+
+    /**
+     * The size of the current input data in bytes.
+     */
+    val inputSize: Int
+
+    /**
+     * The number of bytes not consumed by the decompressor
+     * remaining in the current input buffer.
+     */
+    val remaining: Int
 
     /**
      * True when the input buffer does not contain any more
@@ -45,12 +61,30 @@ interface Decompressor : AutoCloseable {
     val finished: Boolean
 
     /**
+     * Update the current input buffer, offset and size of the input data.
+     *
+     * @param data The new input buffer to read from.
+     * @param offset The offset into the given buffer to start reading from in bytes.
+     * @param size The number of bytes to read from the given buffer.
+     */
+    fun setInput( // @formatter:off
+        data: ByteArray,
+        offset: Int = 0,
+        size: Int = data.size
+    ) // @formatter:on
+
+    /**
      * Uncompresses bytes into specified buffer.
      *
      * @param output The buffer to decompress the data into.
      * @return The actual number of decompressed bytes.
      */
-    fun decompress(output: ByteArray): Int
+    fun decompress( // @formatter:off
+        output: ByteArray,
+        offset: Int = 0,
+        size: Int = output.size,
+        flush: Boolean = false
+    ): Int // @formatter:on
 
     /**
      * Decompresses the given data in one go using the given
@@ -61,12 +95,13 @@ interface Decompressor : AutoCloseable {
      * @return The decompressed data.
      */
     fun decompressBulk(data: ByteArray, bufferSize: Int = 4096): ByteArray {
-        input = data
+        setInput(data)
         finish()
         val buffer = Buffer()
         val chunkBuffer = ByteArray(bufferSize)
-        while (!finished) {
+        while (true) {
             val bytesDecompressed = decompress(chunkBuffer)
+            if (bytesDecompressed == 0) break
             buffer.write(chunkBuffer, 0, bytesDecompressed)
         }
         return buffer.readByteArray()
@@ -77,4 +112,10 @@ interface Decompressor : AutoCloseable {
      * contents of the input buffer.
      */
     fun finish()
+
+    /**
+     * Reset the internal state of this decompressor so it can be reused
+     * for a new decompression cycle.
+     */
+    fun reset()
 }

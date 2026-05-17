@@ -50,7 +50,10 @@ interface Deflater : Compressor {
         /**
          * @see compress
          */
-        @Deprecated(message = "This API will be removed in 2.0", replaceWith = ReplaceWith("compress"))
+        @Deprecated(
+            message = "This API will be removed in 2.0",
+            replaceWith = ReplaceWith("compress(data, raw, level, bufferSize)")
+        )
         fun deflate( // @formatter:off
             data: ByteArray,
             raw: Boolean = true,
@@ -72,7 +75,7 @@ interface Deflater : Compressor {
     /**
      * @see compress
      */
-    @Deprecated(message = "This API will be removed in 2.0", replaceWith = ReplaceWith("compress"))
+    @Deprecated(message = "This API will be removed in 2.0", replaceWith = ReplaceWith("compress(output)"))
     fun deflate(output: ByteArray): Int = compress(output)
 }
 
@@ -106,11 +109,23 @@ expect fun Deflater( // @formatter:off
  *  compression.
  * @return A [RawSource] that produces compressed data.
  */
+fun RawSource.deflatingSource( // @formatter:off
+    raw: Boolean = true,
+    level: Int = Deflater.DEFAULT_LEVEL,
+    bufferSize: Int = Compressor.DEFAULT_BUFFER_SIZE
+): RawSource = compressingSource(Deflater(raw, level), bufferSize) // @formatter:on
+
+/**
+ * @see deflatingSource
+ */
+@Deprecated(
+    message = "This API will be removed in 2.0", replaceWith = ReplaceWith("deflatingWith(raw, level, bufferSize)")
+)
 fun RawSource.deflating( // @formatter:off
     raw: Boolean = true,
     level: Int = Deflater.DEFAULT_LEVEL,
     bufferSize: Int = Compressor.DEFAULT_BUFFER_SIZE
-): RawSource = compressing(Deflater(raw, level), bufferSize) // @formatter:on
+): RawSource = deflatingSource(raw, level, bufferSize) // @formatter:on
 
 /**
  * Returns a [RawSink] that compresses written bytes using DEFLATE and
@@ -128,8 +143,8 @@ fun RawSource.deflating( // @formatter:off
  *  compression.
  * @return A [RawSink] that accepts uncompressed data and writes compressed data.
  */
-fun RawSink.deflating( // @formatter:off
+fun RawSink.deflatingSink( // @formatter:off
     raw: Boolean = true,
     level: Int = Deflater.DEFAULT_LEVEL,
     bufferSize: Int = Compressor.DEFAULT_BUFFER_SIZE
-): RawSink = compressing(Deflater(raw, level), bufferSize) // @formatter:on
+): RawSink = compressingSink(Deflater(raw, level), bufferSize) // @formatter:on

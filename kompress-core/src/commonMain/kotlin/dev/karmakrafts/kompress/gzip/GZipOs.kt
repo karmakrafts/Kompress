@@ -16,6 +16,9 @@
 
 package dev.karmakrafts.kompress.gzip
 
+import dev.karmakrafts.kompress.util.Platform
+import dev.karmakrafts.kompress.util.currentPlatform
+
 /**
  * See [RFC1952](https://datatracker.ietf.org/doc/html/rfc1952) 2.3.1.
  * end of page 7 to page 8.
@@ -41,5 +44,11 @@ enum class GZipOs(val encodedValue: UByte) {
 
     companion object {
         fun byEncodedValue(encodedValue: UByte): GZipOs = entries.first { os -> os.encodedValue == encodedValue }
+
+        fun guessCurrent(): GZipOs = when (currentPlatform) {
+            Platform.WINDOWS -> NTFS
+            Platform.MACOS -> MACINTOSH
+            else -> UNIX
+        }
     }
 }

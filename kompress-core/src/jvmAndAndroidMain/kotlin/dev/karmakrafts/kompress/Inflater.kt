@@ -20,23 +20,50 @@ package dev.karmakrafts.kompress
 
 import java.util.zip.Inflater as JavaInflater
 
+@Suppress("OVERRIDE_DEPRECATION")
 private class InflaterImpl(raw: Boolean) : Inflater {
     private val impl: JavaInflater = JavaInflater(raw)
+    private var isClosed: Boolean = false
 
-    override var input: ByteArray = ByteArray(0)
+    private var _input: ByteArray = ByteArray(0)
+    override var input: ByteArray
+        get() = _input
         set(value) {
-            impl.setInput(value)
-            field = value
+            setInput(value)
         }
 
+    override var inputOffset: Int = 0
+        private set
+    override var inputSize: Int = 0
+        private set
+
+    override val remaining: Int get() = impl.remaining
     override val needsInput: Boolean get() = impl.needsInput()
     override val finished: Boolean get() = impl.finished()
 
-    override fun decompress(output: ByteArray): Int = impl.inflate(output)
+    override fun setInput(data: ByteArray, offset: Int, size: Int) {
+        _input = data
+        inputOffset = offset
+        inputSize = size
+        impl.setInput(data, offset, size)
+    }
+
+    override fun decompress( // @formatter:off
+        output: ByteArray,
+        offset: Int,
+        size: Int,
+        flush: Boolean
+    ): Int = impl.inflate(output, offset, size) // @formatter:on
 
     override fun finish() = Unit
 
-    override fun close() = impl.end()
+    override fun close() {
+        if (isClosed) return
+        impl.end()
+        isClosed = true
+    }
+
+    override fun reset() = impl.reset()
 }
 
 actual fun Inflater(raw: Boolean): Inflater = InflaterImpl(raw)

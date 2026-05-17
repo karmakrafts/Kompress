@@ -27,6 +27,7 @@ import js.typedarrays.toUByteArray
 import js.typedarrays.toUint8Array
 import kotlin.math.min
 
+@Suppress("OVERRIDE_DEPRECATION")
 @OptIn(ExperimentalUnsignedTypes::class)
 private class InflaterImpl(raw: Boolean) : Inflater {
     private var impl: FlateStream =
@@ -42,10 +43,16 @@ private class InflaterImpl(raw: Boolean) : Inflater {
     private var outOffset: Int = 0
     private val emptyUint8Array: Uint8Array<ArrayBufferLike> = Uint8Array(0)
 
-    override var input: ByteArray = ByteArray(0)
+    override var inputOffset: Int = 0
+    override var inputSize: Int = 0
+    override var remaining: Int = 0
+        private set
+
+    private var _input: ByteArray = ByteArray(0)
+    override var input: ByteArray
+        get() = _input
         set(value) {
-            field = value
-            inputPending = true
+            setInput(value)
         }
 
     override val needsInput: Boolean
@@ -54,37 +61,54 @@ private class InflaterImpl(raw: Boolean) : Inflater {
     override val finished: Boolean
         get() = finalSeen && outQueue.isEmpty()
 
+    override fun setInput(data: ByteArray, offset: Int, size: Int) {
+        _input = data
+        inputOffset = offset
+        inputSize = size
+        inputPending = true
+        remaining = size
+    }
+
     @OptIn(ExperimentalUnsignedTypes::class)
-    override fun decompress(output: ByteArray): Int {
-        if (output.isEmpty()) return 0
+    override fun decompress(output: ByteArray, offset: Int, size: Int, flush: Boolean): Int {
+        if (output.isEmpty() || size <= 0) return 0
         if (inputPending && !finalSeen) {
-            val dataToPush = if (input.isNotEmpty()) input.asUByteArray().toUint8Array() else emptyUint8Array
+            val dataToPush = if (input.isNotEmpty() && inputSize > 0) {
+                input.asUByteArray().toUint8Array().subarray(inputOffset, inputOffset + inputSize)
+            }
+            else {
+                emptyUint8Array
+            }
             impl.push(dataToPush, false)
             inputPending = false
         }
-        else if (!finalSeen && finishRequested && !finalPushed && outQueue.isEmpty()) {
-            impl.push(emptyUint8Array, true)
-            finalPushed = true
+        else if (!finalSeen && (finishRequested || flush) && !finalPushed && outQueue.isEmpty()) {
+            impl.push(emptyUint8Array, finishRequested)
+            if (finishRequested) {
+                finalPushed = true
+            }
         }
 
         if (outQueue.isEmpty()) return 0
 
         var written = 0
-        var remaining = output.size
-        while (remaining > 0 && outQueue.isNotEmpty()) {
+        var remainingOut = size
+        var currentOutputOffset = offset
+        while (remainingOut > 0 && outQueue.isNotEmpty()) {
             val head = outQueue.first()
             val available = head.size - outOffset
-            val toCopy = min(available, remaining)
+            val toCopy = min(available, remainingOut)
             if (toCopy > 0) {
                 head.copyInto(
                     destination = output,
-                    destinationOffset = written,
+                    destinationOffset = currentOutputOffset,
                     startIndex = outOffset,
                     endIndex = outOffset + toCopy
                 )
                 written += toCopy
-                remaining -= toCopy
+                remainingOut -= toCopy
                 outOffset += toCopy
+                currentOutputOffset += toCopy
             }
             if (outOffset >= head.size) {
                 outQueue.removeFirst()
@@ -108,7 +132,21 @@ private class InflaterImpl(raw: Boolean) : Inflater {
         outOffset = 0
         inputPending = false
         finalSeen = true
-        input = ByteArray(0)
+        inputOffset = 0
+        inputSize = 0
+        _input = ByteArray(0)
+    }
+
+    override fun reset() {
+        _input = ByteArray(0)
+        inputOffset = 0
+        inputSize = 0
+        inputPending = false
+        finishRequested = false
+        finalSeen = false
+        finalPushed = false
+        outQueue.clear()
+        outOffset = 0
     }
 
     private fun onData(data: Uint8Array<*>, isFinal: Boolean) {

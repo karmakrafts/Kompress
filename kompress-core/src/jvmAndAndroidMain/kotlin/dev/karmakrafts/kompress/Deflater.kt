@@ -20,11 +20,13 @@ package dev.karmakrafts.kompress
 
 import java.util.zip.Deflater as JavaDeflater
 
+@Suppress("OVERRIDE_DEPRECATION")
 private class DeflaterImpl( // @formatter:off
     raw: Boolean,
     initialLevel: Int
 ) : Deflater { // @formatter:on
     private val impl: JavaDeflater = JavaDeflater(initialLevel, raw)
+    private var isClosed: Boolean = false
 
     override var level: Int = initialLevel
         set(value) {
@@ -32,18 +34,48 @@ private class DeflaterImpl( // @formatter:off
             field = value
         }
 
-    override var input: ByteArray = ByteArray(0)
+    override var inputOffset: Int = 0
+        private set
+    override var inputSize: Int = 0
+        private set
+
+    private var _input: ByteArray = ByteArray(0)
+    override var input: ByteArray
+        get() = _input
         set(value) {
-            impl.setInput(value)
-            field = value
+            setInput(value)
         }
 
+    override val remaining: Int get() = _input.size - impl.totalIn
     override val needsInput: Boolean get() = impl.needsInput()
     override val finished: Boolean get() = impl.finished()
 
+    override fun setInput(data: ByteArray, offset: Int, size: Int) {
+        _input = data
+        inputOffset = offset
+        inputSize = size
+        impl.setInput(data, offset, size)
+    }
+
     override fun finish() = impl.finish()
-    override fun compress(output: ByteArray): Int = impl.deflate(output)
-    override fun close() = impl.end()
+
+    override fun compress( // @formatter:off
+        output: ByteArray,
+        offset: Int,
+        size: Int,
+        flush: Boolean
+    ): Int { // @formatter:on
+        val flushFlags = if (flush) JavaDeflater.SYNC_FLUSH else JavaDeflater.NO_FLUSH
+        return impl.deflate(output, offset, size, flushFlags)
+    }
+
+    override fun close() {
+        if (isClosed) return
+        impl.end()
+        isClosed = true
+    }
+
+    override fun reset() = impl.reset()
 }
 
 actual fun Deflater(raw: Boolean, level: Int): Deflater = DeflaterImpl(raw, level)

@@ -24,7 +24,6 @@ import kotlin.test.Test
 import kotlin.test.assertContentEquals
 
 class DecompressingSinkTest {
-
     @Test
     fun `decompressing sink`() {
         val data = ByteArray(1024) { it.toByte() }
@@ -33,7 +32,7 @@ class DecompressingSinkTest {
 
         val resultBuffer = Buffer()
         val decompressor = MockDecompressor()
-        val decompressingSink = (resultBuffer as RawSink).decompressing(decompressor, bufferSize = 128)
+        val decompressingSink = (resultBuffer as RawSink).decompressingSink(decompressor, bufferSize = 128)
 
         decompressingSink.write(sourceBuffer, data.size.toLong())
         decompressingSink.close()
@@ -49,7 +48,7 @@ class DecompressingSinkTest {
 
         val resultBuffer = Buffer()
         val decompressor = MockDecompressor()
-        val decompressingSink = (resultBuffer as RawSink).decompressing(decompressor, bufferSize = 128)
+        val decompressingSink = (resultBuffer as RawSink).decompressingSink(decompressor, bufferSize = 128)
 
         while (sourceBuffer.size > 0) {
             decompressingSink.write(sourceBuffer, min(sourceBuffer.size, 10L))
@@ -67,7 +66,7 @@ class DecompressingSinkTest {
 
         val resultBuffer = Buffer()
         val decompressor = MockDecompressor()
-        val decompressingSink = (resultBuffer as RawSink).decompressing(decompressor, bufferSize = 128)
+        val decompressingSink = (resultBuffer as RawSink).decompressingSink(decompressor, bufferSize = 128)
 
         decompressingSink.write(sourceBuffer, data.size.toLong())
         decompressingSink.flush()
@@ -76,42 +75,69 @@ class DecompressingSinkTest {
         assertContentEquals(data, resultBuffer.readByteArray())
     }
 
+    @Test
+    fun `decompressing sink with offset and size`() {
+        val data = ByteArray(1024) { it.toByte() }
+        val sourceBuffer = Buffer()
+        // Write some dummy data before and after
+        sourceBuffer.writeByte(0)
+        sourceBuffer.write(data)
+        sourceBuffer.writeByte(0)
+        sourceBuffer.skip(1)
+
+        val resultBuffer = Buffer()
+        val decompressor = MockDecompressor()
+        val decompressingSink = (resultBuffer as RawSink).decompressingSink(decompressor, bufferSize = 128)
+
+        decompressingSink.write(sourceBuffer, data.size.toLong())
+        decompressingSink.close()
+
+        assertContentEquals(data, resultBuffer.readByteArray())
+    }
+
+    @Suppress("OVERRIDE_DEPRECATION")
     private class MockDecompressor : Decompressor {
         private var _input: ByteArray = byteArrayOf()
         private var _finished = false
-        private var _inputExhausted = true
         private var _finishCalled = false
+
+        override var inputOffset: Int = 0
+            private set
+        override var inputSize: Int = 0
+            private set
+        override val remaining: Int
+            get() = inputSize
 
         override var input: ByteArray
             get() = _input
             set(value) {
-                _input = value
-                _inputExhausted = value.isEmpty()
+                setInput(value)
             }
 
         override val needsInput: Boolean
-            get() = _inputExhausted
+            get() = inputSize <= 0
 
         override val finished: Boolean
             get() = _finished
 
-        override fun decompress(output: ByteArray): Int {
+        override fun setInput(data: ByteArray, offset: Int, size: Int) {
+            _input = data
+            inputOffset = offset
+            inputSize = size
+        }
+
+        override fun decompress(output: ByteArray, offset: Int, size: Int, flush: Boolean): Int {
             if (_finished) return 0
-            if (_inputExhausted) {
+            if (inputSize <= 0) {
                 if (_finishCalled) {
                     _finished = true
                 }
                 return 0
             }
-            val toCopy = min(_input.size, output.size)
-            _input.copyInto(output, 0, 0, toCopy)
-            if (toCopy < _input.size) {
-                _input = _input.copyOfRange(toCopy, _input.size)
-            }
-            else {
-                _input = byteArrayOf()
-                _inputExhausted = true
-            }
+            val toCopy = min(inputSize, size)
+            _input.copyInto(output, offset, inputOffset, inputOffset + toCopy)
+            inputOffset += toCopy
+            inputSize -= toCopy
             return toCopy
         }
 
@@ -119,6 +145,7 @@ class DecompressingSinkTest {
             _finishCalled = true
         }
 
-        override fun close() {}
+        override fun close() = Unit
+        override fun reset() = Unit
     }
 }

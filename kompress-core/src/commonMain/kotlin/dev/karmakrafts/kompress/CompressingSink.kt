@@ -24,10 +24,13 @@ import kotlin.math.min
 private class CompressingSink( // @formatter:off
     private val compressor: Compressor,
     private val delegate: RawSink,
-    private val bufferSize: Int = Compressor.DEFAULT_BUFFER_SIZE
+    private val bufferSize: Int = Compressor.DEFAULT_BUFFER_SIZE,
+    private val isSinkOwned: Boolean = true,
+    private val isCompressorOwned: Boolean = true
 ) : RawSink { // @formatter:on
     private val chunkBuffer: ByteArray = ByteArray(bufferSize)
     private val drainBuffer: Buffer = Buffer()
+    private var isClosed: Boolean = false
 
     override fun write(source: Buffer, byteCount: Long) {
         if (byteCount == 0L) return
@@ -36,7 +39,7 @@ private class CompressingSink( // @formatter:off
             if (compressor.needsInput) {
                 val toRead = min(remaining, bufferSize.toLong()).toInt()
                 val data = source.readByteArray(toRead)
-                compressor.input = data
+                compressor.setInput(data)
                 remaining -= toRead
             }
             drain()
@@ -60,6 +63,7 @@ private class CompressingSink( // @formatter:off
     }
 
     override fun close() {
+        if (isClosed) return
         compressor.finish()
         while (!compressor.finished) {
             val written = compressor.compress(chunkBuffer)
@@ -70,7 +74,9 @@ private class CompressingSink( // @formatter:off
             else if (compressor.needsInput) break
         }
         delegate.flush()
-        compressor.close()
+        if (isCompressorOwned) compressor.close()
+        if (isSinkOwned) delegate.close()
+        isClosed = true
     }
 }
 
@@ -79,9 +85,15 @@ private class CompressingSink( // @formatter:off
  *
  * @param compressor The compressor to use.
  * @param bufferSize The size of the buffer used for compression.
+ * @param isSinkOwned If the given sink is owned by the wrapper instance.
+ *  This will automatically close the wrapped sink when the wrapper is closed.
+ * @param isCompressorOwned If the given compressor is owned by the wrapper instance.
+ *  This will automatically close the wrapped compressor when the wrapper is closed.
  * @return A compressing [RawSink].
  */
-fun RawSink.compressing( // @formatter:off
+fun RawSink.compressingSink( // @formatter:off
     compressor: Compressor,
-    bufferSize: Int = Compressor.DEFAULT_BUFFER_SIZE
-): RawSink = CompressingSink(compressor, this, bufferSize) // @formatter:on
+    bufferSize: Int = Compressor.DEFAULT_BUFFER_SIZE,
+    isSinkOwned: Boolean = true,
+    isCompressorOwned: Boolean = true
+): RawSink = CompressingSink(compressor, this, bufferSize, isSinkOwned, isCompressorOwned) // @formatter:on

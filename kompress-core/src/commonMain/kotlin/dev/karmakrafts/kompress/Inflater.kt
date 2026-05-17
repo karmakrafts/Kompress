@@ -17,8 +17,11 @@
 package dev.karmakrafts.kompress
 
 import dev.karmakrafts.kompress.Inflater.Companion.decompress
+import kotlinx.io.Buffer
 import kotlinx.io.RawSink
 import kotlinx.io.RawSource
+import kotlinx.io.Source
+import kotlinx.io.readByteArray
 
 /**
  * Streaming decompression interface that supports inflate and inflate-raw decompression.
@@ -46,18 +49,61 @@ interface Inflater : Decompressor {
         /**
          * @see decompress
          */
-        @Deprecated(message = "This API will be removed in 2.0", replaceWith = ReplaceWith("decompress"))
+        @Deprecated( // @formatter:off
+            message = "This API will be removed in 2.0",
+            replaceWith = ReplaceWith("decompress(data, raw, bufferSize)")
+        ) // @formatter:on
         fun inflate( // @formatter:off
             data: ByteArray,
             raw: Boolean = true,
             bufferSize: Int = Decompressor.DEFAULT_BUFFER_SIZE
         ): ByteArray = decompress(data, raw, bufferSize) // @formatter:on
+
+        // TODO: document this
+        fun computeCompressedSize( // @formatter:off
+            data: ByteArray,
+            raw: Boolean = true,
+            bufferSize: Int = Decompressor.DEFAULT_BUFFER_SIZE
+        ): Int = Inflater(raw).use { inflater -> // @formatter:on
+            inflater.setInput(data)
+            inflater.finish()
+            val outputBuffer = ByteArray(bufferSize)
+            while (true) {
+                if (inflater.decompress(outputBuffer) == 0) break // Reached EOF early
+            }
+            data.size - inflater.remaining
+        }
+
+        // TODO: document this
+        fun computeCompressedSize( // @formatter:off
+            source: Source,
+            raw: Boolean = true,
+            bufferSize: Int = Decompressor.DEFAULT_BUFFER_SIZE
+        ): Long = Inflater(raw).use { inflater -> // @formatter:on
+            val outputBuffer = ByteArray(bufferSize)
+            var totalRead = 0L
+            while (!inflater.finished) {
+                if (inflater.needsInput) {
+                    val buffer = Buffer()
+                    val read = source.readAtMostTo(buffer, bufferSize.toLong())
+                    if (read == -1L) {
+                        inflater.finish()
+                    }
+                    else {
+                        totalRead += read
+                        inflater.setInput(buffer.readByteArray())
+                    }
+                }
+                if (inflater.decompress(outputBuffer) == 0 && !inflater.needsInput) break
+            }
+            totalRead - inflater.remaining
+        }
     }
 
     /**
      * @see decompress
      */
-    @Deprecated(message = "This API will be removed in 2.0", replaceWith = ReplaceWith("decompress"))
+    @Deprecated(message = "This API will be removed in 2.0", replaceWith = ReplaceWith("decompress(output)"))
     fun inflate(output: ByteArray): Int = decompress(output)
 }
 
@@ -86,10 +132,19 @@ expect fun Inflater(raw: Boolean = true): Inflater
  *  decompression.
  * @return A [RawSource] that produces decompressed data.
  */
+fun RawSource.inflatingSource( // @formatter:off
+    raw: Boolean = true,
+    bufferSize: Int = Decompressor.DEFAULT_BUFFER_SIZE
+): RawSource = decompressingSource(Inflater(raw), bufferSize) // @formatter:on
+
+/**
+ * @see inflatingSource
+ */
+@Deprecated(message = "This API will be removed in 2.0", replaceWith = ReplaceWith("inflatingWith(raw, bufferSize)"))
 fun RawSource.inflating( // @formatter:off
     raw: Boolean = true,
     bufferSize: Int = Decompressor.DEFAULT_BUFFER_SIZE
-): RawSource = decompressing(Inflater(raw), bufferSize) // @formatter:on
+): RawSource = inflatingSource(raw, bufferSize) // @formatter:on
 
 /**
  * Returns a [RawSink] that decompresses written bytes using DEFLATE and
@@ -106,7 +161,7 @@ fun RawSource.inflating( // @formatter:off
  *  decompression.
  * @return A [RawSink] that accepts compressed data and writes decompressed data.
  */
-fun RawSink.inflating( // @formatter:off
+fun RawSink.inflatingSink( // @formatter:off
     raw: Boolean = true,
     bufferSize: Int = Decompressor.DEFAULT_BUFFER_SIZE
-): RawSink = decompressing(Inflater(raw), bufferSize) // @formatter:on
+): RawSink = decompressingSink(Inflater(raw), bufferSize) // @formatter:on

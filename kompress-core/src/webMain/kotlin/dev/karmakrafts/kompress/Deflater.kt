@@ -27,6 +27,7 @@ import js.typedarrays.toUByteArray
 import js.typedarrays.toUint8Array
 import kotlin.math.min
 
+@Suppress("OVERRIDE_DEPRECATION")
 @OptIn(ExperimentalUnsignedTypes::class)
 private class DeflaterImpl( // @formatter:off
     private val raw: Boolean,
@@ -46,10 +47,16 @@ private class DeflaterImpl( // @formatter:off
             impl = createImpl(value)
         }
 
-    override var input: ByteArray = ByteArray(0)
+    override var inputOffset: Int = 0
+    override var inputSize: Int = 0
+    override var remaining: Int = 0
+        private set
+
+    private var _input: ByteArray = ByteArray(0)
+    override var input: ByteArray
+        get() = _input
         set(value) {
-            inputPending = true
-            field = value
+            setInput(value)
         }
 
     override val needsInput: Boolean
@@ -57,11 +64,24 @@ private class DeflaterImpl( // @formatter:off
     override val finished: Boolean
         get() = finalSeen && outQueue.isEmpty()
 
+    override fun setInput(data: ByteArray, offset: Int, size: Int) {
+        inputPending = true
+        _input = data
+        inputOffset = offset
+        inputSize = size
+        remaining = size
+    }
+
     @OptIn(ExperimentalUnsignedTypes::class)
-    override fun compress(output: ByteArray): Int {
-        if (output.isEmpty()) return 0
+    override fun compress(output: ByteArray, offset: Int, size: Int, flush: Boolean): Int {
+        if (output.isEmpty() || size <= 0) return 0
         if (inputPending && !finalSeen) {
-            val dataToPush = if (input.isNotEmpty()) input.asUByteArray().toUint8Array() else emptyUint8Array
+            val dataToPush = if (input.isNotEmpty() && inputSize > 0) {
+                input.asUByteArray().toUint8Array().subarray(inputOffset, inputOffset + inputSize)
+            }
+            else {
+                emptyUint8Array
+            }
             impl.push(dataToPush, finalRequested)
             inputPending = false
         }
@@ -73,7 +93,8 @@ private class DeflaterImpl( // @formatter:off
         if (outQueue.isEmpty()) return 0
 
         var written = 0
-        var remaining = output.size
+        var remaining = size
+        var currentOutputOffset = offset
         while (remaining > 0 && outQueue.isNotEmpty()) {
             val head = outQueue.first()
             val available = head.size - outOffset
@@ -81,13 +102,14 @@ private class DeflaterImpl( // @formatter:off
             if (toCopy > 0) {
                 head.copyInto(
                     destination = output,
-                    destinationOffset = written,
+                    destinationOffset = currentOutputOffset,
                     startIndex = outOffset,
                     endIndex = outOffset + toCopy
                 )
                 written += toCopy
                 remaining -= toCopy
                 outOffset += toCopy
+                currentOutputOffset += toCopy
             }
             if (outOffset >= head.size) {
                 outQueue.removeFirst()
@@ -109,6 +131,18 @@ private class DeflaterImpl( // @formatter:off
         finalRequested = true
         finalSeen = true
         input = ByteArray(0)
+    }
+
+    override fun reset() {
+        impl = createImpl(level)
+        outQueue.clear()
+        outOffset = 0
+        inputPending = false
+        finalRequested = false
+        finalSeen = false
+        inputOffset = 0
+        inputSize = 0
+        _input = ByteArray(0)
     }
 
     private fun createImpl(level: Int): FlateStream {

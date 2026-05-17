@@ -71,6 +71,16 @@ kotlin {
                 api(libs.kotlinx.io.core)
             }
         }
+        jvmMain {
+            dependencies {
+                implementation(libs.oshi.core)
+            }
+        }
+        named("jvmAndAndroidMain") {
+            dependencies {
+                implementation(libs.jzlib)
+            }
+        }
         commonTest {
             dependencies {
                 implementation(libs.kotlin.test)

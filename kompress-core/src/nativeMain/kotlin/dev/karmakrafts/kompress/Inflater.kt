@@ -31,11 +31,16 @@ import platform.zlib.Z_FINISH
 import platform.zlib.Z_NO_FLUSH
 import platform.zlib.Z_OK
 import platform.zlib.Z_STREAM_END
+import platform.zlib.Z_SYNC_FLUSH
 import platform.zlib.inflate
 import platform.zlib.inflateEnd
 import platform.zlib.inflateInit2
+import platform.zlib.inflateReset
 import platform.zlib.z_stream
+import kotlin.math.max
+import kotlin.math.min
 
+@Suppress("OVERRIDE_DEPRECATION")
 @OptIn(ExperimentalForeignApi::class)
 private class InflaterImpl(raw: Boolean) : Inflater {
     private val stream: z_stream = nativeHeap.alloc<z_stream>().apply {
@@ -46,22 +51,18 @@ private class InflaterImpl(raw: Boolean) : Inflater {
         ) { "Could not initialize Inflater" }
     }
 
+    override var inputOffset: Int = 0
+    override var inputSize: Int = 0
+    override var remaining: Int = 0
+        private set
+
     private var pinnedInput: Pinned<ByteArray>? = null
-    override var input: ByteArray = ByteArray(0)
+
+    private var _input: ByteArray = ByteArray(0)
+    override var input: ByteArray
+        get() = _input
         set(value) {
-            pinnedInput?.unpin()
-            if (value.isNotEmpty()) {
-                pinnedInput = value.pin().apply {
-                    stream.next_in = addressOf(0).reinterpret()
-                    stream.avail_in = value.size.toUInt()
-                }
-            }
-            else {
-                pinnedInput = null
-                stream.next_in = null
-                stream.avail_in = 0u
-            }
-            field = value
+            setInput(value)
         }
 
     override val needsInput: Boolean
@@ -73,29 +74,52 @@ private class InflaterImpl(raw: Boolean) : Inflater {
     override val finished: Boolean
         get() = _finished
 
+    private var isClosed: Boolean = false
+
+    override fun setInput(data: ByteArray, offset: Int, size: Int) {
+        inputOffset = offset
+        inputSize = size
+        pinnedInput?.unpin()
+        if (data.isNotEmpty()) {
+            pinnedInput = data.pin().apply {
+                stream.next_in = addressOf(inputOffset).reinterpret()
+                stream.avail_in = min(data.size, inputSize).toUInt()
+            }
+        }
+        else {
+            pinnedInput = null
+            stream.next_in = null
+            stream.avail_in = 0u
+        }
+        _input = data
+        remaining = size
+    }
+
     override fun finish() {
         finishRequested = true
     }
 
-    override fun decompress(output: ByteArray): Int {
+    override fun decompress(output: ByteArray, offset: Int, size: Int, flush: Boolean): Int {
         if (output.isEmpty()) return 0
         return output.usePinned { pinnedOutput ->
             if (_finished) return@usePinned 0
 
-            stream.next_out = pinnedOutput.addressOf(0).reinterpret()
-            stream.avail_out = output.size.toUInt()
+            stream.next_out = pinnedOutput.addressOf(offset).reinterpret()
+            stream.avail_out = min(output.size, size).toUInt()
 
-            val before = stream.avail_out
-            val flush = if (finishRequested) Z_FINISH else Z_NO_FLUSH
-            val res = inflate(stream.ptr, flush)
-            val after = stream.avail_out
-            val written = (before - after).toInt()
+            val outBefore = stream.avail_out
+            val inBefore = stream.avail_in
+            val flush = if (finishRequested) (if (flush) Z_SYNC_FLUSH else Z_FINISH)
+            else (if (flush) Z_SYNC_FLUSH else Z_NO_FLUSH)
+            val result = inflate(stream.ptr, flush)
+            val written = (outBefore - stream.avail_out).toInt()
+            remaining = max(0, remaining - (inBefore - stream.avail_in).toInt())
 
-            if (res == Z_STREAM_END) {
+            if (result == Z_STREAM_END) {
                 _finished = true
             }
-            else if (res != Z_OK && res != Z_BUF_ERROR) {
-                error("Inflater error: $res")
+            else if (result != Z_OK && result != Z_BUF_ERROR) {
+                error("Inflater error: $result")
             }
 
             written
@@ -103,9 +127,16 @@ private class InflaterImpl(raw: Boolean) : Inflater {
     }
 
     override fun close() {
+        if (isClosed) return
         inflateEnd(stream.ptr)
         nativeHeap.free(stream)
         pinnedInput?.unpin()
+        isClosed = true
+    }
+
+    override fun reset() {
+        check(inflateReset(stream.ptr) == Z_OK) { "Could not reset inflater" }
+        input = ByteArray(0)
     }
 }
 
