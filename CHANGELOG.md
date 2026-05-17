@@ -17,6 +17,7 @@
 
 ### Changed
 
+- Updated to Karma Conventions 1.16.4
 - Updated to Gradle 9.5.1
 - Updated to Kotlin Wrappers 2026.5.4
 - Updated to Android Gradle 9.2.1
