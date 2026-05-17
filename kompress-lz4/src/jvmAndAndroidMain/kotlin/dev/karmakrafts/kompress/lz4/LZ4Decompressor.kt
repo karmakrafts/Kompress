@@ -14,8 +14,77 @@
  * limitations under the License.
  */
 
+@file:JvmName("LZ4Decompressor$")
+
 package dev.karmakrafts.kompress.lz4
 
 import dev.karmakrafts.kompress.Decompressor
+import net.jpountz.lz4.LZ4Factory
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
+import net.jpountz.lz4.LZ4FastDecompressor as LZ4JFastDecompressor
 
-actual fun LZ4Decompressor(): Decompressor = TODO()
+@Suppress("OVERRIDE_DEPRECATION")
+private class LZ4DecompressorImpl : Decompressor {
+    private val delegate: LZ4JFastDecompressor = LZ4Factory.fastestInstance().fastDecompressor()
+    private val inputBuffer: ByteBuffer =
+        ByteBuffer.allocateDirect(Decompressor.DEFAULT_BUFFER_SIZE).order(ByteOrder.nativeOrder())
+    private val outputBuffer: ByteBuffer =
+        ByteBuffer.allocateDirect(Decompressor.DEFAULT_BUFFER_SIZE).order(ByteOrder.nativeOrder())
+
+    private var _input: ByteArray = ByteArray(0)
+    override var input: ByteArray
+        get() = _input
+        set(value) {
+            setInput(value)
+        }
+
+    override var inputOffset: Int = 0
+        private set
+    override var inputSize: Int = 0
+        private set
+    override var finished: Boolean = false
+        private set
+
+    override val remaining: Int get() = _input.size - inputBuffer.position()
+    override val needsInput: Boolean get() = !finished && remaining == 0
+
+    override fun setInput(data: ByteArray, offset: Int, size: Int) {
+        _input = data
+        inputOffset = offset
+        inputSize = size
+        inputBuffer.clear()
+        inputBuffer.put(data, offset, size)
+        inputBuffer.flip()
+    }
+
+    override fun decompress( // @formatter:off
+        output: ByteArray,
+        offset: Int,
+        size: Int,
+        flush: Boolean
+    ): Int { // @formatter:on
+        if (finished) return 0
+        outputBuffer.clear()
+        delegate.decompress(inputBuffer, outputBuffer)
+        val compressed = outputBuffer.position()
+        if (compressed == 0) return 0
+        outputBuffer.get(output, offset, size)
+        return compressed
+    }
+
+    override fun finish() {
+        finished = true
+    }
+
+    override fun reset() {
+        setInput(ByteArray(0))
+        inputBuffer.clear()
+        outputBuffer.clear()
+        finished = false
+    }
+
+    override fun close() = Unit
+}
+
+actual fun LZ4Decompressor(): Decompressor = LZ4DecompressorImpl()

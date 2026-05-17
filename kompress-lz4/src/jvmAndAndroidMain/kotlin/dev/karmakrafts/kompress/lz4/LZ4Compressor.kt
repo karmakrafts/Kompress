@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+@file:JvmName("LZ4Compressor$")
+
 package dev.karmakrafts.kompress.lz4
 
 import dev.karmakrafts.kompress.Compressor
@@ -77,6 +79,8 @@ private class LZ4CompressorImpl : Compressor {
 
     override fun reset() {
         setInput(ByteArray(0))
+        inputBuffer.clear()
+        outputBuffer.clear()
         finished = false
     }
 
