@@ -19,12 +19,18 @@ package dev.karmakrafts.kompress
 import kotlinx.io.Buffer
 import kotlinx.io.RawSink
 
-// TODO: document this
+/**
+ * A [RawSink] that calculates the CRC32 checksum of the data written to it.
+ */
 interface CRC32Sink : RawSink {
-    // TODO: document this
+    /**
+     * The current CRC32 checksum of the data written to this sink.
+     */
     val checksum: UInt
 
-    // TODO: document this
+    /**
+     * Resets the current [checksum] to its initial value.
+     */
     fun reset()
 }
 
@@ -49,5 +55,10 @@ private class CRC32SinkImpl( // @formatter:off
     }
 }
 
-// TODO: document this
+/**
+ * Returns a [CRC32Sink] that wraps this [RawSink].
+ *
+ * @param isSinkOwned whether the underlying sink is owned by the [CRC32Sink] and should be closed when it is closed.
+ * @return a [CRC32Sink] wrapping this [RawSink].
+ */
 fun RawSink.crc32Sink(isSinkOwned: Boolean = true): CRC32Sink = CRC32SinkImpl(this, isSinkOwned)

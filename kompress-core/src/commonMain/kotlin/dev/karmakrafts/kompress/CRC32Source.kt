@@ -19,12 +19,18 @@ package dev.karmakrafts.kompress
 import kotlinx.io.Buffer
 import kotlinx.io.RawSource
 
-// TODO: document this
+/**
+ * A [RawSource] that calculates the CRC32 checksum of the data read from it.
+ */
 interface CRC32Source : RawSource {
-    // TODO: document this
+    /**
+     * The current CRC32 checksum of the data read from this source.
+     */
     val checksum: UInt
 
-    // TODO: document this
+    /**
+     * Resets the current [checksum] to its initial value.
+     */
     fun reset()
 }
 
@@ -52,5 +58,10 @@ private class CRC32SourceImpl( // @formatter:off
     }
 }
 
-// TODO: document this
+/**
+ * Returns a [CRC32Source] that wraps this [RawSource].
+ *
+ * @param isSourceOwned whether the underlying source is owned by the [CRC32Source] and should be closed when it is closed.
+ * @return a [CRC32Source] wrapping this [RawSource].
+ */
 fun RawSource.crc32Source(isSourceOwned: Boolean = true): CRC32Source = CRC32SourceImpl(this, isSourceOwned)

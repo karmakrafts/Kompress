@@ -16,6 +16,13 @@
 
 package dev.karmakrafts.kompress
 
+/**
+ * Exception thrown when a checksum validation fails during a Kompress operation.
+ *
+ * @property expectedChecksum The expected checksum value.
+ * @property actualChecksum The actual checksum value that was calculated.
+ * @constructor Creates a new [InvalidChecksumException] with the given [expectedChecksum] and [actualChecksum].
+ */
 class InvalidChecksumException(
     val expectedChecksum: UInt,
     val actualChecksum: UInt,

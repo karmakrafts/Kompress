@@ -58,7 +58,15 @@ interface Inflater : Decompressor {
             bufferSize: Int = Decompressor.DEFAULT_BUFFER_SIZE
         ): ByteArray = decompress(data, raw, bufferSize) // @formatter:on
 
-        // TODO: document this
+        /**
+         * Computes the compressed size of the given data by inflating it and
+         * subtracting the remaining bytes from the original size.
+         *
+         * @param data The compressed data.
+         * @param raw If true, the ZLIB header and checksum fields will not be used.
+         * @param bufferSize The size of the intermediate buffer used during decompression.
+         * @return The size of the compressed data that was actually consumed.
+         */
         fun computeCompressedSize( // @formatter:off
             data: ByteArray,
             raw: Boolean = true,
@@ -73,7 +81,15 @@ interface Inflater : Decompressor {
             data.size - inflater.remaining
         }
 
-        // TODO: document this
+        /**
+         * Computes the compressed size of the data from the given source by inflating it and
+         * subtracting the remaining bytes from the total bytes read.
+         *
+         * @param source The source to read compressed data from.
+         * @param raw If true, the ZLIB header and checksum fields will not be used.
+         * @param bufferSize The size of the intermediate buffer used during decompression.
+         * @return The size of the compressed data that was actually consumed from the source.
+         */
         fun computeCompressedSize( // @formatter:off
             source: RawSource,
             raw: Boolean = true,

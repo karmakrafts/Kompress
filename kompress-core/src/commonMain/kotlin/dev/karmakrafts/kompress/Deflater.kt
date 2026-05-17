@@ -118,9 +118,10 @@ fun RawSource.deflatingSource( // @formatter:off
 /**
  * @see deflatingSource
  */
-@Deprecated(
-    message = "This API will be removed in 2.0", replaceWith = ReplaceWith("deflatingWith(raw, level, bufferSize)")
-)
+@Deprecated( // @formatter:off
+    message = "This API will be removed in 2.0",
+    replaceWith = ReplaceWith("deflatingWith(raw, level, bufferSize)")
+) // @formatter:on
 fun RawSource.deflating( // @formatter:off
     raw: Boolean = true,
     level: Int = Deflater.DEFAULT_LEVEL,
