@@ -44,7 +44,7 @@ interface Compressor : AutoCloseable {
     val inputSize: Int
 
     /**
-     * The number of bytes not consumed by the decompressor
+     * The number of bytes not consumed by the compressor
      * remaining in the current input buffer.
      */
     val remaining: Int
