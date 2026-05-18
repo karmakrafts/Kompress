@@ -16,16 +16,17 @@
 
 package dev.karmakrafts.kompress.zip
 
-/**
- * See [PKWARE APPNOTE](https://pkware.cachefly.net/webdocs/casestudies/APPNOTE.TXT) 4.4.5.
- */
-enum class ZipCompressionMethod(val encodedValue: UShort) {
+enum class ZipDeflateCompressionType(val encodedValue: UShort) {
     // @formatter:off
-    NONE     (0x0000U),
-    DEFLATE  (0x0008U),
-    BZIP2    (0x000CU),
-    LZMA     (0x000EU),
-    ZSTD     (0x005DU),
-    XZ       (0x005FU)
+    NORMAL    (0b00U),
+    MAXIMUM   (0b01U),
+    FAST      (0b10U),
+    SUPER_FAST(0b11U);
     // @formatter:on
+
+    companion object {
+        fun byEncodedValue(encodedValue: UShort): ZipDeflateCompressionType = entries.first {
+            type -> type.encodedValue == encodedValue
+        }
+    }
 }

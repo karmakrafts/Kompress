@@ -16,20 +16,50 @@
 
 package dev.karmakrafts.kompress.zip
 
+import dev.karmakrafts.kompress.zip.ZipGPBF.Companion.OMIT_CHECKSUM_AND_SIZES
+import dev.karmakrafts.kompress.zip.ZipGPBF.Companion.PATCHED_DATA
+import dev.karmakrafts.kompress.zip.ZipGPBF.Companion.STRONG_ENCRYPTION
+import dev.karmakrafts.kompress.zip.ZipGPBF.Deflate
+import dev.karmakrafts.kompress.zip.ZipGPBF.LZMA
 import kotlin.jvm.JvmInline
 
 /**
  * See [PKWARE APPNOTE](https://pkware.cachefly.net/webdocs/casestudies/APPNOTE.TXT) 4.4.4.
  */
 sealed interface ZipGPBF {
-    @JvmInline
-    value class Implode(override val value: UShort) : ZipGPBF {}
+    companion object {
+        const val OMIT_CHECKSUM_AND_SIZES: UShort = 0b00000000_00000100U
+        const val PATCHED_DATA: UShort = 0b00000000_00010000U
+        const val STRONG_ENCRYPTION: UShort = 0b00000000_00100000U
+    }
 
     @JvmInline
-    value class Deflate(override val value: UShort) : ZipGPBF {}
+    value class Deflate(override val value: UShort) : ZipGPBF {
+        inline val compressionType: ZipDeflateCompressionType
+            get() = ZipDeflateCompressionType.byEncodedValue(value and 0b11U)
+    }
 
     @JvmInline
-    value class LZMA(override val value: UShort) : ZipGPBF {}
+    value class LZMA(override val value: UShort) : ZipGPBF {
+        companion object {
+            const val EOS_MARKER_PRESENT: UShort = 0b00000000_00000001U
+        }
+
+        inline val eosMarkerPresent: Boolean
+            get() = value and EOS_MARKER_PRESENT != 0U.toUShort()
+    }
 
     val value: UShort
 }
+
+inline val ZipGPBF.deflate: Deflate get() = Deflate(value)
+inline val ZipGPBF.lzma: LZMA get() = LZMA(value)
+
+inline val ZipGPBF.omitCheckSumAndSizes: Boolean
+    get() = value and OMIT_CHECKSUM_AND_SIZES != 0U.toUShort()
+
+inline val ZipGPBF.isPatchedData: Boolean
+    get() = value and PATCHED_DATA != 0U.toUShort()
+
+inline val ZipGPBF.hasStrongEncryption: Boolean
+    get() = value and STRONG_ENCRYPTION != 0U.toUShort()
