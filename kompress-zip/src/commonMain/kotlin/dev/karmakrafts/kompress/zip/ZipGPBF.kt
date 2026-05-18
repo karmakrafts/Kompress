@@ -21,18 +21,15 @@ import kotlin.jvm.JvmInline
 /**
  * See [PKWARE APPNOTE](https://pkware.cachefly.net/webdocs/casestudies/APPNOTE.TXT) 4.4.4.
  */
-@JvmInline
-value class ZipGPBF(val value: UShort) {
+sealed interface ZipGPBF {
     @JvmInline
-    value class Implode(val value: UShort) {}
+    value class Implode(override val value: UShort) : ZipGPBF {}
 
     @JvmInline
-    value class Deflate(val value: UShort) {}
+    value class Deflate(override val value: UShort) : ZipGPBF {}
 
     @JvmInline
-    value class LZMA(val value: UShort) {}
+    value class LZMA(override val value: UShort) : ZipGPBF {}
 
-    inline val implode: Implode get() = Implode(value)
-    inline val deflate: Deflate get() = Deflate(value)
-    inline val lzma: LZMA get() = LZMA(value)
+    val value: UShort
 }
