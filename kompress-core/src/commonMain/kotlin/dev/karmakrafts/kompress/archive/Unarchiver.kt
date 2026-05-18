@@ -40,16 +40,16 @@ typealias UnarchiverEntryCallback<E> = ( // @formatter:off
  * Provides access to the source [Source], the [Decompressor] used to decompress entries,
  * and functions to read entries from the archive.
  */
-interface Unarchiver<E, D : Decompressor> : AutoCloseable {
+interface Unarchiver<E, M : Enum<M>> : AutoCloseable {
     /**
      * The source being read from.
      */
     val source: Source
 
     /**
-     * The decompressor used for decompressing entry data blocks.
+     * The decompressors used for decompressing entry data blocks.
      */
-    val decompressor: D
+    val decompressors: Map<M, Decompressor>
 
     /**
      * Iterates over all entries in the current archive in a streaming
@@ -74,7 +74,7 @@ interface Unarchiver<E, D : Decompressor> : AutoCloseable {
  * @return A new list containing all extracted entries which matched the given predicate.
  * @throws InvalidChecksumException when a checksum validation fails for the current entry.
  */
-inline fun <E, D : Decompressor> Unarchiver<E, D>.extract( // @formatter:off
+inline fun <E, M : Enum<M>> Unarchiver<E, M>.extract( // @formatter:off
     chunkSize: Int = 4096,
     crossinline filter: (E, Buffer) -> Boolean = { _, _ -> true }
 ): List<Pair<E, Buffer>> { // @formatter:on

@@ -14,29 +14,25 @@
  * limitations under the License.
  */
 
-rootProject.name = "kompress"
+package dev.karmakrafts.kompress.zip
 
-pluginManagement {
-    repositories {
-        google()
-        mavenCentral()
-        mavenLocal()
-        gradlePluginPortal()
-        maven("https://central.sonatype.com/repository/maven-snapshots")
-    }
+/**
+ * See [PKWARE APPNOTE](https://pkware.cachefly.net/webdocs/casestudies/APPNOTE.TXT) 4.4.5.
+ */
+enum class ZipCompressionMethod(val encodedValue: UShort) {
+    // @formatter:off
+    NONE     (0x0000U),
+    SHRINK   (0x0001U),
+    REDUCE_1 (0x0002U),
+    REDUCE_2 (0x0003U),
+    REDUCE_3 (0x0004U),
+    REDUCE_4 (0x0005U),
+    IMPLODE  (0x0006U),
+    DEFLATE  (0x0008U),
+    DEFLATE64(0x0009U),
+    BZIP2    (0x000CU),
+    LZMA     (0x000EU),
+    ZSTD     (0x005DU),
+    XZ       (0x005FU)
+    // @formatter:on
 }
-
-@Suppress("UnstableApiUsage")
-dependencyResolutionManagement {
-    repositories {
-        google()
-        mavenCentral()
-        mavenLocal()
-        maven("https://central.sonatype.com/repository/maven-snapshots")
-    }
-}
-
-enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
-include("kompress-core")
-include("kompress-gzip")
-include("kompress-zip")

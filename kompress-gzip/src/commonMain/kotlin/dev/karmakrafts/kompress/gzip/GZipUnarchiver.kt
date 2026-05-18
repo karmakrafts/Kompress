@@ -45,10 +45,13 @@ import kotlin.time.Instant
 @OptIn(InternalKompressApi::class)
 private class GZipUnarchiver( // @formatter:off
     override val source: Source,
-    override val decompressor: Inflater,
+    private val inflater: Inflater,
     private val isSourceOwned: Boolean,
     private val isDecompressorOwned: Boolean
-) : Unarchiver<GZipEntry, Inflater> { // @formatter:on
+) : Unarchiver<GZipEntry, GZipCompressionMethod> { // @formatter:on
+    override val decompressors: Map<GZipCompressionMethod, Decompressor> =
+        mapOf(GZipCompressionMethod.DEFLATE to inflater)
+
     private val buffer: Buffer = Buffer()
     private val decompressionBuffer: Buffer = Buffer()
     private var isClosed: Boolean = false
@@ -149,7 +152,7 @@ private class GZipUnarchiver( // @formatter:off
         if (!ensureBufferFilled(compressedSize)) return null // No more data
         var computedCrc32 = CRC32_INITIAL_VALUE
         buffer.decompressingSource( // @formatter:off
-            decompressor = decompressor,
+            decompressor = inflater,
             isSourceOwned = false,
             isDecompressorOwned = false
         ).use { decompressingSource -> // @formatter:on
@@ -167,7 +170,7 @@ private class GZipUnarchiver( // @formatter:off
     override fun forEachEntry(callback: UnarchiverEntryCallback<GZipEntry>) {
         while (true) {
             buffer.clear()
-            decompressor.reset() // Reset decompressor before reading data
+            inflater.reset() // Reset decompressor before reading data
             decompressionBuffer.clear()
             val header = parseHeader() ?: break
             val (result, crc32) = decompressData(header, callback) ?: break
@@ -179,7 +182,7 @@ private class GZipUnarchiver( // @formatter:off
     override fun close() {
         if (isClosed) return
         if (isSourceOwned) source.close()
-        if (isDecompressorOwned) decompressor.close()
+        if (isDecompressorOwned) inflater.close()
         isClosed = true
     }
 }
@@ -196,7 +199,7 @@ fun RawSource.ungzip( // @formatter:off
     inflater: Inflater = Inflater(),
     isSourceOwned: Boolean = true,
     isDecompressorOwned: Boolean = true
-): Unarchiver<GZipEntry, Inflater> =
+): Unarchiver<GZipEntry, GZipCompressionMethod> =
     GZipUnarchiver(buffered(), inflater, isSourceOwned, isDecompressorOwned) // @formatter:on
 
 /**
@@ -211,4 +214,4 @@ fun Source.ungzip( // @formatter:off
     inflater: Inflater = Inflater(),
     isSourceOwned: Boolean = true,
     isDecompressorOwned: Boolean = true
-): Unarchiver<GZipEntry, Inflater> = GZipUnarchiver(this, inflater, isSourceOwned, isDecompressorOwned) // @formatter:on
+): Unarchiver<GZipEntry, GZipCompressionMethod> = GZipUnarchiver(this, inflater, isSourceOwned, isDecompressorOwned) // @formatter:on

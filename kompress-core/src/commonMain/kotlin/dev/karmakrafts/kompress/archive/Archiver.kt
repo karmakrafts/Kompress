@@ -26,16 +26,16 @@ import kotlinx.io.Sink
  * Provides access to the target [Sink], the [Compressor] used to compress entries,
  * and a function to append new entries to the archive.
  */
-interface Archiver<E, C : Compressor> : AutoCloseable {
+interface Archiver<E, M : Enum<M>> : AutoCloseable {
     /**
      * The target sink being written to.
      */
     val sink: RawSink
 
     /**
-     * The compressor used for compressing entry data blocks.
+     * The compressors used for compressing entry data blocks.
      */
-    val compressor: C
+    val compressors: Map<M, Compressor>
 
     /**
      * Append a new entry to the archive.
@@ -58,7 +58,7 @@ interface Archiver<E, C : Compressor> : AutoCloseable {
  * @throws dev.karmakrafts.kompress.DataFormatException when any of the given entry data
  *  doesn't satisfy the constraints of the underlying container format.
  */
-fun <E, C : Compressor> Archiver<E, C>.appendEntry(entry: E, source: RawSource) {
+fun <E, M : Enum<M>> Archiver<E, M>.appendEntry(entry: E, source: RawSource) {
     appendEntry(entry) { sink ->
         sink.transferFrom(source) > 0L
     }
@@ -71,7 +71,7 @@ fun <E, C : Compressor> Archiver<E, C>.appendEntry(entry: E, source: RawSource) 
  * @throws dev.karmakrafts.kompress.DataFormatException when any of the given entry data
  *  doesn't satisfy the constraints of the underlying container format.
  */
-fun <E, C : Compressor> Archiver<E, C>.appendEntries(entries: Iterable<Pair<E, RawSource>>) {
+fun <E, M : Enum<M>> Archiver<E, M>.appendEntries(entries: Iterable<Pair<E, RawSource>>) {
     for ((entry, source) in entries) {
         appendEntry(entry, source)
     }

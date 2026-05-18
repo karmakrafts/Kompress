@@ -14,29 +14,25 @@
  * limitations under the License.
  */
 
-rootProject.name = "kompress"
+package dev.karmakrafts.kompress.zip
 
-pluginManagement {
-    repositories {
-        google()
-        mavenCentral()
-        mavenLocal()
-        gradlePluginPortal()
-        maven("https://central.sonatype.com/repository/maven-snapshots")
-    }
+import kotlin.jvm.JvmInline
+
+/**
+ * See [PKWARE APPNOTE](https://pkware.cachefly.net/webdocs/casestudies/APPNOTE.TXT) 4.4.4.
+ */
+@JvmInline
+value class ZipGPBF(val value: UShort) {
+    @JvmInline
+    value class Implode(val value: UShort) {}
+
+    @JvmInline
+    value class Deflate(val value: UShort) {}
+
+    @JvmInline
+    value class LZMA(val value: UShort) {}
+
+    inline val implode: Implode get() = Implode(value)
+    inline val deflate: Deflate get() = Deflate(value)
+    inline val lzma: LZMA get() = LZMA(value)
 }
-
-@Suppress("UnstableApiUsage")
-dependencyResolutionManagement {
-    repositories {
-        google()
-        mavenCentral()
-        mavenLocal()
-        maven("https://central.sonatype.com/repository/maven-snapshots")
-    }
-}
-
-enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
-include("kompress-core")
-include("kompress-gzip")
-include("kompress-zip")

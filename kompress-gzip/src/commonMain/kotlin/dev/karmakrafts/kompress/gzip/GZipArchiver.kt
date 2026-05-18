@@ -17,6 +17,7 @@
 package dev.karmakrafts.kompress.gzip
 
 import dev.karmakrafts.kompress.CRC32_INITIAL_VALUE
+import dev.karmakrafts.kompress.Compressor
 import dev.karmakrafts.kompress.Deflater
 import dev.karmakrafts.kompress.InternalKompressApi
 import dev.karmakrafts.kompress.archive.Archiver
@@ -40,10 +41,14 @@ import kotlin.time.Instant
 @OptIn(InternalKompressApi::class)
 private class GZipArchiver( // @formatter:off
     override val sink: RawSink,
-    override val compressor: Deflater,
+    private val deflater: Deflater,
     private val isSinkOwned: Boolean,
     private val isCompressorOwned: Boolean
-) : Archiver<GZipEntry, Deflater> { // @formatter:on
+) : Archiver<GZipEntry, GZipCompressionMethod> { // @formatter:on
+    override val compressors: Map<GZipCompressionMethod, Compressor> = mapOf(
+        GZipCompressionMethod.DEFLATE to deflater
+    )
+
     private val buffer: Buffer = Buffer()
     private var isClosed: Boolean = false
 
@@ -51,7 +56,7 @@ private class GZipArchiver( // @formatter:off
      * See [RFC1952](https://datatracker.ietf.org/doc/html/rfc1952) 2.3.1.
      * end of page 7.
      */
-    private fun getCurrentXFL(): UByte = when (compressor.level) {
+    private fun getCurrentXFL(): UByte = when (deflater.level) {
         GZipConstants.MIN_COMPRESSION -> GZipConstants.XFL_MIN_COMPRESSION
         GZipConstants.MAX_COMPRESSION -> GZipConstants.XFL_MAX_COMPRESSION
         else -> GZipConstants.XFL_NONE
@@ -98,7 +103,7 @@ private class GZipArchiver( // @formatter:off
         var crc32 = CRC32_INITIAL_VALUE
         var uncompressedSize = 0L
         sink.compressingSink( // @formatter:off
-            compressor = compressor,
+            compressor = deflater,
             isSinkOwned = false,
             isCompressorOwned = false
         ).use { compressingSink -> // @formatter:on
@@ -117,7 +122,7 @@ private class GZipArchiver( // @formatter:off
      * start of page 5.
      */
     override fun appendEntry(entry: GZipEntry, callback: (Sink) -> Boolean) {
-        compressor.reset()
+        deflater.reset()
         val flags = entry.computeFlags()
         appendHeader(entry, flags)
         val (crc32, uncompressedSize) = appendData(callback)
@@ -127,7 +132,7 @@ private class GZipArchiver( // @formatter:off
     override fun close() {
         if (isClosed) return
         if (isSinkOwned) sink.close()
-        if (isCompressorOwned) compressor.close()
+        if (isCompressorOwned) deflater.close()
         buffer.clear()
         isClosed = true
     }
@@ -221,4 +226,4 @@ fun RawSink.gzip( // @formatter:off
     deflater: Deflater = Deflater(),
     isSinkOwned: Boolean = true,
     isCompressorOwned: Boolean = true
-): Archiver<GZipEntry, Deflater> = GZipArchiver(this, deflater, isSinkOwned, isCompressorOwned) // @formatter:on
+): Archiver<GZipEntry, GZipCompressionMethod> = GZipArchiver(this, deflater, isSinkOwned, isCompressorOwned) // @formatter:on
