@@ -39,5 +39,3 @@ dependencyResolutionManagement {
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
 include("kompress-core")
 include("kompress-gzip")
-include("kompress-lz4")
-include("kompress-benchmarks")
