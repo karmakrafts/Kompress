@@ -72,6 +72,7 @@ kotlin {
             dependencies {
                 api(libs.kotlinx.io.bytestring)
                 api(libs.kotlinx.io.core)
+                api(libs.kotlinx.datetime)
             }
         }
         jvmMain {

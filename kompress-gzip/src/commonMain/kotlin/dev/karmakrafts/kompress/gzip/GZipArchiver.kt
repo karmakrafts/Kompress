@@ -24,7 +24,8 @@ import dev.karmakrafts.kompress.archive.Archiver
 import dev.karmakrafts.kompress.compressingSink
 import dev.karmakrafts.kompress.crc32
 import dev.karmakrafts.kompress.util.FileUtils
-import dev.karmakrafts.kompress.util.writeZTLatin1String
+import dev.karmakrafts.kompress.util.writeLatin1String
+import dev.karmakrafts.kompress.util.zeroTerminate
 import kotlinx.io.Buffer
 import kotlinx.io.RawSink
 import kotlinx.io.RawSource
@@ -75,6 +76,10 @@ private class GZipArchiver( // @formatter:off
         buffer.writeUShortLe(crc16)
     }
 
+    private fun flushBuffer() {
+        sink.write(buffer, buffer.size)
+    }
+
     /**
      * See [RFC1952](https://datatracker.ietf.org/doc/html/rfc1952) 2.3.
      * start of page 5.
@@ -87,16 +92,16 @@ private class GZipArchiver( // @formatter:off
         buffer.writeUByte(getCurrentXFL())
         buffer.writeUByte(entry.os.encodedValue)
         entry.extraField?.let(::appendExtraField)
-        entry.name?.let(buffer::writeZTLatin1String)
-        entry.comment?.let(buffer::writeZTLatin1String)
+        entry.name?.let { name -> buffer.zeroTerminate { writeLatin1String(name) } }
+        entry.comment?.let { comment -> buffer.zeroTerminate { writeLatin1String(comment) } }
         if (flags.fhcrc) appendHeaderChecksum()
-        sink.write(buffer, buffer.size)
+        flushBuffer()
     }
 
     private fun appendTrailer(crc32: UInt, uncompressedSize: Long) {
         buffer.writeUIntLe(crc32)
         buffer.writeUIntLe(uncompressedSize.toUInt())
-        sink.write(buffer, buffer.size)
+        flushBuffer()
     }
 
     private inline fun appendData(callback: (Sink) -> Boolean): Pair<UInt, Long> {

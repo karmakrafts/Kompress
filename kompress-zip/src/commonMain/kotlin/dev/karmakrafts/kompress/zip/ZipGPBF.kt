@@ -16,50 +16,92 @@
 
 package dev.karmakrafts.kompress.zip
 
-import dev.karmakrafts.kompress.zip.ZipGPBF.Companion.OMIT_CHECKSUM_AND_SIZES
-import dev.karmakrafts.kompress.zip.ZipGPBF.Companion.PATCHED_DATA
-import dev.karmakrafts.kompress.zip.ZipGPBF.Companion.STRONG_ENCRYPTION
-import dev.karmakrafts.kompress.zip.ZipGPBF.Deflate
-import dev.karmakrafts.kompress.zip.ZipGPBF.LZMA
 import kotlin.jvm.JvmInline
 
 /**
  * See [PKWARE APPNOTE](https://pkware.cachefly.net/webdocs/casestudies/APPNOTE.TXT) 4.4.4.
  */
-sealed interface ZipGPBF {
+@JvmInline
+value class ZipGPBF(val value: UShort) {
     companion object {
         const val OMIT_CHECKSUM_AND_SIZES: UShort = 0b00000000_00000100U
         const val PATCHED_DATA: UShort = 0b00000000_00010000U
         const val STRONG_ENCRYPTION: UShort = 0b00000000_00100000U
+        const val LANGUAGE_ENCODING: UShort = 0b00000100_00000000U
+        const val MASKED_HEADER_VALUES: UShort = 0b00010000_00000000U
     }
 
+    constructor(
+        deflate: Deflate,
+        omitChecksumAndSizes: Boolean = false,
+        isPatchedData: Boolean = false,
+        hasStrongEncryption: Boolean = false,
+        languageEncoding: Boolean = false,
+        maskedHeaderValues: Boolean = false
+    ) : this( // @formatter:off
+        deflate.value
+            or if(omitChecksumAndSizes) OMIT_CHECKSUM_AND_SIZES else 0U.toUShort()
+            or if(isPatchedData) PATCHED_DATA else 0U.toUShort()
+            or if(hasStrongEncryption) STRONG_ENCRYPTION else 0U.toUShort()
+            or if(languageEncoding) LANGUAGE_ENCODING else 0U.toUShort()
+            or if(maskedHeaderValues) MASKED_HEADER_VALUES else 0U.toUShort()
+    ) // @formatter:on
+
+    constructor(
+        lzma: LZMA,
+        omitChecksumAndSizes: Boolean = false,
+        isPatchedData: Boolean = false,
+        hasStrongEncryption: Boolean = false,
+        languageEncoding: Boolean = false,
+        maskedHeaderValues: Boolean = false
+    ) : this( // @formatter:off
+        lzma.value
+            or if(omitChecksumAndSizes) OMIT_CHECKSUM_AND_SIZES else 0U.toUShort()
+            or if(isPatchedData) PATCHED_DATA else 0U.toUShort()
+            or if(hasStrongEncryption) STRONG_ENCRYPTION else 0U.toUShort()
+            or if(languageEncoding) LANGUAGE_ENCODING else 0U.toUShort()
+            or if(maskedHeaderValues) MASKED_HEADER_VALUES else 0U.toUShort()
+    ) // @formatter:on
+
     @JvmInline
-    value class Deflate(override val value: UShort) : ZipGPBF {
+    value class Deflate(val value: UShort) {
+        constructor(
+            compressionType: ZipDeflateCompressionType
+        ) : this(compressionType.encodedValue)
+
         inline val compressionType: ZipDeflateCompressionType
             get() = ZipDeflateCompressionType.byEncodedValue(value and 0b11U)
     }
 
     @JvmInline
-    value class LZMA(override val value: UShort) : ZipGPBF {
+    value class LZMA(val value: UShort) {
         companion object {
             const val EOS_MARKER_PRESENT: UShort = 0b00000000_00000001U
         }
+
+        constructor(
+            eosMarkerPresent: Boolean
+        ) : this(if (eosMarkerPresent) EOS_MARKER_PRESENT else 0U)
 
         inline val eosMarkerPresent: Boolean
             get() = value and EOS_MARKER_PRESENT != 0U.toUShort()
     }
 
-    val value: UShort
+    inline val deflate: Deflate get() = Deflate(value)
+    inline val lzma: LZMA get() = LZMA(value)
+
+    inline val omitChecksumAndSizes: Boolean
+        get() = value and OMIT_CHECKSUM_AND_SIZES != 0U.toUShort()
+
+    inline val isPatchedData: Boolean
+        get() = value and PATCHED_DATA != 0U.toUShort()
+
+    inline val hasStrongEncryption: Boolean
+        get() = value and STRONG_ENCRYPTION != 0U.toUShort()
+
+    inline val languageEncoding: Boolean
+        get() = value and LANGUAGE_ENCODING != 0U.toUShort()
+
+    inline val maskedHeaderValues: Boolean
+        get() = value and MASKED_HEADER_VALUES != 0U.toUShort()
 }
-
-inline val ZipGPBF.deflate: Deflate get() = Deflate(value)
-inline val ZipGPBF.lzma: LZMA get() = LZMA(value)
-
-inline val ZipGPBF.omitCheckSumAndSizes: Boolean
-    get() = value and OMIT_CHECKSUM_AND_SIZES != 0U.toUShort()
-
-inline val ZipGPBF.isPatchedData: Boolean
-    get() = value and PATCHED_DATA != 0U.toUShort()
-
-inline val ZipGPBF.hasStrongEncryption: Boolean
-    get() = value and STRONG_ENCRYPTION != 0U.toUShort()

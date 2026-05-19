@@ -26,8 +26,8 @@ import kotlinx.io.Source
  *  outside the valid LATIN-1 range.
  */
 @InternalKompressApi
-fun String.encodeToZTLatin1(): ByteArray {
-    val result = ByteArray(length + 1)
+fun String.encodeToLatin1(): ByteArray {
+    val result = ByteArray(length)
     for (index in indices) {
         val codepoint = this[index].code
         if (codepoint > 0xFF) throw DataFormatException("Character outside LATIN-1 range")
@@ -41,48 +41,23 @@ fun String.encodeToZTLatin1(): ByteArray {
  *  outside the valid LATIN-1 range.
  */
 @InternalKompressApi
-fun Sink.writeZTLatin1String(value: String) = write(value.encodeToZTLatin1())
+fun Sink.writeLatin1String(value: String) = write(value.encodeToLatin1())
 
-// TODO: check this
 @InternalKompressApi
-fun ByteArray.decodeFromZTLatin1(): String {
-    val chars = CharArray(size - 1)
-    for (index in 0..<lastIndex) { // Skip null terminator
+fun ByteArray.decodeFromLatin1(): String {
+    val chars = CharArray(size)
+    for (index in indices) {
         chars[index] = (this[index].toInt() and 0xFF).toChar()
     }
     return chars.concatToString()
 }
 
-// TODO: optimize this
 @InternalKompressApi
-fun Source.readZTStringAsSize(): Long {
+fun Source.readLatin1String(size: Int = peek().bytesUntilZeroTerminator().toInt()): String {
+    val result = CharArray(size)
     var byte = readByte()
-    var index = 0L
-    // First probe for length of the string
-    while (byte != 0.toByte()) {
-        index++
-        byte = readByte()
-    }
-    return index
-}
-
-// TODO: check this
-// TODO: optimize this
-@InternalKompressApi
-fun Source.readZTLatin1String(): String {
-    val peeking = peek()
-    var byte = peeking.readByte()
     var index = 0
-    // First probe for length of the string
-    while (byte != 0.toByte()) {
-        index++
-        byte = peeking.readByte()
-    }
-    // Then allocate array and copy
-    val result = CharArray(index)
-    byte = readByte()
-    index = 0
-    while (byte != 0.toByte()) {
+    while (index < size) {
         result[index++] = (byte.toInt() and 0xFF).toChar()
         byte = readByte()
     }

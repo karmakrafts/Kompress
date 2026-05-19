@@ -16,7 +16,12 @@
 
 package dev.karmakrafts.kompress.zip
 
+import kotlin.time.Instant
+
 data class ZipEntry(
+    val modificationTime: Instant,
     val name: String,
-    val compressionMethod: ZipCompressionMethod = ZipCompressionMethod.DEFLATE
+    val extraField: ByteArray? = null,
+    val compressionMethod: ZipCompressionMethod = ZipCompressionMethod.DEFLATE,
+    val gpbf: ZipGPBF = ZipGPBF(0U.toUShort())
 )

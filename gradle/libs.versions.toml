@@ -7,6 +7,7 @@ kompress = "1.5.0"
 kotlin = "2.3.21" # https://github.com/JetBrains/kotlin/releases
 kotlinxIo = "0.9.0" # https://github.com/Kotlin/kotlinx-io/releases
 kotlinxBenchmark = "0.4.17" # https://github.com/Kotlin/kotlinx-benchmark/releases
+kotlinxDateTime = "0.8.0" # https://github.com/Kotlin/kotlinx-datetime/releases
 kotlinBrowser = "2026.5.4" # https://github.com/JetBrains/kotlin-wrappers/releases
 dokka = "2.2.0" # https://github.com/Kotlin/dokka/releases
 karmaConventions = "1.16.4" # https://github.com/karmakrafts/karma-conventions/tags
@@ -22,6 +23,7 @@ kotlin-wrappers-browser = { module = "org.jetbrains.kotlin-wrappers:kotlin-brows
 kotlinx-io-bytestring = { module = "org.jetbrains.kotlinx:kotlinx-io-bytestring", version.ref = "kotlinxIo" }
 kotlinx-io-core = { module = "org.jetbrains.kotlinx:kotlinx-io-core", version.ref = "kotlinxIo" }
 kotlinx-benchmark-runtime = { module = "org.jetbrains.kotlinx:kotlinx-benchmark-runtime", version.ref = "kotlinxBenchmark" }
+kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinxDateTime" }
 oshi-core = { module = "com.github.oshi:oshi-core", version.ref = "oshi" }
 lz4java = { module = "at.yawk.lz4:lz4-java", version.ref = "lz4java" }
 

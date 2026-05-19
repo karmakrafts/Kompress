@@ -16,17 +16,23 @@
 
 package dev.karmakrafts.kompress.zip
 
-enum class ZipDeflateCompressionType(val encodedValue: UShort) {
+import kotlinx.io.Source
+
+/**
+ * See [PKWARE APPNOTE](https://pkware.cachefly.net/webdocs/casestudies/APPNOTE.TXT) 4.5.2.
+ */
+enum class ZipExtraFieldEntryHeaderId( // @formatter:off
+    val encodedValue: UShort,
+    private val parser: (Source) -> ZipExtraFieldEntryData
+) { // @formatter:on
     // @formatter:off
-    NORMAL    (0b00U),
-    MAXIMUM   (0b01U),
-    FAST      (0b10U),
-    SUPER_FAST(0b11U);
+    ZIP64_EXTENDED_INFORMATION(0x0001U, ZipExtraFieldEntryData.Zip64::decode);
     // @formatter:on
 
+    fun parse(source: Source): ZipExtraFieldEntryData = parser(source)
+
     companion object {
-        fun byEncodedValue(encodedValue: UShort): ZipDeflateCompressionType = entries.first { type ->
-            type.encodedValue == encodedValue
-        }
+        fun byEncodedValue(encodedValue: UShort): ZipExtraFieldEntryHeaderId =
+            entries.first { id -> id.encodedValue == encodedValue }
     }
 }

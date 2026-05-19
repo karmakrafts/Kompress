@@ -14,19 +14,28 @@
  * limitations under the License.
  */
 
-package dev.karmakrafts.kompress.zip
+package dev.karmakrafts.kompress.util
 
-enum class ZipDeflateCompressionType(val encodedValue: UShort) {
-    // @formatter:off
-    NORMAL    (0b00U),
-    MAXIMUM   (0b01U),
-    FAST      (0b10U),
-    SUPER_FAST(0b11U);
-    // @formatter:on
+import dev.karmakrafts.kompress.InternalKompressApi
+import kotlinx.io.Sink
+import kotlinx.io.Source
+import kotlinx.io.writeUByte
 
-    companion object {
-        fun byEncodedValue(encodedValue: UShort): ZipDeflateCompressionType = entries.first { type ->
-            type.encodedValue == encodedValue
-        }
+@InternalKompressApi
+fun Source.bytesUntilZeroTerminator(): Long {
+    var byte = readByte()
+    var index = 0L
+    // First probe for length of the string
+    while (byte != 0.toByte()) {
+        index++
+        byte = readByte()
     }
+    return index
+}
+
+@InternalKompressApi
+inline fun <reified R> Sink.zeroTerminate(function: Sink.() -> R): R {
+    val result = function(this)
+    writeUByte(0.toUByte())
+    return result
 }
