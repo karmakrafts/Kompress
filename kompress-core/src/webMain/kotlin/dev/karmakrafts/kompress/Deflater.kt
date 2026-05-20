@@ -59,10 +59,10 @@ private class DeflaterImpl( // @formatter:off
             setInput(value)
         }
 
-    override val needsInput: Boolean
-        get() = !inputPending
-    override val finished: Boolean
-        get() = finalSeen && outQueue.isEmpty()
+    override val needsInput: Boolean get() = !inputPending
+    override val finished: Boolean get() = finalSeen && outQueue.isEmpty()
+    override val bytesRead: Long = 0L // TODO: implement this
+    override val bytesWritten: Long = 0L // TODO: implement this
 
     override fun setInput(data: ByteArray, offset: Int, size: Int) {
         inputPending = true

@@ -16,16 +16,20 @@
 
 package dev.karmakrafts.kompress.zip
 
-import kotlin.time.Instant
+import kotlinx.io.Sink
+import kotlin.jvm.JvmInline
 
-data class ZipEntry(
-    val modificationTime: Instant,
-    val name: String,
-    val comment: String? = null,
-    val extraFields: ZipExtraFieldContainer = ZipExtraFieldContainer.empty(),
-    val compressionMethod: ZipCompressionMethod = ZipCompressionMethod.DEFLATE,
-    val gpbf: ZipGPBF = ZipGPBF()
-) {
-    val isZip64: Boolean
-        get() = extraFields.any { entry -> entry.headerId == ZipExtraFieldEntryHeaderId.ZIP64_EXTENDED_INFORMATION }
+@JvmInline
+value class ZipExtraFieldContainer(
+    val delegate: List<ZipExtraFieldEntry>
+) : List<ZipExtraFieldEntry> by delegate {
+    companion object {
+        fun empty(): ZipExtraFieldContainer = ZipExtraFieldContainer(emptyList())
+    }
+
+    inline val byteSize: Long get() = sumOf(ZipExtraFieldEntry::size)
+
+    fun encode(sink: Sink) {
+        // TODO: implement this
+    }
 }

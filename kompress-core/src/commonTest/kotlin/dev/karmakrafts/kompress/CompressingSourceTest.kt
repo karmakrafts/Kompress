@@ -115,6 +115,8 @@ class CompressingSourceTest {
         override var inputOffset: Int = 0
         override var inputSize: Int = 0
         override val remaining: Int get() = inputSize
+        override val bytesRead: Long = 0L
+        override val bytesWritten: Long = 0L
 
         override fun setInput(data: ByteArray, offset: Int, size: Int) {
             _input = data

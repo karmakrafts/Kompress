@@ -108,6 +108,9 @@ class DecompressingSinkTest {
         override val remaining: Int
             get() = inputSize
 
+        override val bytesRead: Long = 0L
+        override val bytesWritten: Long = 0L
+
         override var input: ByteArray
             get() = _input
             set(value) {

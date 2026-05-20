@@ -32,63 +32,18 @@ value class ZipGPBF(val value: UShort) {
     }
 
     constructor(
-        deflate: Deflate,
-        omitChecksumAndSizes: Boolean = false,
+        omitChecksumAndSizes: Boolean = true,
         isPatchedData: Boolean = false,
         hasStrongEncryption: Boolean = false,
-        languageEncoding: Boolean = false,
+        languageEncoding: Boolean = true,
         maskedHeaderValues: Boolean = false
     ) : this( // @formatter:off
-        deflate.value
-            or if(omitChecksumAndSizes) OMIT_CHECKSUM_AND_SIZES else 0U.toUShort()
+        if(omitChecksumAndSizes) OMIT_CHECKSUM_AND_SIZES else 0U.toUShort()
             or if(isPatchedData) PATCHED_DATA else 0U.toUShort()
             or if(hasStrongEncryption) STRONG_ENCRYPTION else 0U.toUShort()
             or if(languageEncoding) LANGUAGE_ENCODING else 0U.toUShort()
             or if(maskedHeaderValues) MASKED_HEADER_VALUES else 0U.toUShort()
     ) // @formatter:on
-
-    constructor(
-        lzma: LZMA,
-        omitChecksumAndSizes: Boolean = false,
-        isPatchedData: Boolean = false,
-        hasStrongEncryption: Boolean = false,
-        languageEncoding: Boolean = false,
-        maskedHeaderValues: Boolean = false
-    ) : this( // @formatter:off
-        lzma.value
-            or if(omitChecksumAndSizes) OMIT_CHECKSUM_AND_SIZES else 0U.toUShort()
-            or if(isPatchedData) PATCHED_DATA else 0U.toUShort()
-            or if(hasStrongEncryption) STRONG_ENCRYPTION else 0U.toUShort()
-            or if(languageEncoding) LANGUAGE_ENCODING else 0U.toUShort()
-            or if(maskedHeaderValues) MASKED_HEADER_VALUES else 0U.toUShort()
-    ) // @formatter:on
-
-    @JvmInline
-    value class Deflate(val value: UShort) {
-        constructor(
-            compressionType: ZipDeflateCompressionType
-        ) : this(compressionType.encodedValue)
-
-        inline val compressionType: ZipDeflateCompressionType
-            get() = ZipDeflateCompressionType.byEncodedValue(value and 0b11U)
-    }
-
-    @JvmInline
-    value class LZMA(val value: UShort) {
-        companion object {
-            const val EOS_MARKER_PRESENT: UShort = 0b00000000_00000001U
-        }
-
-        constructor(
-            eosMarkerPresent: Boolean
-        ) : this(if (eosMarkerPresent) EOS_MARKER_PRESENT else 0U)
-
-        inline val eosMarkerPresent: Boolean
-            get() = value and EOS_MARKER_PRESENT != 0U.toUShort()
-    }
-
-    inline val deflate: Deflate get() = Deflate(value)
-    inline val lzma: LZMA get() = LZMA(value)
 
     inline val omitChecksumAndSizes: Boolean
         get() = value and OMIT_CHECKSUM_AND_SIZES != 0U.toUShort()

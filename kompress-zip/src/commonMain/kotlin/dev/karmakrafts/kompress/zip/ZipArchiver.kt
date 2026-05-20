@@ -16,19 +16,25 @@
 
 package dev.karmakrafts.kompress.zip
 
+import dev.karmakrafts.kompress.CRC32_INITIAL_VALUE
 import dev.karmakrafts.kompress.Compressor
 import dev.karmakrafts.kompress.Deflater
 import dev.karmakrafts.kompress.InternalKompressApi
+import dev.karmakrafts.kompress.UnsupportedCompressionMethodException
 import dev.karmakrafts.kompress.archive.Archiver
+import dev.karmakrafts.kompress.compressingSink
+import dev.karmakrafts.kompress.crc32
+import dev.karmakrafts.kompress.util.packDateWord
+import dev.karmakrafts.kompress.util.packTimeWord
 import dev.karmakrafts.kompress.util.writeCP437String
 import kotlinx.datetime.TimeZone
-import kotlinx.datetime.number
 import kotlinx.datetime.toLocalDateTime
 import kotlinx.io.Buffer
 import kotlinx.io.RawSink
 import kotlinx.io.Sink
 import kotlinx.io.writeString
 import kotlinx.io.writeUIntLe
+import kotlinx.io.writeULongLe
 import kotlinx.io.writeUShortLe
 import kotlin.time.Instant
 
@@ -41,11 +47,16 @@ private class ZipArchiver(
 ) : Archiver<ZipEntry, ZipCompressionMethod> {
     private val buffer: Buffer = Buffer()
     private var isClosed: Boolean = false
+    private val entries: ArrayDeque<ZipEntry> = ArrayDeque()
 
     private fun flushBuffer() {
         sink.write(buffer, buffer.size)
     }
 
+    /**
+     * Writes a raw CP437 or UTF-8 string based on the [entry]'s given
+     * language encoding flag. See [ZipGPBF.languageEncoding].
+     */
     private fun writeString(entry: ZipEntry, value: String) {
         if (entry.gpbf.languageEncoding) {
             // We need to encode as UTF-8 directly
@@ -60,27 +71,23 @@ private class ZipArchiver(
      */
     private fun writeTimestamp(value: Instant) {
         val localDateTime = value.toLocalDateTime(TimeZone.currentSystemDefault())
-        // Calculate timeword and write it
-        val hours = (localDateTime.hour and 0b1111).toUInt()
-        val minutes = (localDateTime.minute and 0b1111).toUInt()
-        val seconds = ((localDateTime.second shr 1) and 0b1111).toUInt()
-        val timeWord = (hours shl 11) or (minutes shl 5) or seconds
-        buffer.writeUShortLe(timeWord.toUShort())
-        // Calculate dateword and write it
-        val year = ((localDateTime.year - 1980) and 0b111111).toUInt()
-        val month = (localDateTime.month.number and 0b111).toUInt()
-        val day = (localDateTime.day and 0b1111).toUInt()
-        val dateWord = (year shl 9) or (month shl 5) or day
-        buffer.writeUShortLe(dateWord.toUShort())
+        buffer.writeUShortLe(localDateTime.packTimeWord())
+        buffer.writeUShortLe(localDateTime.packDateWord())
     }
 
     /**
      * See [PKWARE APPNOTE](https://pkware.cachefly.net/webdocs/casestudies/APPNOTE.TXT) 4.3.9.
      */
-    private fun writeDataDescriptor() {
-        buffer.writeUIntLe(0U) // TODO: Implement CRC-32
-        buffer.writeUIntLe(0U) // TODO: Implement compressed size
-        buffer.writeUIntLe(0U) // TODO: Implement uncompressed size
+    private fun writeDataDescriptor(isZip64: Boolean, checksum: UInt, uncompressedSize: Long, compressedSize: Long) {
+        buffer.writeUIntLe(checksum)
+        // When dealing with ZIP64, size fields are 8 bytes instead of 4
+        if (isZip64) {
+            buffer.writeULongLe(compressedSize.toULong())
+            buffer.writeULongLe(uncompressedSize.toULong())
+            return
+        }
+        buffer.writeUIntLe(compressedSize.toUInt())
+        buffer.writeUIntLe(uncompressedSize.toUInt())
     }
 
     /**
@@ -92,30 +99,67 @@ private class ZipArchiver(
         buffer.writeUShortLe(entry.gpbf.value)
         buffer.writeUShortLe(entry.compressionMethod.encodedValue)
         writeTimestamp(entry.modificationTime)
-        writeDataDescriptor()
+        if (entry.gpbf.omitChecksumAndSizes) writeDataDescriptor(entry.isZip64, 0U, 0L, 0L)
+        else writeDataDescriptor(entry.isZip64, 0U, 0L, 0L) // TODO: implement support for these
         buffer.writeUShortLe(entry.name.length.toUShort())
-        buffer.writeUShortLe(entry.extraField?.size?.toUShort() ?: 0U)
+        buffer.writeUShortLe(entry.extraFields.byteSize.toUShort())
         writeString(entry, entry.name)
-        entry.extraField?.let(buffer::write)
+        entry.extraFields.encode(buffer)
         flushBuffer()
     }
 
     /**
      * @see writeDataDescriptor
      */
-    private fun appendDataDescriptor() {
-        writeDataDescriptor()
+    private fun appendDataDescriptor(isZip64: Boolean, checksum: UInt, uncompressedSize: Long, compressedSize: Long) {
+        writeDataDescriptor(isZip64, checksum, uncompressedSize, compressedSize)
         flushBuffer()
+    }
+
+    private fun appendCentralDirectoryHeader(entry: ZipEntry) {
+        // TODO: implement this
+    }
+
+    private inline fun appendData(compressor: Compressor, callback: (Sink) -> Boolean): UInt {
+        var crc32 = CRC32_INITIAL_VALUE
+        sink.compressingSink( // @formatter:off
+            compressor = compressor,
+            isSinkOwned = false,
+            isCompressorOwned = false
+        ).use { compressingSink -> // @formatter:on
+            while (callback(buffer)) {
+                crc32 = buffer.peek().crc32(buffer.size, crc32)
+                val chunkSize = buffer.size
+                compressingSink.write(buffer, chunkSize)
+            }
+        }
+        return crc32
     }
 
     override fun appendEntry(entry: ZipEntry, callback: (Sink) -> Boolean) {
         appendLocalFileHeader(entry)
-        // TODO: add compressed data
-        if (entry.gpbf.omitChecksumAndSizes) appendDataDescriptor()
+        val method = entry.compressionMethod
+        val compressor = compressors[method]
+            ?: throw UnsupportedCompressionMethodException("No compressor specified for ZIP compression method $method")
+        compressor.reset()
+        val checksum = appendData(compressor, callback)
+        if (entry.gpbf.omitChecksumAndSizes) {
+            appendDataDescriptor(entry.isZip64, checksum, compressor.bytesRead, compressor.bytesWritten)
+        }
+        entries += entry // Queue entry so we can generate CDHs
+    }
+
+    private fun finalizeArchive() {
+        // TODO: we don't support ADH and AEDR right now, so just omit it
+        // Generate central directory headers for all queued ZIP entries
+        while (entries.isNotEmpty()) {
+            appendCentralDirectoryHeader(entries.removeFirst())
+        }
     }
 
     override fun close() {
         if (isClosed) return
+        finalizeArchive()
         if (isSinkOwned) sink.close()
         if (areCompressorsOwned) compressors.values.forEach(AutoCloseable::close)
         isClosed = true

@@ -25,6 +25,9 @@ import kotlinx.io.Sink
  * Base interface for all archiver implementations.
  * Provides access to the target [Sink], the [Compressor] used to compress entries,
  * and a function to append new entries to the archive.
+ *
+ * @param E the type of entry this archiver uses.
+ * @param M the type of compression modes this archiver supports.
  */
 interface Archiver<E, M : Enum<M>> : AutoCloseable {
     /**

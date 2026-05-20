@@ -21,6 +21,9 @@ import kotlinx.io.Source
 import kotlinx.io.readUShortLe
 import kotlinx.io.writeUShortLe
 
+/**
+ * See [PKWARE APPNOTE](https://pkware.cachefly.net/webdocs/casestudies/APPNOTE.TXT) 4.5.2.
+ */
 data class ZipExtraFieldEntry( // @formatter:off
     val headerId: ZipExtraFieldEntryHeaderId,
     val data: ZipExtraFieldEntryData
@@ -34,9 +37,11 @@ data class ZipExtraFieldEntry( // @formatter:off
         }
     }
 
+    inline val size: Long get() = UShort.SIZE_BYTES.toLong() * 2 + data.size
+
     fun encode(sink: Sink) {
         sink.writeUShortLe(headerId.encodedValue)
-        sink.writeUShortLe(data.size)
+        sink.writeUShortLe(data.size.toUShort())
         data.encode(sink)
     }
 }

@@ -50,6 +50,16 @@ interface Decompressor : AutoCloseable {
     val remaining: Int
 
     /**
+     * The total number of bytes read in by this compressor instance since its last reset.
+     */
+    val bytesRead: Long
+
+    /**
+     * The total number of bytes written out by this compressor instance since its last reset.
+     */
+    val bytesWritten: Long
+
+    /**
      * True when the input buffer does not contain any more
      * data to decompress.
      */

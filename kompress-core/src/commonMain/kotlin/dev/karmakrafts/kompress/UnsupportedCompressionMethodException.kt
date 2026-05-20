@@ -14,18 +14,9 @@
  * limitations under the License.
  */
 
-package dev.karmakrafts.kompress.zip
+package dev.karmakrafts.kompress
 
-import kotlin.time.Instant
-
-data class ZipEntry(
-    val modificationTime: Instant,
-    val name: String,
-    val comment: String? = null,
-    val extraFields: ZipExtraFieldContainer = ZipExtraFieldContainer.empty(),
-    val compressionMethod: ZipCompressionMethod = ZipCompressionMethod.DEFLATE,
-    val gpbf: ZipGPBF = ZipGPBF()
-) {
-    val isZip64: Boolean
-        get() = extraFields.any { entry -> entry.headerId == ZipExtraFieldEntryHeaderId.ZIP64_EXTENDED_INFORMATION }
-}
+class UnsupportedCompressionMethodException(message: String? = null, cause: Throwable? = null) : KompressException(
+    message,
+    cause
+)

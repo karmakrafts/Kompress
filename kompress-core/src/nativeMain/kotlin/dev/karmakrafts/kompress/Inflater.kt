@@ -54,7 +54,12 @@ private class InflaterImpl( // @formatter:off
 
     override var inputOffset: Int = 0
     override var inputSize: Int = 0
+
     override var remaining: Int = 0
+        private set
+    override var bytesRead: Long = 0L
+        private set
+    override var bytesWritten: Long = 0L
         private set
 
     private var pinnedInput: Pinned<ByteArray>? = null
@@ -66,14 +71,12 @@ private class InflaterImpl( // @formatter:off
             setInput(value)
         }
 
-    override val needsInput: Boolean
-        get() = stream.avail_in == 0u
+    override val needsInput: Boolean get() = stream.avail_in == 0u
 
     private var finishRequested: Boolean = false
 
     private var _finished: Boolean = false
-    override val finished: Boolean
-        get() = _finished
+    override val finished: Boolean get() = _finished
 
     private var isClosed: Boolean = false
 
@@ -114,7 +117,10 @@ private class InflaterImpl( // @formatter:off
             else (if (flush) Z_SYNC_FLUSH else Z_NO_FLUSH)
             val result = inflate(stream.ptr, flush)
             val written = (outBefore - stream.avail_out).toInt()
-            remaining = max(0, remaining - (inBefore - stream.avail_in).toInt())
+            val read = (inBefore - stream.avail_in).toInt()
+            remaining = max(0, remaining - read)
+            bytesRead += read
+            bytesWritten += written
 
             if (result == Z_STREAM_END) {
                 _finished = true
@@ -144,6 +150,8 @@ private class InflaterImpl( // @formatter:off
         setInput(ByteArray(0))
         finishRequested = false
         _finished = false
+        bytesRead = 0L
+        bytesWritten = 0L
     }
 }
 

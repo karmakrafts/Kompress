@@ -41,6 +41,8 @@ private class InflaterImpl(raw: Boolean) : Inflater {
     override val remaining: Int get() = impl.remaining
     override val needsInput: Boolean get() = impl.needsInput()
     override val finished: Boolean get() = impl.finished()
+    override val bytesRead: Long get() = impl.bytesRead
+    override val bytesWritten: Long get() = impl.bytesWritten
 
     override fun setInput(data: ByteArray, offset: Int, size: Int) {
         _input = data

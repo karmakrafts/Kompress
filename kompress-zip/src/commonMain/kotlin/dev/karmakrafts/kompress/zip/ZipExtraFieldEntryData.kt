@@ -23,11 +23,17 @@ import kotlinx.io.readULongLe
 import kotlinx.io.writeUIntLe
 import kotlinx.io.writeULongLe
 
+/**
+ * See [PKWARE APPNOTE](https://pkware.cachefly.net/webdocs/casestudies/APPNOTE.TXT) 4.5.2.
+ */
 sealed interface ZipExtraFieldEntryData {
-    val size: UShort
+    val size: Long
 
     fun encode(sink: Sink)
 
+    /**
+     * See [PKWARE APPNOTE](https://pkware.cachefly.net/webdocs/casestudies/APPNOTE.TXT) 4.5.3.
+     */
     data class Zip64( // @formatter:off
         val uncompressedSize: ULong,
         val compressedSize: ULong,
@@ -35,7 +41,7 @@ sealed interface ZipExtraFieldEntryData {
         val startDiskIndex: UInt
     ) : ZipExtraFieldEntryData { // @formatter:on
         companion object {
-            const val SIZE: Long = 28L
+            const val SIZE: Long = (ULong.SIZE_BYTES * 3 + UInt.SIZE_BYTES).toLong()
 
             fun decode(source: Source): Zip64 = Zip64(
                 uncompressedSize = source.readULongLe(),
@@ -45,7 +51,7 @@ sealed interface ZipExtraFieldEntryData {
             )
         }
 
-        override val size: UShort = SIZE.toUShort()
+        override val size: Long = SIZE
 
         override fun encode(sink: Sink) {
             sink.writeULongLe(uncompressedSize)

@@ -64,7 +64,7 @@ private val reverseLookup: Map<Char, Byte> = buildMap {
  */
 @InternalKompressApi
 fun String.encodeToCP437(): ByteArray {
-    val result = ByteArray(length + 1)
+    val result = ByteArray(length)
     for (index in indices) {
         val codepoint = this[index]
         if (codepoint.code > 0xFF) throw DataFormatException("Character outside CP437 range")

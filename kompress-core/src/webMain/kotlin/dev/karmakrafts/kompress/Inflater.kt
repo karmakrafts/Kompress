@@ -55,11 +55,10 @@ private class InflaterImpl(raw: Boolean) : Inflater {
             setInput(value)
         }
 
-    override val needsInput: Boolean
-        get() = !inputPending && outQueue.isEmpty()
-
-    override val finished: Boolean
-        get() = finalSeen && outQueue.isEmpty()
+    override val needsInput: Boolean get() = !inputPending && outQueue.isEmpty()
+    override val finished: Boolean get() = finalSeen && outQueue.isEmpty()
+    override val bytesRead: Long = 0L // TODO: implement this
+    override val bytesWritten: Long = 0L // TODO: implement this
 
     override fun setInput(data: ByteArray, offset: Int, size: Int) {
         _input = data

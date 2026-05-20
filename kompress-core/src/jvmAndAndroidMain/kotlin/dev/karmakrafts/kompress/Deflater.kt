@@ -50,6 +50,8 @@ private class DeflaterImpl( // @formatter:off
     override val remaining: Int get() = _input.size - impl.totalIn
     override val needsInput: Boolean get() = impl.needsInput()
     override val finished: Boolean get() = impl.finished()
+    override val bytesRead: Long get() = impl.bytesRead
+    override val bytesWritten: Long get() = impl.bytesWritten
 
     override fun setInput(data: ByteArray, offset: Int, size: Int) {
         _input = data
