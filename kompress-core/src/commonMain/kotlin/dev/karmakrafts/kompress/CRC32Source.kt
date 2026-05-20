@@ -38,19 +38,21 @@ private class CRC32SourceImpl( // @formatter:off
     private val delegate: RawSource,
     private val isSourceOwned: Boolean
 ) : CRC32Source { // @formatter:on
-    override var checksum: UInt = CRC32_INITIAL_VALUE
-        private set
+    override val checksum: UInt
+        get() = rawChecksum.inv()
+
+    private var rawChecksum: UInt = CRC32_INITIAL_VALUE
 
     override fun readAtMostTo(sink: Buffer, byteCount: Long): Long {
         val read = delegate.readAtMostTo(sink, byteCount)
-        if (read != 0L && sink.size > 0L) {
-            checksum = sink.peek().crc32(read, checksum)
+        if (read > 0L) {
+            rawChecksum = sink.peek().crc32Round(read, rawChecksum)
         }
         return read
     }
 
     override fun reset() {
-        checksum = CRC32_INITIAL_VALUE
+        rawChecksum = CRC32_INITIAL_VALUE
     }
 
     override fun close() {

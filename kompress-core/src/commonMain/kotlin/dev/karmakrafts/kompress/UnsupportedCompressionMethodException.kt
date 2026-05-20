@@ -17,6 +17,5 @@
 package dev.karmakrafts.kompress
 
 class UnsupportedCompressionMethodException(message: String? = null, cause: Throwable? = null) : KompressException(
-    message,
-    cause
+    message, cause
 )

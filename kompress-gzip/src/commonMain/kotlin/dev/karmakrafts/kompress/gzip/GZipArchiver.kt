@@ -23,6 +23,7 @@ import dev.karmakrafts.kompress.InternalKompressApi
 import dev.karmakrafts.kompress.archive.Archiver
 import dev.karmakrafts.kompress.compressingSink
 import dev.karmakrafts.kompress.crc32
+import dev.karmakrafts.kompress.crc32Round
 import dev.karmakrafts.kompress.util.FileUtils
 import dev.karmakrafts.kompress.util.writeLatin1String
 import dev.karmakrafts.kompress.util.zeroTerminate
@@ -112,14 +113,18 @@ private class GZipArchiver( // @formatter:off
             isSinkOwned = false,
             isCompressorOwned = false
         ).use { compressingSink -> // @formatter:on
-            while (callback(buffer)) {
-                crc32 = buffer.peek().crc32(buffer.size, crc32)
-                val chunkSize = buffer.size
-                compressingSink.write(buffer, chunkSize)
-                uncompressedSize += chunkSize
+            var hasMore = true
+            while (hasMore) {
+                hasMore = callback(buffer)
+                if (buffer.size > 0L) {
+                    crc32 = buffer.peek().crc32Round(buffer.size, crc32)
+                    val chunkSize = buffer.size
+                    compressingSink.write(buffer, chunkSize)
+                    uncompressedSize += chunkSize
+                }
             }
         }
-        return crc32 to uncompressedSize
+        return crc32.inv() to uncompressedSize
     }
 
     /**

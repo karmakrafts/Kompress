@@ -43,17 +43,52 @@ private val crc32Table: UIntArray = UIntArray(256) { index ->
  * @param initialValue the initial value for the CRC32 calculation.
  * @return the calculated CRC32 checksum.
  */
-fun crc32( // @formatter:off
+fun crc32Round( // @formatter:off
     data: ByteArray,
     initialValue: UInt = CRC32_INITIAL_VALUE
 ): UInt { // @formatter:on
-    if (data.isEmpty()) return 0U
+    if (data.isEmpty()) return initialValue
     var crc = initialValue
     for (index in data.indices) {
         val tableIndex = (crc xor (data[index].toUInt() and 0xFFU)) and 0xFFU
         crc = (crc shr 8) xor crc32Table[tableIndex.toInt()]
     }
-    return crc.inv()
+    return crc
+}
+
+/**
+ * Calculates the CRC32 checksum for the given [data].
+ *
+ * @param data the data to calculate the checksum for.
+ * @param initialValue the initial value for the CRC32 calculation.
+ * @return the calculated CRC32 checksum.
+ */
+fun crc32( // @formatter:off
+    data: ByteArray,
+    initialValue: UInt = CRC32_INITIAL_VALUE
+): UInt = crc32Round(data, initialValue).inv() // @formatter:on
+
+/**
+ * Calculates the CRC32 checksum for the given [size] of bytes from this [Source].
+ *
+ * Calling this function will consume the specified number of bytes from the source.
+ *
+ * @param size the number of bytes to read from the source.
+ * @param initialValue the initial value for the CRC32 calculation.
+ * @return the calculated CRC32 checksum.
+ */
+fun Source.crc32Round( // @formatter:off
+    size: Long = Long.MAX_VALUE,
+    initialValue: UInt = CRC32_INITIAL_VALUE
+): UInt { // @formatter:on
+    var crc = initialValue
+    var index = 0
+    while (!exhausted() && index < size) {
+        val tableIndex = (crc xor (readByte().toUInt() and 0xFFU)) and 0xFFU
+        crc = (crc shr 8) xor crc32Table[tableIndex.toInt()]
+        index++
+    }
+    return crc
 }
 
 /**
@@ -68,14 +103,4 @@ fun crc32( // @formatter:off
 fun Source.crc32( // @formatter:off
     size: Long = Long.MAX_VALUE,
     initialValue: UInt = CRC32_INITIAL_VALUE
-): UInt { // @formatter:on
-    if (exhausted()) return 0U
-    var crc = initialValue
-    var index = 0
-    while (!exhausted() && index < size) {
-        val tableIndex = (crc xor (readByte().toUInt() and 0xFFU)) and 0xFFU
-        crc = (crc shr 8) xor crc32Table[tableIndex.toInt()]
-        index++
-    }
-    return crc.inv()
-}
+): UInt = crc32Round(size, initialValue).inv() // @formatter:on

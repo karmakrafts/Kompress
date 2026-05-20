@@ -38,16 +38,18 @@ private class CRC32SinkImpl( // @formatter:off
     private val delegate: RawSink,
     private val isSinkOwned: Boolean
 ) : CRC32Sink, RawSink by delegate { // @formatter:on
-    override var checksum: UInt = CRC32_INITIAL_VALUE
-        private set
+    override val checksum: UInt
+        get() = rawChecksum.inv()
+
+    private var rawChecksum: UInt = CRC32_INITIAL_VALUE
 
     override fun write(source: Buffer, byteCount: Long) {
-        checksum = source.peek().crc32(byteCount, checksum)
+        rawChecksum = source.peek().crc32Round(byteCount, rawChecksum)
         delegate.write(source, byteCount)
     }
 
     override fun reset() {
-        checksum = CRC32_INITIAL_VALUE
+        rawChecksum = CRC32_INITIAL_VALUE
     }
 
     override fun close() {

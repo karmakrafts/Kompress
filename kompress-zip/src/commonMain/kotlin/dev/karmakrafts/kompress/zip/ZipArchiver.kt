@@ -23,7 +23,7 @@ import dev.karmakrafts.kompress.InternalKompressApi
 import dev.karmakrafts.kompress.UnsupportedCompressionMethodException
 import dev.karmakrafts.kompress.archive.Archiver
 import dev.karmakrafts.kompress.compressingSink
-import dev.karmakrafts.kompress.crc32
+import dev.karmakrafts.kompress.crc32Round
 import dev.karmakrafts.kompress.util.packDateWord
 import dev.karmakrafts.kompress.util.packTimeWord
 import dev.karmakrafts.kompress.util.writeCP437String
@@ -57,8 +57,8 @@ private class ZipArchiver(
      * Writes a raw CP437 or UTF-8 string based on the [entry]'s given
      * language encoding flag. See [ZipGPBF.languageEncoding].
      */
-    private fun writeString(entry: ZipEntry, value: String) {
-        if (entry.gpbf.languageEncoding) {
+    private fun writeString(languageEncoding: Boolean, value: String) {
+        if (languageEncoding) {
             // We need to encode as UTF-8 directly
             buffer.writeString(value)
             return
@@ -103,7 +103,7 @@ private class ZipArchiver(
         else writeDataDescriptor(entry.isZip64, 0U, 0L, 0L) // TODO: implement support for these
         buffer.writeUShortLe(entry.name.length.toUShort())
         buffer.writeUShortLe(entry.extraFields.byteSize.toUShort())
-        writeString(entry, entry.name)
+        writeString(entry.gpbf.languageEncoding, entry.name)
         entry.extraFields.encode(buffer)
         flushBuffer()
     }
@@ -127,13 +127,17 @@ private class ZipArchiver(
             isSinkOwned = false,
             isCompressorOwned = false
         ).use { compressingSink -> // @formatter:on
-            while (callback(buffer)) {
-                crc32 = buffer.peek().crc32(buffer.size, crc32)
-                val chunkSize = buffer.size
-                compressingSink.write(buffer, chunkSize)
+            var hasMore = true
+            while (hasMore) {
+                hasMore = callback(buffer)
+                if (buffer.size > 0L) {
+                    crc32 = buffer.peek().crc32Round(buffer.size, crc32)
+                    val chunkSize = buffer.size
+                    compressingSink.write(buffer, chunkSize)
+                }
             }
         }
-        return crc32
+        return crc32.inv()
     }
 
     override fun appendEntry(entry: ZipEntry, callback: (Sink) -> Boolean) {

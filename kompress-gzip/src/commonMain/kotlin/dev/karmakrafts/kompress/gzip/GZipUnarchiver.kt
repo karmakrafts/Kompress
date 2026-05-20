@@ -24,6 +24,7 @@ import dev.karmakrafts.kompress.InvalidChecksumException
 import dev.karmakrafts.kompress.archive.Unarchiver
 import dev.karmakrafts.kompress.archive.UnarchiverEntryCallback
 import dev.karmakrafts.kompress.crc32
+import dev.karmakrafts.kompress.crc32Round
 import dev.karmakrafts.kompress.decompressingSource
 import dev.karmakrafts.kompress.util.readLatin1String
 import dev.karmakrafts.kompress.util.writeLatin1String
@@ -161,11 +162,11 @@ private class GZipUnarchiver( // @formatter:off
                 val result = decompressingSource.readAtMostTo(
                     decompressionBuffer, Decompressor.DEFAULT_BUFFER_SIZE.toLong()
                 )
-                if (result != -1L) computedCrc32 = decompressionBuffer.peek().crc32(initialValue = computedCrc32)
+                if (result != -1L) computedCrc32 = decompressionBuffer.peek().crc32Round(initialValue = computedCrc32)
                 result != -1L
             }
         }
-        return true to computedCrc32
+        return true to computedCrc32.inv()
     }
 
     override fun forEachEntry(callback: UnarchiverEntryCallback<GZipEntry>) {
