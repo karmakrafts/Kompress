@@ -45,9 +45,16 @@ private class ZipArchiver(
     private val isSinkOwned: Boolean,
     private val areCompressorsOwned: Boolean
 ) : Archiver<ZipEntry, ZipCompressionMethod> {
+    data class QueuedEntry( // @formatter:off
+        val entry: ZipEntry,
+        val checksum: UInt,
+        val uncompressedSize: Long,
+        val compressedSize: Long
+    ) // @formatter:on
+
     private val buffer: Buffer = Buffer()
     private var isClosed: Boolean = false
-    private val entries: ArrayDeque<ZipEntry> = ArrayDeque()
+    private val entries: ArrayDeque<QueuedEntry> = ArrayDeque()
 
     private fun flushBuffer() {
         sink.write(buffer, buffer.size)
@@ -116,7 +123,39 @@ private class ZipArchiver(
         flushBuffer()
     }
 
-    private fun appendCentralDirectoryHeader(entry: ZipEntry) {
+    /**
+     * See [PKWARE APPNOTE](https://pkware.cachefly.net/webdocs/casestudies/APPNOTE.TXT) 4.3.12.
+     */
+    private fun appendCentralDirectoryHeader( // @formatter:off
+        entry: ZipEntry,
+        checksum: UInt,
+        uncompressedSize: Long,
+        compressedSize: Long
+    ) { // @formatter:on
+        buffer.writeUIntLe(ZipConstants.CENTRAL_FILE_HEADER_MAGIC)
+        buffer.writeUShortLe(ZipConstants.LATEST_ZIP_VERSION) // TODO: determine this based on features?
+        buffer.writeUShortLe(ZipConstants.LATEST_ZIP_VERSION) // TODO: set a sensible default for our own version
+        buffer.writeUShortLe(entry.gpbf.value)
+        buffer.writeUShortLe(entry.compressionMethod.encodedValue)
+        writeTimestamp(entry.modificationTime)
+        writeDataDescriptor(entry.isZip64, checksum, uncompressedSize, compressedSize)
+        buffer.writeUShortLe(0U) // TODO: file name length
+        buffer.writeUShortLe(0U) // TODO: extra field length
+        buffer.writeUShortLe(0U) // TODO: file comment length
+        buffer.writeUShortLe(0U) // TODO: disk number start
+        buffer.writeUShortLe(0U) // TODO: internal file attribs
+        buffer.writeUIntLe(0U) // TODO: external file attribs
+        buffer.writeUIntLe(0U) // TODO: relative offset of local header
+        // TODO: file name
+        // TODO: extra field
+        // TODO: file comment
+        flushBuffer()
+    }
+
+    /**
+     * See [PKWARE APPNOTE](https://pkware.cachefly.net/webdocs/casestudies/APPNOTE.TXT) 4.3.13.
+     */
+    private fun appendDigitalSignature() {
         // TODO: implement this
     }
 
@@ -147,18 +186,22 @@ private class ZipArchiver(
             ?: throw UnsupportedCompressionMethodException("No compressor specified for ZIP compression method $method")
         compressor.reset()
         val checksum = appendData(compressor, callback)
+        val uncompressedSize = compressor.bytesRead
+        val compressedSize = compressor.bytesWritten
         if (entry.gpbf.omitChecksumAndSizes) {
-            appendDataDescriptor(entry.isZip64, checksum, compressor.bytesRead, compressor.bytesWritten)
+            appendDataDescriptor(entry.isZip64, checksum, uncompressedSize, compressedSize)
         }
-        entries += entry // Queue entry so we can generate CDHs
+        entries += QueuedEntry(entry, checksum, uncompressedSize, compressedSize) // Queue entry so we can generate CDHs
     }
 
     private fun finalizeArchive() {
         // TODO: we don't support ADH and AEDR right now, so just omit it
         // Generate central directory headers for all queued ZIP entries
         while (entries.isNotEmpty()) {
-            appendCentralDirectoryHeader(entries.removeFirst())
+            val (entry, checksum, uncompressedSize, compressedSize) = entries.removeFirst()
+            appendCentralDirectoryHeader(entry, checksum, uncompressedSize, compressedSize)
         }
+        appendDigitalSignature()
     }
 
     override fun close() {

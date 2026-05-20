@@ -21,10 +21,10 @@ import kotlin.jvm.JvmInline
 
 @JvmInline
 value class ZipExtraFieldContainer(
-    val delegate: List<ZipExtraFieldEntry>
-) : List<ZipExtraFieldEntry> by delegate {
+    val delegate: MutableList<ZipExtraFieldEntry>
+) : MutableList<ZipExtraFieldEntry> by delegate {
     companion object {
-        fun empty(): ZipExtraFieldContainer = ZipExtraFieldContainer(emptyList())
+        fun empty(): ZipExtraFieldContainer = ZipExtraFieldContainer(mutableListOf())
     }
 
     inline val byteSize: Long get() = sumOf(ZipExtraFieldEntry::size)

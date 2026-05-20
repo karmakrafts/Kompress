@@ -25,6 +25,16 @@ object ZipConstants {
     const val LOCAL_FILE_HEADER_MAGIC: UInt = 0x04034B50U
 
     /**
+     * See [PKWARE APPNOTE](https://pkware.cachefly.net/webdocs/casestudies/APPNOTE.TXT) 4.3.12.
+     */
+    const val CENTRAL_FILE_HEADER_MAGIC: UInt = 0x02014B50U
+
+    /**
+     * See [PKWARE APPNOTE](https://pkware.cachefly.net/webdocs/casestudies/APPNOTE.TXT) 4.3.13.
+     */
+    const val DIGITAL_SIGNATURE_MAGIC: UInt = 0x05054B50U
+
+    /**
      * See [PKWARE APPNOTE](https://pkware.cachefly.net/webdocs/casestudies/APPNOTE.TXT) 4.4.3.2.
      */
     val LATEST_ZIP_VERSION: UShort = makeZipVersion(6, 3)
