@@ -113,9 +113,9 @@ class LZ77( // @formatter:off
                 for (offset in 1 until bestLength) {
                     val currentPosition = pos + offset
                     if (currentPosition + minMatch <= dataSize) {
-                        val h = rollingHash(data, currentPosition)
-                        next[currentPosition] = head[h]
-                        head[h] = currentPosition
+                        val currentHash = rollingHash(data, currentPosition)
+                        next[currentPosition] = head[currentHash]
+                        head[currentHash] = currentPosition
                     }
                 }
                 pos += bestLength // Increment by total match length
