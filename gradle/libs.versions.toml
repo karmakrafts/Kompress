@@ -14,7 +14,7 @@ karmaConventions = "1.16.4" # https://github.com/karmakrafts/karma-conventions/t
 gradleNexus = "2.0.0" # https://github.com/gradle-nexus/publish-plugin/releases
 fflate = "0.8.2" # https://github.com/101arrowz/fflate/releases # TODO: replace with zlib-ng via emscripten wrapper
 oshi = "7.1.0" # https://github.com/oshi/oshi/releases
-lz4java = "1.11.0" # https://github.com/yawkat/lz4-java/releases
+karbide = "1.0.1" # https://github.com/karmakrafts/Karbide/releases
 
 [libraries]
 
@@ -25,7 +25,7 @@ kotlinx-io-core = { module = "org.jetbrains.kotlinx:kotlinx-io-core", version.re
 kotlinx-benchmark-runtime = { module = "org.jetbrains.kotlinx:kotlinx-benchmark-runtime", version.ref = "kotlinxBenchmark" }
 kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinxDateTime" }
 oshi-core = { module = "com.github.oshi:oshi-core", version.ref = "oshi" }
-lz4java = { module = "at.yawk.lz4:lz4-java", version.ref = "lz4java" }
+karbide-core = { module = "dev.karmakrafts.karbide:karbide-core", version.ref = "karbide" }
 
 [plugins]
 

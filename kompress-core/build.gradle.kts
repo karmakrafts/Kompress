@@ -73,6 +73,7 @@ kotlin {
                 api(libs.kotlinx.io.bytestring)
                 api(libs.kotlinx.io.core)
                 api(libs.kotlinx.datetime)
+                implementation(libs.karbide.core)
             }
         }
         jvmMain {

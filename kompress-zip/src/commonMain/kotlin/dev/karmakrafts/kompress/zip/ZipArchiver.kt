@@ -60,10 +60,6 @@ private class ZipArchiver(
         sink.write(buffer, buffer.size)
     }
 
-    /**
-     * Writes a raw CP437 or UTF-8 string based on the [entry]'s given
-     * language encoding flag. See [ZipGPBF.languageEncoding].
-     */
     private fun writeString(languageEncoding: Boolean, value: String) {
         if (languageEncoding) {
             // We need to encode as UTF-8 directly

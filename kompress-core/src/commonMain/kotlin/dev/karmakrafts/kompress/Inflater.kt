@@ -158,7 +158,7 @@ fun RawSource.inflatingSource( // @formatter:off
 /**
  * @see inflatingSource
  */
-@Deprecated(message = "This API will be removed in 2.0", replaceWith = ReplaceWith("inflatingWith(raw, bufferSize)"))
+@Deprecated(message = "This API will be removed in 2.0", replaceWith = ReplaceWith("inflatingSource(raw, bufferSize)"))
 fun RawSource.inflating( // @formatter:off
     raw: Boolean = true,
     bufferSize: Int = Decompressor.DEFAULT_BUFFER_SIZE
