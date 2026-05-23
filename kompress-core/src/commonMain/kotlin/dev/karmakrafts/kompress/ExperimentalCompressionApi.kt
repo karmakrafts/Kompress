@@ -14,24 +14,8 @@
  * limitations under the License.
  */
 
-package dev.karmakrafts.kompress.zip
+package dev.karmakrafts.kompress
 
-import dev.karmakrafts.kompress.ExperimentalCompressionApi
-import kotlinx.io.Sink
-import kotlin.jvm.JvmInline
-
-@ExperimentalCompressionApi
-@JvmInline
-value class ZipExtraFieldContainer(
-    val delegate: MutableList<ZipExtraFieldEntry>
-) : MutableList<ZipExtraFieldEntry> by delegate {
-    companion object {
-        fun empty(): ZipExtraFieldContainer = ZipExtraFieldContainer(mutableListOf())
-    }
-
-    inline val byteSize: Long get() = sumOf(ZipExtraFieldEntry::size)
-
-    fun encode(sink: Sink) {
-        // TODO: implement this
-    }
-}
+@RequiresOptIn(message = "The API you are trying to use is still actively being developed and may change in the future")
+@Retention(AnnotationRetention.BINARY)
+annotation class ExperimentalCompressionApi

@@ -16,8 +16,10 @@
 
 package dev.karmakrafts.kompress.zip
 
+import dev.karmakrafts.kompress.ExperimentalCompressionApi
 import kotlin.math.min
 
+@ExperimentalCompressionApi
 object ZipConstants {
     /**
      * See [PKWARE APPNOTE](https://pkware.cachefly.net/webdocs/casestudies/APPNOTE.TXT) 4.3.7.

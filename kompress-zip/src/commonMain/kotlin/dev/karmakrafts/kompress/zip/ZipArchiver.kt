@@ -19,11 +19,12 @@ package dev.karmakrafts.kompress.zip
 import dev.karmakrafts.kompress.CRC32_INITIAL_VALUE
 import dev.karmakrafts.kompress.Compressor
 import dev.karmakrafts.kompress.Deflater
-import dev.karmakrafts.kompress.InternalKompressApi
-import dev.karmakrafts.kompress.UnsupportedCompressionMethodException
+import dev.karmakrafts.kompress.ExperimentalCompressionApi
+import dev.karmakrafts.kompress.InternalCompressionApi
 import dev.karmakrafts.kompress.archive.Archiver
 import dev.karmakrafts.kompress.compressingSink
 import dev.karmakrafts.kompress.crc32Round
+import dev.karmakrafts.kompress.exception.UnsupportedCompressionMethodException
 import dev.karmakrafts.kompress.util.packDateWord
 import dev.karmakrafts.kompress.util.packTimeWord
 import dev.karmakrafts.kompress.util.writeCP437String
@@ -38,7 +39,7 @@ import kotlinx.io.writeULongLe
 import kotlinx.io.writeUShortLe
 import kotlin.time.Instant
 
-@OptIn(InternalKompressApi::class)
+@OptIn(InternalCompressionApi::class, ExperimentalCompressionApi::class)
 private class ZipArchiver(
     override val sink: RawSink,
     override val compressors: Map<ZipCompressionMethod, Compressor>,
@@ -209,6 +210,7 @@ private class ZipArchiver(
     }
 }
 
+@ExperimentalCompressionApi
 fun RawSink.zip( // @formatter:off
     compressors: Map<ZipCompressionMethod, Compressor> = mapOf(ZipCompressionMethod.DEFLATE to Deflater()),
     isSinkOwned: Boolean = true,

@@ -16,11 +16,13 @@
 
 package dev.karmakrafts.kompress.zip
 
+import dev.karmakrafts.kompress.ExperimentalCompressionApi
 import kotlin.jvm.JvmInline
 
 /**
  * See [PKWARE APPNOTE](https://pkware.cachefly.net/webdocs/casestudies/APPNOTE.TXT) 4.4.4.
  */
+@ExperimentalCompressionApi
 @JvmInline
 value class ZipGPBF(val value: UShort) {
     companion object {

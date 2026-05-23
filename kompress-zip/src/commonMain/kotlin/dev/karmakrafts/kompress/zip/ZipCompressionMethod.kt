@@ -16,9 +16,12 @@
 
 package dev.karmakrafts.kompress.zip
 
+import dev.karmakrafts.kompress.ExperimentalCompressionApi
+
 /**
  * See [PKWARE APPNOTE](https://pkware.cachefly.net/webdocs/casestudies/APPNOTE.TXT) 4.4.5.
  */
+@ExperimentalCompressionApi
 enum class ZipCompressionMethod(val encodedValue: UShort) {
     // @formatter:off
     NONE     (0x0000U),

@@ -17,6 +17,7 @@
 package dev.karmakrafts.kompress.zip
 
 import dev.karmakrafts.kompress.Decompressor
+import dev.karmakrafts.kompress.ExperimentalCompressionApi
 import dev.karmakrafts.kompress.Inflater
 import dev.karmakrafts.kompress.archive.Unarchiver
 import dev.karmakrafts.kompress.archive.UnarchiverEntryCallback
@@ -24,6 +25,7 @@ import kotlinx.io.RawSource
 import kotlinx.io.Source
 import kotlinx.io.buffered
 
+@OptIn(ExperimentalCompressionApi::class)
 private class ZipUnarchiver(
     override val source: Source,
     override val decompressors: Map<ZipCompressionMethod, Decompressor>,
@@ -44,6 +46,7 @@ private class ZipUnarchiver(
     }
 }
 
+@ExperimentalCompressionApi
 fun RawSource.unzip( // @formatter:off
     decompressors: Map<ZipCompressionMethod, Decompressor> = mapOf(ZipCompressionMethod.DEFLATE to Inflater()),
     isSourceOwned: Boolean = true,
@@ -51,6 +54,7 @@ fun RawSource.unzip( // @formatter:off
 ): Unarchiver<ZipEntry, ZipCompressionMethod> =
     ZipUnarchiver(buffered(), decompressors, isSourceOwned, areDecompressorsOwned) // @formatter:on
 
+@ExperimentalCompressionApi
 fun Source.unzip( // @formatter:off
     decompressors: Map<ZipCompressionMethod, Decompressor> = mapOf(ZipCompressionMethod.DEFLATE to Inflater()),
     isSourceOwned: Boolean = true,

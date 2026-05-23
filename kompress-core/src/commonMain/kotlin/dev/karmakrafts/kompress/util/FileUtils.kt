@@ -16,11 +16,11 @@
 
 package dev.karmakrafts.kompress.util
 
-import dev.karmakrafts.kompress.InternalKompressApi
+import dev.karmakrafts.kompress.InternalCompressionApi
 import kotlinx.io.files.Path
 import kotlin.time.Instant
 
-@InternalKompressApi
+@InternalCompressionApi
 expect object FileUtils {
     fun getModificationTime(path: Path): Instant?
 }

@@ -14,24 +14,6 @@
  * limitations under the License.
  */
 
-package dev.karmakrafts.kompress.zip
+package dev.karmakrafts.kompress.exception
 
-import dev.karmakrafts.kompress.ExperimentalCompressionApi
-import kotlinx.io.Sink
-import kotlin.jvm.JvmInline
-
-@ExperimentalCompressionApi
-@JvmInline
-value class ZipExtraFieldContainer(
-    val delegate: MutableList<ZipExtraFieldEntry>
-) : MutableList<ZipExtraFieldEntry> by delegate {
-    companion object {
-        fun empty(): ZipExtraFieldContainer = ZipExtraFieldContainer(mutableListOf())
-    }
-
-    inline val byteSize: Long get() = sumOf(ZipExtraFieldEntry::size)
-
-    fun encode(sink: Sink) {
-        // TODO: implement this
-    }
-}
+class NoSuchSymbolException(message: String? = null, cause: Throwable? = null) : KompressException(message, cause)

@@ -19,13 +19,13 @@ package dev.karmakrafts.kompress.gzip
 import dev.karmakrafts.kompress.CRC32_INITIAL_VALUE
 import dev.karmakrafts.kompress.Decompressor
 import dev.karmakrafts.kompress.Inflater
-import dev.karmakrafts.kompress.InternalKompressApi
-import dev.karmakrafts.kompress.InvalidChecksumException
+import dev.karmakrafts.kompress.InternalCompressionApi
 import dev.karmakrafts.kompress.archive.Unarchiver
 import dev.karmakrafts.kompress.archive.UnarchiverEntryCallback
 import dev.karmakrafts.kompress.crc32
 import dev.karmakrafts.kompress.crc32Round
 import dev.karmakrafts.kompress.decompressingSource
+import dev.karmakrafts.kompress.exception.InvalidChecksumException
 import dev.karmakrafts.kompress.util.readLatin1String
 import dev.karmakrafts.kompress.util.writeLatin1String
 import dev.karmakrafts.kompress.util.zeroTerminate
@@ -44,7 +44,7 @@ import kotlinx.io.writeUShort
 import kotlinx.io.writeUShortLe
 import kotlin.time.Instant
 
-@OptIn(InternalKompressApi::class)
+@OptIn(InternalCompressionApi::class)
 private class GZipUnarchiver( // @formatter:off
     override val source: Source,
     private val inflater: Inflater,

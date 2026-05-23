@@ -18,4 +18,4 @@ package dev.karmakrafts.kompress
 
 @RequiresOptIn(message = "The API you are trying to use is internal to Kompress and may change at any time")
 @Retention(AnnotationRetention.BINARY)
-annotation class InternalKompressApi
+annotation class InternalCompressionApi

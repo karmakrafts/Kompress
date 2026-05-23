@@ -16,8 +16,8 @@
 
 package dev.karmakrafts.kompress.util
 
-import dev.karmakrafts.kompress.DataFormatException
-import dev.karmakrafts.kompress.InternalKompressApi
+import dev.karmakrafts.kompress.exception.DataFormatException
+import dev.karmakrafts.kompress.InternalCompressionApi
 import kotlinx.io.Sink
 import kotlinx.io.Source
 
@@ -25,7 +25,7 @@ import kotlinx.io.Source
  * @throws dev.karmakrafts.kompress.DataFormatException when this String contains characters
  *  outside the valid LATIN-1 range.
  */
-@InternalKompressApi
+@InternalCompressionApi
 fun String.encodeToLatin1(): ByteArray {
     val result = ByteArray(length)
     for (index in indices) {
@@ -40,10 +40,10 @@ fun String.encodeToLatin1(): ByteArray {
  * @throws dev.karmakrafts.kompress.DataFormatException when the given String contains characters
  *  outside the valid LATIN-1 range.
  */
-@InternalKompressApi
+@InternalCompressionApi
 fun Sink.writeLatin1String(value: String) = write(value.encodeToLatin1())
 
-@InternalKompressApi
+@InternalCompressionApi
 fun ByteArray.decodeFromLatin1(): String {
     val chars = CharArray(size)
     for (index in indices) {
@@ -52,7 +52,7 @@ fun ByteArray.decodeFromLatin1(): String {
     return chars.concatToString()
 }
 
-@InternalKompressApi
+@InternalCompressionApi
 fun Source.readLatin1String(size: Int = peek().bytesUntilZeroTerminator().toInt()): String {
     val result = CharArray(size)
     var byte = readByte()

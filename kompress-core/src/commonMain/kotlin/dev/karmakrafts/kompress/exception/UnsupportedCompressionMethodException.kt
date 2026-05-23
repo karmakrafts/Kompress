@@ -14,10 +14,8 @@
  * limitations under the License.
  */
 
-package dev.karmakrafts.kompress
+package dev.karmakrafts.kompress.exception
 
-/**
- * Base type for all Kompress exceptions that may be raised by instances of
- * [Compressor], [Decompressor], [dev.karmakrafts.kompress.archive.Archiver] or [dev.karmakrafts.kompress.archive.Unarchiver].
- */
-open class KompressException(message: String?, cause: Throwable?) : RuntimeException(message, cause)
+class UnsupportedCompressionMethodException(message: String? = null, cause: Throwable? = null) : KompressException(
+    message, cause
+)

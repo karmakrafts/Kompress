@@ -16,8 +16,10 @@
 
 package dev.karmakrafts.kompress.zip
 
+import dev.karmakrafts.kompress.ExperimentalCompressionApi
 import kotlin.time.Instant
 
+@ExperimentalCompressionApi
 data class ZipEntry(
     val modificationTime: Instant,
     val name: String,

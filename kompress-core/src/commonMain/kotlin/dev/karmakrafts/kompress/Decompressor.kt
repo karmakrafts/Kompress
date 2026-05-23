@@ -88,7 +88,7 @@ interface Decompressor : AutoCloseable {
      *
      * @param output The buffer to decompress the data into.
      * @return The actual number of decompressed bytes.
-     * @throws DataFormatException when the decompressor encounters invalid data.
+     * @throws dev.karmakrafts.kompress.exception.DataFormatException when the decompressor encounters invalid data.
      */
     fun decompress( // @formatter:off
         output: ByteArray,
@@ -104,7 +104,7 @@ interface Decompressor : AutoCloseable {
      * @param data The data to compress.
      * @param bufferSize The size of the intermediate buffer used during compression.
      * @return The decompressed data.
-     * @throws DataFormatException when the decompressor encounters invalid data.
+     * @throws dev.karmakrafts.kompress.exception.DataFormatException when the decompressor encounters invalid data.
      */
     fun decompressBulk(data: ByteArray, bufferSize: Int = 4096): ByteArray {
         setInput(data)

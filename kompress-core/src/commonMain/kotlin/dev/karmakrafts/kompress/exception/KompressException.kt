@@ -14,8 +14,10 @@
  * limitations under the License.
  */
 
-package dev.karmakrafts.kompress
+package dev.karmakrafts.kompress.exception
 
-open class DataFormatException(
-    message: String? = null, cause: Throwable? = null
-) : KompressException(message, cause)
+/**
+ * Base type for all Kompress exceptions that may be raised by instances of
+ * [dev.karmakrafts.kompress.Compressor], [dev.karmakrafts.kompress.Decompressor], [dev.karmakrafts.kompress.archive.Archiver] or [dev.karmakrafts.kompress.archive.Unarchiver].
+ */
+open class KompressException(message: String?, cause: Throwable?) : RuntimeException(message, cause)

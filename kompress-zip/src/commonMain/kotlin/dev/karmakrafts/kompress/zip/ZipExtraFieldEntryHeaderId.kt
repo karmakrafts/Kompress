@@ -16,11 +16,13 @@
 
 package dev.karmakrafts.kompress.zip
 
+import dev.karmakrafts.kompress.ExperimentalCompressionApi
 import kotlinx.io.Source
 
 /**
  * See [PKWARE APPNOTE](https://pkware.cachefly.net/webdocs/casestudies/APPNOTE.TXT) 4.5.2.
  */
+@ExperimentalCompressionApi
 enum class ZipExtraFieldEntryHeaderId( // @formatter:off
     val encodedValue: UShort,
     private val parser: (Source) -> ZipExtraFieldEntryData

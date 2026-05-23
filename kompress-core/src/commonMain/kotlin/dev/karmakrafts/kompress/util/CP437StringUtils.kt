@@ -16,8 +16,8 @@
 
 package dev.karmakrafts.kompress.util
 
-import dev.karmakrafts.kompress.DataFormatException
-import dev.karmakrafts.kompress.InternalKompressApi
+import dev.karmakrafts.kompress.exception.DataFormatException
+import dev.karmakrafts.kompress.InternalCompressionApi
 import kotlinx.io.Sink
 
 private val table: CharArray = charArrayOf( // @formatter:off
@@ -62,7 +62,7 @@ private val reverseLookup: Map<Char, Byte> = buildMap {
  * @throws dev.karmakrafts.kompress.DataFormatException when this String contains characters
  *  outside the valid CP437 range.
  */
-@InternalKompressApi
+@InternalCompressionApi
 fun String.encodeToCP437(): ByteArray {
     val result = ByteArray(length)
     for (index in indices) {
@@ -73,5 +73,5 @@ fun String.encodeToCP437(): ByteArray {
     return result
 }
 
-@InternalKompressApi
+@InternalCompressionApi
 fun Sink.writeCP437String(value: String) = write(value.encodeToCP437())

@@ -16,11 +16,11 @@
 
 package dev.karmakrafts.kompress.util
 
-import dev.karmakrafts.kompress.InternalKompressApi
+import dev.karmakrafts.kompress.InternalCompressionApi
 import kotlin.experimental.ExperimentalNativeApi
 import kotlin.native.Platform as SystemPlatform
 
-@InternalKompressApi
+@InternalCompressionApi
 @OptIn(ExperimentalNativeApi::class)
 actual val currentPlatform: Platform by lazy {
     when (SystemPlatform.osFamily) {

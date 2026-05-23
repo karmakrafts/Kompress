@@ -19,7 +19,7 @@ package dev.karmakrafts.kompress.gzip
 import dev.karmakrafts.kompress.CRC32_INITIAL_VALUE
 import dev.karmakrafts.kompress.Compressor
 import dev.karmakrafts.kompress.Deflater
-import dev.karmakrafts.kompress.InternalKompressApi
+import dev.karmakrafts.kompress.InternalCompressionApi
 import dev.karmakrafts.kompress.archive.Archiver
 import dev.karmakrafts.kompress.compressingSink
 import dev.karmakrafts.kompress.crc32
@@ -40,7 +40,7 @@ import kotlinx.io.writeUShortLe
 import kotlin.time.Clock
 import kotlin.time.Instant
 
-@OptIn(InternalKompressApi::class)
+@OptIn(InternalCompressionApi::class)
 private class GZipArchiver( // @formatter:off
     override val sink: RawSink,
     private val deflater: Deflater,
@@ -156,7 +156,7 @@ private class GZipArchiver( // @formatter:off
  * @param comment An optional comment for the entry.
  * @param isText Whether the entry is a text file.
  */
-@OptIn(InternalKompressApi::class)
+@OptIn(InternalCompressionApi::class)
 fun Archiver<in GZipEntry, *>.appendEntry( // @formatter:off
     path: Path,
     modificationTime: Instant = FileUtils.getModificationTime(path) ?: Clock.System.now(),

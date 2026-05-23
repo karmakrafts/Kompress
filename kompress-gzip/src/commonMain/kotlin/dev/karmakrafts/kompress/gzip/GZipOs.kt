@@ -16,7 +16,7 @@
 
 package dev.karmakrafts.kompress.gzip
 
-import dev.karmakrafts.kompress.InternalKompressApi
+import dev.karmakrafts.kompress.InternalCompressionApi
 import dev.karmakrafts.kompress.util.Platform
 import dev.karmakrafts.kompress.util.currentPlatform
 
@@ -46,7 +46,7 @@ enum class GZipOs(val encodedValue: UByte) {
     companion object {
         fun byEncodedValue(encodedValue: UByte): GZipOs = entries.first { os -> os.encodedValue == encodedValue }
 
-        @OptIn(InternalKompressApi::class)
+        @OptIn(InternalCompressionApi::class)
         fun guessCurrent(): GZipOs = when (currentPlatform) {
             Platform.WINDOWS -> NTFS
             Platform.MACOS -> MACINTOSH

@@ -16,9 +16,9 @@
 
 package dev.karmakrafts.kompress.util
 
-import dev.karmakrafts.kompress.InternalKompressApi
+import dev.karmakrafts.kompress.InternalCompressionApi
 
-@InternalKompressApi
+@InternalCompressionApi
 enum class Platform { // @formatter:off
     WINDOWS,
     LINUX,
@@ -29,5 +29,5 @@ enum class Platform { // @formatter:off
     WATCHOS
 } // @formatter:on
 
-@InternalKompressApi
+@InternalCompressionApi
 expect val currentPlatform: Platform

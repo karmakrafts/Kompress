@@ -47,7 +47,7 @@ interface Archiver<E, M : Enum<M>> : AutoCloseable {
      * @param callback An entry write callback which is invoked repeatedly
      *  until the returned Boolean value is false.
      *  This allows streaming compression for the current entry data.
-     * @throws dev.karmakrafts.kompress.DataFormatException when any of the given entry data
+     * @throws dev.karmakrafts.kompress.exception.DataFormatException when any of the given entry data
      *  doesn't satisfy the constraints of the underlying container format.
      */
     fun appendEntry(entry: E, callback: (Sink) -> Boolean)
@@ -58,7 +58,7 @@ interface Archiver<E, M : Enum<M>> : AutoCloseable {
  *
  * @param entry The entry of type [E] to write.
  * @param source The source to read the entry data from.
- * @throws dev.karmakrafts.kompress.DataFormatException when any of the given entry data
+ * @throws dev.karmakrafts.kompress.exception.DataFormatException when any of the given entry data
  *  doesn't satisfy the constraints of the underlying container format.
  */
 fun <E, M : Enum<M>> Archiver<E, M>.appendEntry(entry: E, source: RawSource) {
@@ -71,7 +71,7 @@ fun <E, M : Enum<M>> Archiver<E, M>.appendEntry(entry: E, source: RawSource) {
  * Append multiple entries to the archive.
  *
  * @param entries An [Iterable] of entry and source pairs to write.
- * @throws dev.karmakrafts.kompress.DataFormatException when any of the given entry data
+ * @throws dev.karmakrafts.kompress.exception.DataFormatException when any of the given entry data
  *  doesn't satisfy the constraints of the underlying container format.
  */
 fun <E, M : Enum<M>> Archiver<E, M>.appendEntries(entries: Iterable<Pair<E, RawSource>>) {

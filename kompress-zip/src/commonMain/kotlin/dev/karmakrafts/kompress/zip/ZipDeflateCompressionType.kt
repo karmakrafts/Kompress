@@ -16,6 +16,9 @@
 
 package dev.karmakrafts.kompress.zip
 
+import dev.karmakrafts.kompress.ExperimentalCompressionApi
+
+@ExperimentalCompressionApi
 enum class ZipDeflateCompressionType(val encodedValue: UShort) {
     // @formatter:off
     NORMAL    (0b00U),

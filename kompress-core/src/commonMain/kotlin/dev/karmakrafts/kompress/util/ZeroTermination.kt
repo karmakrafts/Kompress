@@ -16,12 +16,12 @@
 
 package dev.karmakrafts.kompress.util
 
-import dev.karmakrafts.kompress.InternalKompressApi
+import dev.karmakrafts.kompress.InternalCompressionApi
 import kotlinx.io.Sink
 import kotlinx.io.Source
 import kotlinx.io.writeUByte
 
-@InternalKompressApi
+@InternalCompressionApi
 fun Source.bytesUntilZeroTerminator(): Long {
     var byte = readByte()
     var index = 0L
@@ -33,7 +33,7 @@ fun Source.bytesUntilZeroTerminator(): Long {
     return index
 }
 
-@InternalKompressApi
+@InternalCompressionApi
 inline fun <reified R> Sink.zeroTerminate(function: Sink.() -> R): R {
     val result = function(this)
     writeUByte(0.toUByte())

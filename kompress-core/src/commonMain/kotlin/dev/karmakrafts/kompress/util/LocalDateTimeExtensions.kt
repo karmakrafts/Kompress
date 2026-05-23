@@ -16,13 +16,13 @@
 
 package dev.karmakrafts.kompress.util
 
-import dev.karmakrafts.kompress.InternalKompressApi
+import dev.karmakrafts.kompress.InternalCompressionApi
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.LocalTime
 import kotlinx.datetime.number
 
-@InternalKompressApi
+@InternalCompressionApi
 fun UShort.unpackTimeWord(): LocalTime {
     val hours = ((toUInt() shr 11) and 0b1111U).toInt()
     val minutes = ((toUInt() shr 5) and 0b1111U).toInt()
@@ -30,7 +30,7 @@ fun UShort.unpackTimeWord(): LocalTime {
     return LocalTime(hours, minutes, seconds)
 }
 
-@InternalKompressApi
+@InternalCompressionApi
 fun UShort.unpackDateWord(): LocalDate {
     val year = (((toUInt() shr 9) and 0b111111U) + 1980U).toInt()
     val month = ((toUInt() shr 5) and 0b111U).toInt()
@@ -38,7 +38,7 @@ fun UShort.unpackDateWord(): LocalDate {
     return LocalDate(year, month, day)
 }
 
-@InternalKompressApi
+@InternalCompressionApi
 fun LocalDateTime.packTimeWord(): UShort {
     val hours = (hour and 0b1111).toUInt()
     val minutes = (minute and 0b1111).toUInt()
@@ -46,7 +46,7 @@ fun LocalDateTime.packTimeWord(): UShort {
     return ((hours shl 11) or (minutes shl 5) or seconds).toUShort()
 }
 
-@InternalKompressApi
+@InternalCompressionApi
 fun LocalDateTime.packDateWord(): UShort {
     val year = ((year - 1980) and 0b111111).toUInt()
     val month = (month.number and 0b111).toUInt()

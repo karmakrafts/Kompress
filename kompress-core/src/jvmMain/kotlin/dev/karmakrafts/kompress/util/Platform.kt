@@ -16,10 +16,10 @@
 
 package dev.karmakrafts.kompress.util
 
-import dev.karmakrafts.kompress.InternalKompressApi
+import dev.karmakrafts.kompress.InternalCompressionApi
 import oshi.util.PlatformEnum
 
-@InternalKompressApi
+@InternalCompressionApi
 actual val currentPlatform: Platform by lazy {
     when (PlatformEnum.getCurrentPlatform()) {
         PlatformEnum.WINDOWS, PlatformEnum.WINDOWSCE -> Platform.WINDOWS

@@ -16,6 +16,7 @@
 
 package dev.karmakrafts.kompress.zip
 
+import dev.karmakrafts.kompress.ExperimentalCompressionApi
 import kotlinx.io.Sink
 import kotlinx.io.Source
 import kotlinx.io.readUShortLe
@@ -24,6 +25,7 @@ import kotlinx.io.writeUShortLe
 /**
  * See [PKWARE APPNOTE](https://pkware.cachefly.net/webdocs/casestudies/APPNOTE.TXT) 4.5.2.
  */
+@ExperimentalCompressionApi
 data class ZipExtraFieldEntry( // @formatter:off
     val headerId: ZipExtraFieldEntryHeaderId,
     val data: ZipExtraFieldEntryData

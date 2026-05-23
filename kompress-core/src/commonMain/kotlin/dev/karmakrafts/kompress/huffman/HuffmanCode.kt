@@ -14,8 +14,22 @@
  * limitations under the License.
  */
 
-package dev.karmakrafts.kompress
+package dev.karmakrafts.kompress.huffman
 
-class UnsupportedCompressionMethodException(message: String? = null, cause: Throwable? = null) : KompressException(
-    message, cause
-)
+import dev.karmakrafts.kompress.InternalCompressionApi
+import kotlin.jvm.JvmInline
+
+@InternalCompressionApi
+@JvmInline
+value class HuffmanCode(val value: ULong) {
+    inline val bits: Int
+        get() = ((value shr 32) and 0xFFFFFFFFU).toInt()
+
+    inline val length: Int
+        get() = (value and 0xFFFFFFFFU).toInt()
+
+    constructor( // @formatter:off
+        bits: Int = 0,
+        length: Int = 0
+    ) : this((bits.toULong() shl 32) or length.toULong()) // @formatter:on
+}

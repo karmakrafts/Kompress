@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package dev.karmakrafts.kompress
+package dev.karmakrafts.kompress.exception
 
 /**
  * Exception thrown when a checksum validation fails during a Kompress operation.

@@ -18,6 +18,7 @@
 
 package dev.karmakrafts.kompress
 
+import dev.karmakrafts.kompress.exception.DataFormatException
 import java.util.zip.DataFormatException as JavaDataFormatException
 import java.util.zip.Deflater as JavaDeflater
 
