@@ -127,7 +127,6 @@ interface Inflater : Decompressor {
     fun inflate(output: ByteArray): Int = decompress(output)
 }
 
-@OptIn(InternalCompressionApi::class)
 private class NewInflaterImpl : Inflater {
     companion object {
         /**

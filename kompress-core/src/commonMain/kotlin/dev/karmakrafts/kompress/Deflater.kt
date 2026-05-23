@@ -86,7 +86,6 @@ interface Deflater : Compressor {
 }
 
 @Suppress("OVERRIDE_DEPRECATION")
-@OptIn(InternalCompressionApi::class)
 private class NewDeflaterImpl( // @formatter:off
     private val raw: Boolean,
     level: Int

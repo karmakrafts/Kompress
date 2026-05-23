@@ -16,14 +16,11 @@
 
 package dev.karmakrafts.kompress.lz77
 
-import dev.karmakrafts.kompress.InternalCompressionApi
-
 /**
  * A simple LZ77 implementation which allows
  * overriding the level, match counts and window size.
  */
-@InternalCompressionApi
-class LZ77( // @formatter:off
+internal class LZ77( // @formatter:off
     level: Int = DEFAULT_LEVEL,
     val minMatch: Int = DEFAULT_MIN_MATCH,
     val maxMatch: Int = DEFAULT_MAX_MATCH,

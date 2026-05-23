@@ -19,12 +19,10 @@ package dev.karmakrafts.kompress.huffman
 import dev.karmakrafts.karbide.BitSink
 import dev.karmakrafts.karbide.BitSource
 import dev.karmakrafts.karbide.readBit
-import dev.karmakrafts.kompress.InternalCompressionApi
 import dev.karmakrafts.kompress.exception.NoSuchCodeException
 import dev.karmakrafts.kompress.exception.NoSuchSymbolException
 
-@InternalCompressionApi
-class HuffmanTree(lengths: IntArray) {
+internal class HuffmanTree(lengths: IntArray) {
     private val decodeTable: HashMap<HuffmanCode, Int> = HashMap()
     private val encodeTable: Array<HuffmanCode> = Array(lengths.size) { HuffmanCode() }
     private val maxBits: Int = lengths.maxOrNull() ?: 0

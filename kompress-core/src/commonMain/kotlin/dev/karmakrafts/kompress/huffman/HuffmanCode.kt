@@ -16,12 +16,10 @@
 
 package dev.karmakrafts.kompress.huffman
 
-import dev.karmakrafts.kompress.InternalCompressionApi
 import kotlin.jvm.JvmInline
 
-@InternalCompressionApi
 @JvmInline
-value class HuffmanCode(val value: ULong) {
+internal value class HuffmanCode(val value: ULong) {
     inline val bits: Int
         get() = ((value shr 32) and 0xFFFFFFFFU).toInt()
 

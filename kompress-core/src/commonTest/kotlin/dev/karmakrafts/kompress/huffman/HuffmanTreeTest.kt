@@ -19,7 +19,6 @@ package dev.karmakrafts.kompress.huffman
 import dev.karmakrafts.karbide.BitOrder
 import dev.karmakrafts.karbide.bitSink
 import dev.karmakrafts.karbide.bitSource
-import dev.karmakrafts.kompress.InternalCompressionApi
 import dev.karmakrafts.kompress.exception.NoSuchCodeException
 import dev.karmakrafts.kompress.exception.NoSuchSymbolException
 import kotlinx.io.Buffer
@@ -28,7 +27,6 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 
-@OptIn(InternalCompressionApi::class)
 class HuffmanTreeTest {
     @Test
     fun `encode empty tree`() {

@@ -20,7 +20,7 @@ import kotlinx.io.Buffer
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-class CRCTest {
+class CRC32Test {
     @Test
     fun `crc32 byte array`() {
         assertEquals(0x00000000U, crc32("".encodeToByteArray()))

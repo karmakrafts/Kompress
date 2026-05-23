@@ -16,8 +16,8 @@
 
 package dev.karmakrafts.kompress.util
 
-import dev.karmakrafts.kompress.exception.DataFormatException
 import dev.karmakrafts.kompress.InternalCompressionApi
+import dev.karmakrafts.kompress.exception.DataFormatException
 import kotlinx.io.Sink
 import kotlinx.io.Source
 
