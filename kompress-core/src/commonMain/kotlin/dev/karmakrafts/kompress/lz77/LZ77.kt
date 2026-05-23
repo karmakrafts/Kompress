@@ -24,7 +24,7 @@ import dev.karmakrafts.kompress.InternalCompressionApi
  */
 @InternalCompressionApi
 class LZ77( // @formatter:off
-    val level: Int = DEFAULT_LEVEL,
+    level: Int = DEFAULT_LEVEL,
     val minMatch: Int = DEFAULT_MIN_MATCH,
     val maxMatch: Int = DEFAULT_MAX_MATCH,
     val windowSize: Int = DEFAULT_WINDOW_SIZE
@@ -52,14 +52,22 @@ class LZ77( // @formatter:off
                 ((data[offset + 2].toInt() and 0xFF))
             ) and HASH_MASK // @formatter:on
         }
+
+        private fun getMaxChainDepth(level: Int): Int = when (level) {
+            in 0..2 -> 4
+            in 3..5 -> 16
+            in 6..7 -> 64
+            else -> 256
+        }
     }
 
-    private val maxChain: Int = when (level) {
-        in 0..2 -> 4
-        in 3..5 -> 16
-        in 6..7 -> 64
-        else -> 256
-    }
+    private var maxChain: Int = getMaxChainDepth(level)
+
+    var level: Int = level
+        set(value) {
+            maxChain = getMaxChainDepth(value)
+            field = value
+        }
 
     private val head: IntArray = IntArray(HASH_SIZE) { DEFAULT_HEAD }
 

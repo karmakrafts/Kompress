@@ -81,9 +81,7 @@ interface Deflater : Compressor {
 }
 
 private class NewDeflaterImpl : Deflater {
-    override var level: Int
-        get() = TODO("Not yet implemented")
-        set(value) {}
+    override var level: Int = 0
     override var input: ByteArray
         get() = TODO("Not yet implemented")
         set(value) {}
