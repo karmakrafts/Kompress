@@ -44,13 +44,13 @@ class HuffmanTree(lengths: IntArray) {
             nextCode[bit] = code
         }
         // Build decode- and encode-tables
-        for (symbolIndex in lengths.indices) {
-            val bitLength = lengths[symbolIndex]
+        for (symbol in lengths.indices) {
+            val bitLength = lengths[symbol]
             if (bitLength == 0) continue // Skip any 0-length symbols
             val canonical = nextCode[bitLength]++
             val code = HuffmanCode(canonical, bitLength)
-            encodeTable[symbolIndex] = code
-            decodeTable[code] = symbolIndex
+            encodeTable[symbol] = code
+            decodeTable[code] = symbol
         }
     }
 
