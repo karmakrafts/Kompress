@@ -80,6 +80,54 @@ interface Deflater : Compressor {
     fun deflate(output: ByteArray): Int = compress(output)
 }
 
+private class NewDeflaterImpl : Deflater {
+    override var level: Int
+        get() = TODO("Not yet implemented")
+        set(value) {}
+    override var input: ByteArray
+        get() = TODO("Not yet implemented")
+        set(value) {}
+    override val inputOffset: Int
+        get() = TODO("Not yet implemented")
+    override val inputSize: Int
+        get() = TODO("Not yet implemented")
+    override val remaining: Int
+        get() = TODO("Not yet implemented")
+    override val bytesRead: Long
+        get() = TODO("Not yet implemented")
+    override val bytesWritten: Long
+        get() = TODO("Not yet implemented")
+    override val needsInput: Boolean
+        get() = TODO("Not yet implemented")
+    override val finished: Boolean
+        get() = TODO("Not yet implemented")
+
+    override fun setInput(data: ByteArray, offset: Int, size: Int) {
+        TODO("Not yet implemented")
+    }
+
+    override fun compress(
+        output: ByteArray,
+        offset: Int,
+        size: Int,
+        flush: Boolean
+    ): Int {
+        TODO("Not yet implemented")
+    }
+
+    override fun finish() {
+        TODO("Not yet implemented")
+    }
+
+    override fun reset() {
+        TODO("Not yet implemented")
+    }
+
+    override fun close() {
+        TODO("Not yet implemented")
+    }
+}
+
 /**
  * Creates a new compressor using the specified compression level.
  * **Note that [Deflater] instances are NOT threadsafe!**

@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ * http
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -69,7 +69,7 @@ class HuffmanTreeTest {
     fun `decode invalid code`() {
         val tree = HuffmanTree(intArrayOf(1))
         val buffer = Buffer()
-        buffer.writeByte(0x01.toByte()) // Bit 0 is 1
+        buffer.writeByte(0x01.toByte())
         buffer.bitSource(bitOrder = BitOrder.LSB_FIRST).use { source ->
             assertFailsWith<NoSuchCodeException> {
                 tree.decode(source)

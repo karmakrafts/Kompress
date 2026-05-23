@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ * http
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -71,7 +71,7 @@ class LZ77EncodeTest {
     @Test
     fun `long match`() {
         val lz77 = LZ77(maxMatch = 10)
-        val data = "aaaaaaaaaaa ".encodeToByteArray() // 11 'a's + space
+        val data = "aaaaaaaaaaa ".encodeToByteArray()
         val tokens = lz77.encode(data)
         assertTrue(tokens.any { it is Token.Match })
         val match = tokens.find { it is Token.Match } as Token.Match
@@ -139,7 +139,6 @@ class LZ77EncodeTest {
         builder.append("abc ")
         val data = builder.toString().encodeToByteArray()
         val tokens = lz77.encode(data)
-        // "abc" at 0 and at 10003. Distance 10003.
         assertTrue(tokens.any { it is Token.Match && it.distance == 10003 }, "Should find match with large distance")
     }
 
@@ -149,5 +148,40 @@ class LZ77EncodeTest {
         val data = "abcdeabc ".encodeToByteArray()
         val tokens = lz77.encode(data)
         assertTrue(tokens.any { it is Token.Match && it.distance == 5 }, "Should find match at exact window size")
+    }
+
+    @Test
+    fun `encode with offset`() {
+        val lz77 = LZ77()
+        val data = byteArrayOf(0, 0, 1, 2, 3)
+        val tokens = lz77.encode(data, offset = 2)
+        assertEquals(3, tokens.size)
+        assertEquals(Token.Literal(1.toUByte()), tokens[0])
+        assertEquals(Token.Literal(2.toUByte()), tokens[1])
+        assertEquals(Token.Literal(3.toUByte()), tokens[2])
+    }
+
+    @Test
+    fun `encode with size`() {
+        val lz77 = LZ77()
+        val data = byteArrayOf(1, 2, 3, 4, 5)
+        val tokens = lz77.encode(data, size = 3)
+        assertEquals(3, tokens.size)
+        assertEquals(Token.Literal(1.toUByte()), tokens[0])
+        assertEquals(Token.Literal(2.toUByte()), tokens[1])
+        assertEquals(Token.Literal(3.toUByte()), tokens[2])
+    }
+
+    @Test
+    fun `encode with offset and size`() {
+        val lz77 = LZ77()
+        val data = "padding abcabc ".encodeToByteArray()
+        val tokens = lz77.encode(data, offset = 8, size = 7)
+        assertEquals(5, tokens.size)
+        assertEquals(Token.Literal('a'.code.toUByte()), tokens[0])
+        assertEquals(Token.Literal('b'.code.toUByte()), tokens[1])
+        assertEquals(Token.Literal('c'.code.toUByte()), tokens[2])
+        assertEquals(Token.Match(3, 3), tokens[3])
+        assertEquals(Token.Literal(' '.code.toUByte()), tokens[4])
     }
 }

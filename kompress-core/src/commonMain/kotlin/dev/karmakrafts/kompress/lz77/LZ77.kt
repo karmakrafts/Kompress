@@ -67,20 +67,25 @@ class LZ77( // @formatter:off
      * Encodes the given data into an LZ77 token stream.
      *
      * @param data The raw bytes to encode.
+     * @param offset The offset into the input array to start reading from.
+     * @param size The size of the slice to read from the input array.
      * @return A list of LZ77 tokens corresponding to the original data.
      */
-    fun encode(data: ByteArray): List<Token> {
+    fun encode( // @formatter:off
+        data: ByteArray,
+        offset: Int = 0,
+        size: Int = data.size - offset
+    ): List<Token> { // @formatter:on
         head.fill(DEFAULT_HEAD)
         val tokens = ArrayList<Token>()
-        val dataSize = data.size
-        val next = IntArray(dataSize) { DEFAULT_NEXT }
+        val next = IntArray(size) { DEFAULT_NEXT }
         var pos = 0
-        while (pos < dataSize) {
+        while (pos < size) {
             var bestLength = 0
             var bestDistance = 0
             // Wait until we have enough bytes available to match against
-            if (pos + minMatch <= dataSize) {
-                val hash = rollingHash(data, pos)
+            if (pos + minMatch <= size) {
+                val hash = rollingHash(data, pos + offset)
                 var candidate = head[hash] // Newest candidate position
                 var chain = 0
                 // Search backwards through previous matches
@@ -91,9 +96,9 @@ class LZ77( // @formatter:off
                     // Extend match while bytes remain equal
                     while( // @formatter:off
                         length < maxMatch &&
-                        pos + length < dataSize &&
+                        pos + length < size &&
                         distance !in minMatch..length &&
-                        data[candidate + length] == data[pos + length]
+                        data[candidate + offset + length] == data[pos + offset + length]
                     ) { // @formatter:on
                         length++
                     }
@@ -113,10 +118,10 @@ class LZ77( // @formatter:off
             // Emit the according token
             tokens += if (bestLength >= minMatch) {
                 // Update the hash chain for every extra byte we skip through the match
-                for (offset in 1 until bestLength) {
-                    val currentPosition = pos + offset
-                    if (currentPosition + minMatch <= dataSize) {
-                        val currentHash = rollingHash(data, currentPosition)
+                for (chainOffset in 1 until bestLength) {
+                    val currentPosition = pos + chainOffset
+                    if (currentPosition + minMatch <= size) {
+                        val currentHash = rollingHash(data, currentPosition + offset)
                         next[currentPosition] = head[currentHash]
                         head[currentHash] = currentPosition
                     }
@@ -124,7 +129,7 @@ class LZ77( // @formatter:off
                 pos += bestLength // Increment by total match length
                 Token.Match(bestLength, bestDistance)
             }
-            else Token.Literal(data[pos++].toUByte())
+            else Token.Literal(data[offset + pos++].toUByte())
         }
         return tokens
     }
