@@ -272,23 +272,33 @@ private class NewDeflaterImpl( // @formatter:off
     ): Int { // @formatter:on
         if (size <= 0) return 0
         // If any pending output exists, flush that out first
-        val flushed = buffer.readAtMostTo(output, offset, offset + size)
-        if (flushed > 0) return flushed
+        var flushed = buffer.readAtMostTo(output, offset, offset + size)
+        if (flushed > 0) {
+            bytesWritten += flushed
+            return flushed
+        }
         // If no more data is remaining, either flush or return early
         if (remaining == 0) {
             // If we are just finishing up, make sure to flush the last pending byte and return
             if (finishing && !finished) {
                 bitSink.flush()
                 finished = true
-                return buffer.readAtMostTo(output, offset, offset + size)
+                flushed = buffer.readAtMostTo(output, offset, offset + size)
+                bytesWritten += flushed
+                return flushed
             }
             return 0
         }
         // Compress new data
         // TODO: re-use an ArrayList as a buffer
         val tokens = lz77.encode(_input, inputOffset, inputSize)
+        bytesRead += inputSize
         encodeDynamicBlock(tokens)
-        return buffer.readAtMostTo(output, offset, offset + size)
+        remaining = 0
+        // Flush out any pending data before returning
+        flushed = buffer.readAtMostTo(output, offset, offset + size)
+        bytesWritten += flushed
+        return flushed
     }
 
     override fun finish() {
