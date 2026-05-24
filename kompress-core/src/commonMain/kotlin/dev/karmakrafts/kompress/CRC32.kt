@@ -18,89 +18,81 @@ package dev.karmakrafts.kompress
 
 import kotlinx.io.Source
 
-private const val CRC32_POLYNOMIAL: UInt = 0xEDB88320U
-
-/**
- * Initial value for CRC32 calculations.
- */
-const val CRC32_INITIAL_VALUE: UInt = 0xFFFFFFFFU
-
-private val crc32Table: UIntArray = UIntArray(256) { index ->
-    var value = index.toUInt()
-    repeat(8) {
-        value = when {
-            value and 0x1U != 0x0U -> (value shr 1) xor CRC32_POLYNOMIAL
-            else -> value shr 1
-        }
+interface CRC32 {
+    companion object {
+        const val DEFAULT_INITIAL_VALUE: UInt = 0xFFFFFFFFU
+        const val DEFAULT_POLYNOMIAL: UInt = 0xEDB88320U
     }
-    value
+
+    val polynomial: UInt
+    val initialValue: UInt
+
+    fun reset()
+    fun round(data: ByteArray)
+    fun round(byte: Byte)
+    fun finalize(): UInt
 }
 
-/**
- * Calculates the CRC32 checksum for the given [data].
- *
- * @param data the data to calculate the checksum for.
- * @param initialValue the initial value for the CRC32 calculation.
- * @return the calculated CRC32 checksum.
- */
-fun crc32Round( // @formatter:off
-    data: ByteArray,
-    initialValue: UInt = CRC32_INITIAL_VALUE
-): UInt { // @formatter:on
-    if (data.isEmpty()) return initialValue
-    var crc = initialValue
-    for (index in data.indices) {
-        val tableIndex = (crc xor (data[index].toUInt() and 0xFFU)) and 0xFFU
-        crc = (crc shr 8) xor crc32Table[tableIndex.toInt()]
-    }
-    return crc
+fun CRC32.once(data: ByteArray): UInt {
+    round(data)
+    return finalize()
 }
 
-/**
- * Calculates the CRC32 checksum for the given [data].
- *
- * @param data the data to calculate the checksum for.
- * @param initialValue the initial value for the CRC32 calculation.
- * @return the calculated CRC32 checksum.
- */
-fun crc32( // @formatter:off
-    data: ByteArray,
-    initialValue: UInt = CRC32_INITIAL_VALUE
-): UInt = crc32Round(data, initialValue).inv() // @formatter:on
-
-/**
- * Calculates the CRC32 checksum for the given [size] of bytes from this [Source].
- *
- * Calling this function will consume the specified number of bytes from the source.
- *
- * @param size the number of bytes to read from the source.
- * @param initialValue the initial value for the CRC32 calculation.
- * @return the calculated CRC32 checksum.
- */
-fun Source.crc32Round( // @formatter:off
-    size: Long = Long.MAX_VALUE,
-    initialValue: UInt = CRC32_INITIAL_VALUE
-): UInt { // @formatter:on
-    var crc = initialValue
-    var index = 0
-    while (!exhausted() && index < size) {
-        val tableIndex = (crc xor (readByte().toUInt() and 0xFFU)) and 0xFFU
-        crc = (crc shr 8) xor crc32Table[tableIndex.toInt()]
+fun CRC32.round(source: Source, size: Long) {
+    var index = 0L
+    while (!source.exhausted() && index < size) {
+        round(source.readByte())
         index++
     }
-    return crc
 }
 
-/**
- * Calculates the CRC32 checksum for the given [size] of bytes from this [Source].
- *
- * Calling this function will consume the specified number of bytes from the source.
- *
- * @param size the number of bytes to read from the source.
- * @param initialValue the initial value for the CRC32 calculation.
- * @return the calculated CRC32 checksum.
- */
-fun Source.crc32( // @formatter:off
-    size: Long = Long.MAX_VALUE,
-    initialValue: UInt = CRC32_INITIAL_VALUE
-): UInt = crc32Round(size, initialValue).inv() // @formatter:on
+fun CRC32.once(source: Source, size: Long): UInt {
+    var index = 0L
+    while (!source.exhausted() && index < size) {
+        round(source.readByte())
+        index++
+    }
+    return finalize()
+}
+
+private class CRC32Impl( // @formatter:off
+    override val polynomial: UInt,
+    override val initialValue: UInt
+) : CRC32 { // @formatter:on
+    private var value: UInt = initialValue
+
+    private val table: UIntArray = UIntArray(256) { index ->
+        var value = index.toUInt()
+        repeat(8) {
+            value = when {
+                value and 0x1U != 0x0U -> (value shr 1) xor polynomial
+                else -> value shr 1
+            }
+        }
+        value
+    }
+
+    override fun reset() {
+        value = initialValue
+    }
+
+    override fun round(byte: Byte) {
+        val tableIndex = (value xor (byte.toUInt() and 0xFFU)) and 0xFFU
+        value = (value shr 8) xor table[tableIndex.toInt()]
+    }
+
+    override fun round(data: ByteArray) {
+        if (data.isEmpty()) return
+        for (index in data.indices) {
+            val tableIndex = (value xor (data[index].toUInt() and 0xFFU)) and 0xFFU
+            value = (value shr 8) xor table[tableIndex.toInt()]
+        }
+    }
+
+    override fun finalize(): UInt = value.inv()
+}
+
+fun CRC32( // @formatter:off
+    polynomial: UInt = CRC32.DEFAULT_POLYNOMIAL,
+    initialValue: UInt = CRC32.DEFAULT_INITIAL_VALUE
+): CRC32 = CRC32Impl(polynomial, initialValue) // @formatter:on

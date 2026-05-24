@@ -36,21 +36,18 @@ interface CRC32Sink : RawSink {
 
 private class CRC32SinkImpl( // @formatter:off
     private val delegate: RawSink,
-    private val isSinkOwned: Boolean
+    private val isSinkOwned: Boolean,
+    private val crc32: CRC32
 ) : CRC32Sink, RawSink by delegate { // @formatter:on
     override val checksum: UInt
-        get() = rawChecksum.inv()
-
-    private var rawChecksum: UInt = CRC32_INITIAL_VALUE
+        get() = crc32.finalize()
 
     override fun write(source: Buffer, byteCount: Long) {
-        rawChecksum = source.peek().crc32Round(byteCount, rawChecksum)
+        crc32.round(source.peek(), byteCount)
         delegate.write(source, byteCount)
     }
 
-    override fun reset() {
-        rawChecksum = CRC32_INITIAL_VALUE
-    }
+    override fun reset() = crc32.reset()
 
     override fun close() {
         if (isSinkOwned) delegate.close()
@@ -63,4 +60,7 @@ private class CRC32SinkImpl( // @formatter:off
  * @param isSinkOwned whether the underlying sink is owned by the [CRC32Sink] and should be closed when it is closed.
  * @return a [CRC32Sink] wrapping this [RawSink].
  */
-fun RawSink.crc32Sink(isSinkOwned: Boolean = true): CRC32Sink = CRC32SinkImpl(this, isSinkOwned)
+fun RawSink.crc32Sink( // @formatter:off
+    isSinkOwned: Boolean = true,
+    crc32: CRC32 = CRC32()
+): CRC32Sink = CRC32SinkImpl(this, isSinkOwned, crc32) // @formatter:on

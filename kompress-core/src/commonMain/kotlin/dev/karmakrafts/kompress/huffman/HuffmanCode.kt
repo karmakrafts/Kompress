@@ -16,6 +16,7 @@
 
 package dev.karmakrafts.kompress.huffman
 
+import dev.karmakrafts.karbide.BitSink
 import kotlin.jvm.JvmInline
 
 @JvmInline
@@ -30,4 +31,7 @@ internal value class HuffmanCode(val value: ULong) {
         bits: Int = 0,
         length: Int = 0
     ) : this((bits.toULong() shl 32) or length.toULong()) // @formatter:on
+
+    @Suppress("NOTHING_TO_INLINE")
+    inline fun encode(sink: BitSink) = sink.writeBits(length, bits.toULong())
 }

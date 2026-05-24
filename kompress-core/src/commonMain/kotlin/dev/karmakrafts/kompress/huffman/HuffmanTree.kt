@@ -23,11 +23,24 @@ import dev.karmakrafts.kompress.exception.NoSuchCodeException
 import dev.karmakrafts.kompress.exception.NoSuchSymbolException
 
 internal class HuffmanTree(lengths: IntArray) {
+    // TODO: optimize this by using lookup by code prefix length -> benchmark!
     private val decodeTable: HashMap<HuffmanCode, Int> = HashMap()
-    private val encodeTable: Array<HuffmanCode> = Array(lengths.size) { HuffmanCode() }
-    private val maxBits: Int = lengths.maxOrNull() ?: 0
+    private var encodeTable: ArrayList<HuffmanCode> = ArrayList(lengths.size) // Pre-allocate to initial size
+    private var maxBits: Int = lengths.maxOrNull() ?: 0
 
-    init {
+    var lengths: IntArray = lengths
+        set(value) {
+            field = value
+            initTables()
+        }
+
+    constructor() : this(IntArray(0))
+
+    private fun initTables() {
+        // Clear state
+        decodeTable.clear()
+        encodeTable.clear()
+        maxBits = lengths.maxOrNull() ?: 0
         // Determine how many symbols use each bit length
         val bitLengthCounts = IntArray(maxBits + 1)
         for (length in lengths) {
@@ -47,17 +60,24 @@ internal class HuffmanTree(lengths: IntArray) {
             if (bitLength == 0) continue // Skip any 0-length symbols
             val canonical = nextCode[bitLength]++
             val code = HuffmanCode(canonical, bitLength)
-            encodeTable[symbol] = code
+            encodeTable.add(symbol, code)
             decodeTable[code] = symbol
         }
     }
 
-    fun encode(sink: BitSink, symbol: Int) {
-        val code = encodeTable.getOrNull(symbol) ?: throw NoSuchSymbolException("No symbol $symbol in huffman tree")
-        sink.writeBits(code.length, code.bits.toULong())
+    fun codeLengths(): IntArray = IntArray(encodeTable.size) { index ->
+        encodeTable[index].length
     }
 
-    fun decode(source: BitSource): Int {
+    fun encodingOf(symbol: Int): HuffmanCode =
+        encodeTable.getOrNull(symbol) ?: throw NoSuchSymbolException("No symbol $symbol in huffman tree")
+
+    fun encodeSymbol(sink: BitSink, symbol: Int) {
+        val code = encodingOf(symbol)
+        code.encode(sink)
+    }
+
+    fun decodeSymbol(source: BitSource): Int {
         var bits = 0
         for (length in 1..maxBits) {
             bits = (bits shl 1) or source.readBit().toInt()

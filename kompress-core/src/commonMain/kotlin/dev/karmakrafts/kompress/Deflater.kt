@@ -19,8 +19,11 @@ package dev.karmakrafts.kompress
 import dev.karmakrafts.karbide.BitOrder
 import dev.karmakrafts.karbide.BitSink
 import dev.karmakrafts.karbide.bitSink
+import dev.karmakrafts.karbide.writeBit
 import dev.karmakrafts.kompress.Deflater.Companion.compress
+import dev.karmakrafts.kompress.huffman.HuffmanTree
 import dev.karmakrafts.kompress.lz77.LZ77
+import dev.karmakrafts.kompress.lz77.Token
 import kotlinx.io.Buffer
 import kotlinx.io.RawSink
 import kotlinx.io.RawSource
@@ -87,7 +90,6 @@ interface Deflater : Compressor {
 
 @Suppress("OVERRIDE_DEPRECATION")
 private class NewDeflaterImpl( // @formatter:off
-    private val raw: Boolean,
     level: Int
 ) : Deflater { // @formatter:on
     private val lz77: LZ77 = LZ77(level)
@@ -126,12 +128,113 @@ private class NewDeflaterImpl( // @formatter:off
 
     private val buffer: Buffer = Buffer()
     private val bitSink: BitSink = buffer.bitSink(bitOrder = BitOrder.LSB_FIRST)
+    private val literalTree: HuffmanTree = HuffmanTree()
+    private val distanceTree: HuffmanTree = HuffmanTree()
 
     override fun setInput(data: ByteArray, offset: Int, size: Int) {
         _input = data
         inputOffset = offset
         inputSize = size
         remaining = size
+    }
+
+    private fun encodeBlockHeader(hlit: Int, hdist: Int, hclen: Int) {
+        bitSink.writeBits(5, (hlit - DeflateConstants.HLIT_OFFSET).toULong())
+        bitSink.writeBits(5, (hdist - DeflateConstants.HDIST_OFFSET).toULong())
+        bitSink.writeBits(4, (hclen - DeflateConstants.HCLEN_OFFSET).toULong())
+    }
+
+    // TODO: could probably cache this and reuse it -> pooling?
+    private fun buildCodeLengthAlphabet(hlit: Int, hdist: Int): IntArray {
+        val combinedLengths = IntArray(hlit + hdist)
+        var index = 0
+        for (literalLength in literalTree.lengths) combinedLengths[index++] = literalLength
+        for (distanceLength in distanceTree.lengths) combinedLengths[index++] = distanceLength
+        return combinedLengths
+    }
+
+    private fun computeHclen(lengthTreeLengths: IntArray): Int {
+        var hclen = DeflateConstants.ALPHABET_SIZE
+        while (hclen > 4 && lengthTreeLengths[DeflateConstants.CODE_LENGTH_ORDER[hclen - 1]] == 0) {
+            hclen--
+        }
+        return hclen
+    }
+
+    private fun encodeLengths(codeLengths: IntArray, tree: HuffmanTree) {
+        var previous = -1
+        for (length in codeLengths) {
+            when (length) { // @formatter:off
+                0 if previous == 0 -> {
+                    tree.encodeSymbol(bitSink, DeflateConstants.SYM_LONG_ZERO_LENGTH_RUN)
+                    bitSink.writeBits(DeflateConstants.SYM_LONG_ZERO_LENGTH_RUN_SIZE, 0UL)
+                }
+                0 -> {
+                    tree.encodeSymbol(bitSink, DeflateConstants.SYM_REPEAT_ZERO_LENGTH)
+                    bitSink.writeBits(DeflateConstants.SYM_REPEAT_ZERO_LENGTH_SIZE, 0UL)
+                }
+                previous -> {
+                    tree.encodeSymbol(bitSink, DeflateConstants.SYM_REPEAT_PREVIOUS)
+                    bitSink.writeBits(DeflateConstants.SYM_REPEAT_PREVIOUS_SIZE, 0UL)
+                }
+                else -> tree.encodeSymbol(bitSink, length)
+            } // @formatter:on
+            previous = length
+        }
+    }
+
+    private fun encodeDynamicTrees() {
+        // Derive the raw code lengths
+        val literalLengths = literalTree.codeLengths()
+        val distanceLengths = distanceTree.codeLengths()
+        val hlit = literalLengths.size
+        val hdist = distanceLengths.size
+        // Build the code length alphabet
+        val combinedLengths = buildCodeLengthAlphabet(hlit, hdist)
+        // Derive length tree by frequencies
+        val lengthFrequencies = IntArray(DeflateConstants.ALPHABET_SIZE)
+        for (length in combinedLengths) lengthFrequencies[length]++
+        val lengthTree = HuffmanTree(lengthFrequencies)
+        val lengthTreeLengths = lengthTree.codeLengths()
+        // Compute HCLEN value and write it out
+        val hclen = computeHclen(lengthTreeLengths)
+        // Write the actual block header
+        encodeBlockHeader(hlit, hdist, hclen)
+        // Write code-length tree
+        for (index in 0..<hclen) {
+            val symbol = DeflateConstants.CODE_LENGTH_ORDER[index]
+            bitSink.writeBits(3, lengthTreeLengths[symbol].toULong())
+        }
+        // Write literal and distance lengths and encode repeats
+        encodeLengths(literalLengths, lengthTree)
+        encodeLengths(distanceLengths, lengthTree)
+    }
+
+    private fun encodeDynamicBlock(tokens: List<Token>) {
+        bitSink.writeBit(if (finishing) 1U else 0U) // BFINAL
+        bitSink.writeBits(DeflateConstants.BTYPE_SIZE, DeflateConstants.BTYPE_DYNAMIC) // BTYPE
+        // Compute frequency of literals and matches
+        val literalFrequencies = IntArray(286)
+        val distanceFrequencies = IntArray(30)
+        for (token in tokens) when (token) {
+            is Token.Literal -> literalFrequencies[token.value.toInt() and 0xFF]++
+            is Token.Match -> {
+                literalFrequencies[DeflateConstants.computeSymbol(token.length)]++
+                distanceFrequencies[DeflateConstants.computeSymbol(token.distance)]++
+            }
+        }
+        literalFrequencies[DeflateConstants.SYM_EOF]++ // EOF always occurs once
+        // Construct huffman trees from frequencies and encode them
+        literalTree.lengths = literalFrequencies
+        distanceTree.lengths = distanceFrequencies
+        encodeDynamicTrees()
+        // Encode the token stream
+        for (token in tokens) when (token) {
+            is Token.Literal -> literalTree.encodeSymbol(bitSink, token.value.toInt() and 0xFF)
+            is Token.Match -> {
+                // TODO: implement this
+            }
+        }
     }
 
     override fun compress( // @formatter:off
@@ -141,7 +244,23 @@ private class NewDeflaterImpl( // @formatter:off
         flush: Boolean
     ): Int { // @formatter:on
         if (size <= 0) return 0
-        return 0 // TODO: implement this
+        // If any pending output exists, flush that out first
+        val flushed = buffer.readAtMostTo(output, offset, offset + size)
+        if (flushed > 0) return flushed
+        // If no more data is remaining, either flush or return early
+        if (remaining == 0) {
+            // If we are just finishing up, make sure to flush the last pending byte and return
+            if (finishing && !finished) {
+                bitSink.flush()
+                finished = true
+                return buffer.readAtMostTo(output, offset, offset + size)
+            }
+            return 0
+        }
+        // Compress new data
+        val tokens = lz77.encode(_input, inputOffset, inputSize)
+        encodeDynamicBlock(tokens)
+        return buffer.readAtMostTo(output, offset, offset + size)
     }
 
     override fun finish() {

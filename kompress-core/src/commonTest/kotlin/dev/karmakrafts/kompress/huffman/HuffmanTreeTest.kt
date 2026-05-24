@@ -34,7 +34,7 @@ class HuffmanTreeTest {
         val buffer = Buffer()
         buffer.bitSink().use { sink ->
             assertFailsWith<NoSuchSymbolException> {
-                tree.encode(sink, 0)
+                tree.encodeSymbol(sink, 0)
             }
         }
     }
@@ -44,9 +44,9 @@ class HuffmanTreeTest {
         val tree = HuffmanTree(intArrayOf(1, 2, 2))
         val buffer = Buffer()
         buffer.bitSink(bitOrder = BitOrder.LSB_FIRST).use { sink ->
-            tree.encode(sink, 0)
-            tree.encode(sink, 1)
-            tree.encode(sink, 2)
+            tree.encodeSymbol(sink, 0)
+            tree.encodeSymbol(sink, 1)
+            tree.encodeSymbol(sink, 2)
         }
         assertEquals(26.toByte(), buffer.readByte())
     }
@@ -57,9 +57,9 @@ class HuffmanTreeTest {
         val buffer = Buffer()
         buffer.writeByte(26.toByte())
         buffer.bitSource(bitOrder = BitOrder.LSB_FIRST).use { source ->
-            assertEquals(0, tree.decode(source))
-            assertEquals(1, tree.decode(source))
-            assertEquals(2, tree.decode(source))
+            assertEquals(0, tree.decodeSymbol(source))
+            assertEquals(1, tree.decodeSymbol(source))
+            assertEquals(2, tree.decodeSymbol(source))
         }
     }
 
@@ -70,7 +70,7 @@ class HuffmanTreeTest {
         buffer.writeByte(0x01.toByte())
         buffer.bitSource(bitOrder = BitOrder.LSB_FIRST).use { source ->
             assertFailsWith<NoSuchCodeException> {
-                tree.decode(source)
+                tree.decodeSymbol(source)
             }
         }
     }
@@ -80,12 +80,12 @@ class HuffmanTreeTest {
         val tree = HuffmanTree(intArrayOf(0, 0, 1))
         val buffer = Buffer()
         buffer.bitSink(bitOrder = BitOrder.LSB_FIRST).use { sink ->
-            tree.encode(sink, 0)
-            tree.encode(sink, 1)
+            tree.encodeSymbol(sink, 0)
+            tree.encodeSymbol(sink, 1)
             assertFailsWith<NoSuchSymbolException> {
-                tree.encode(sink, 3)
+                tree.encodeSymbol(sink, 3)
             }
-            tree.encode(sink, 2)
+            tree.encodeSymbol(sink, 2)
         }
         assertEquals(0x00.toByte(), buffer.readByte())
     }
@@ -96,7 +96,7 @@ class HuffmanTreeTest {
         val buffer = Buffer()
         buffer.writeByte(0x00.toByte())
         buffer.bitSource(bitOrder = BitOrder.LSB_FIRST).use { source ->
-            assertEquals(2, tree.decode(source))
+            assertEquals(2, tree.decodeSymbol(source))
         }
     }
 
@@ -107,12 +107,12 @@ class HuffmanTreeTest {
         val symbols = listOf(0, 1, 2, 1, 0)
         buffer.bitSink(bitOrder = BitOrder.LSB_FIRST).use { sink ->
             for (s in symbols) {
-                tree.encode(sink, s)
+                tree.encodeSymbol(sink, s)
             }
         }
         buffer.bitSource(bitOrder = BitOrder.LSB_FIRST).use { source ->
             for (s in symbols) {
-                assertEquals(s, tree.decode(source))
+                assertEquals(s, tree.decodeSymbol(source))
             }
         }
     }
@@ -123,7 +123,7 @@ class HuffmanTreeTest {
         val buffer = Buffer()
         buffer.bitSink(bitOrder = BitOrder.LSB_FIRST).use { sink ->
             for (s in 0 until 256) {
-                tree.encode(sink, s)
+                tree.encodeSymbol(sink, s)
             }
         }
         val bytes = buffer.readByteArray()
@@ -139,10 +139,10 @@ class HuffmanTreeTest {
         val buffer = Buffer()
         buffer.write(byteArrayOf(0x00.toByte(), 0x80.toByte(), 0x40.toByte(), 0xC0.toByte()))
         buffer.bitSource(bitOrder = BitOrder.LSB_FIRST).use { source ->
-            assertEquals(0, tree.decode(source))
-            assertEquals(1, tree.decode(source))
-            assertEquals(2, tree.decode(source))
-            assertEquals(3, tree.decode(source))
+            assertEquals(0, tree.decodeSymbol(source))
+            assertEquals(1, tree.decodeSymbol(source))
+            assertEquals(2, tree.decodeSymbol(source))
+            assertEquals(3, tree.decodeSymbol(source))
         }
     }
 
@@ -153,12 +153,12 @@ class HuffmanTreeTest {
         val symbols = (0 until 256).toList()
         buffer.bitSink(bitOrder = BitOrder.LSB_FIRST).use { sink ->
             for (s in symbols) {
-                tree.encode(sink, s)
+                tree.encodeSymbol(sink, s)
             }
         }
         buffer.bitSource(bitOrder = BitOrder.LSB_FIRST).use { source ->
             for (s in symbols) {
-                assertEquals(s, tree.decode(source))
+                assertEquals(s, tree.decodeSymbol(source))
             }
         }
     }

@@ -36,24 +36,19 @@ interface CRC32Source : RawSource {
 
 private class CRC32SourceImpl( // @formatter:off
     private val delegate: RawSource,
-    private val isSourceOwned: Boolean
+    private val isSourceOwned: Boolean,
+    private val crc32: CRC32
 ) : CRC32Source { // @formatter:on
     override val checksum: UInt
-        get() = rawChecksum.inv()
-
-    private var rawChecksum: UInt = CRC32_INITIAL_VALUE
+        get() = crc32.finalize()
 
     override fun readAtMostTo(sink: Buffer, byteCount: Long): Long {
         val read = delegate.readAtMostTo(sink, byteCount)
-        if (read > 0L) {
-            rawChecksum = sink.peek().crc32Round(read, rawChecksum)
-        }
+        if (read > 0L) crc32.round(sink.peek(), read)
         return read
     }
 
-    override fun reset() {
-        rawChecksum = CRC32_INITIAL_VALUE
-    }
+    override fun reset() = crc32.reset()
 
     override fun close() {
         if (isSourceOwned) delegate.close()
@@ -66,4 +61,7 @@ private class CRC32SourceImpl( // @formatter:off
  * @param isSourceOwned whether the underlying source is owned by the [CRC32Source] and should be closed when it is closed.
  * @return a [CRC32Source] wrapping this [RawSource].
  */
-fun RawSource.crc32Source(isSourceOwned: Boolean = true): CRC32Source = CRC32SourceImpl(this, isSourceOwned)
+fun RawSource.crc32Source( // @formatter:off
+    isSourceOwned: Boolean = true,
+    crc32: CRC32 = CRC32()
+): CRC32Source = CRC32SourceImpl(this, isSourceOwned, crc32) // @formatter:on

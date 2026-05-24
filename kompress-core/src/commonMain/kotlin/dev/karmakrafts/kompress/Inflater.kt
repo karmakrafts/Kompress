@@ -128,18 +128,6 @@ interface Inflater : Decompressor {
 }
 
 private class NewInflaterImpl : Inflater {
-    companion object {
-        /**
-         * See [RFC1951](https://datatracker.ietf.org/doc/html/rfc1951) 3.2.7.
-         */
-        private val CODE_LENGTH_ORDER: IntArray = intArrayOf( // @formatter:off
-            16, 17, 18, 0, 8,  7,
-            9,  6,  10, 5, 11, 4,
-            12, 3,  13, 2, 14, 1,
-            15
-        ) // @formatter:on
-    }
-
     override var input: ByteArray
         get() = TODO("Not yet implemented")
         set(value) {}
@@ -171,33 +159,33 @@ private class NewInflaterImpl : Inflater {
         val hclen = source.readBits(4).toInt() + 4
         val codeLengthLengths = IntArray(19)
         for (index in 0..<hclen) {
-            codeLengthLengths[CODE_LENGTH_ORDER[index]] = source.readBits(3).toInt()
+            codeLengthLengths[DeflateConstants.CODE_LENGTH_ORDER[index]] = source.readBits(3).toInt()
         }
         val lengthTree = HuffmanTree(codeLengthLengths)
         val lengthsCount = hlit + hdist
         val lengths = IntArray(lengthsCount)
         var index = 0
-        while (index < lengthsCount) when (val symbol = lengthTree.decode(source)) {
+        while (index < lengthsCount) when (val symbol = lengthTree.decodeSymbol(source)) {
             // Handle direct code length
             in 0..15 -> lengths[index++] = symbol
             // Repeat previous code length
-            16 -> {
-                val repeatCount = source.readBits(2).toInt() + 3
+            DeflateConstants.SYM_REPEAT_PREVIOUS -> {
+                val repeatCount = source.readBits(DeflateConstants.SYM_REPEAT_PREVIOUS_SIZE).toInt() + 3
                 val previous = lengths[index - 1]
                 repeat(repeatCount) {
                     lengths[index++] = previous
                 }
             }
             // Repeat zero length
-            17 -> {
-                val repeatCount = source.readBits(3).toInt() + 3
+            DeflateConstants.SYM_REPEAT_ZERO_LENGTH -> {
+                val repeatCount = source.readBits(DeflateConstants.SYM_REPEAT_ZERO_LENGTH_SIZE).toInt() + 3
                 repeat(repeatCount) {
                     lengths[index++] = 0
                 }
             }
             // Long zero length run
-            18 -> {
-                val repeatCount = source.readBits(7).toInt() + 11
+            DeflateConstants.SYM_LONG_ZERO_LENGTH_RUN -> {
+                val repeatCount = source.readBits(DeflateConstants.SYM_LONG_ZERO_LENGTH_RUN_SIZE).toInt() + 11
                 repeat(repeatCount) {
                     lengths[index++] = 0
                 }
