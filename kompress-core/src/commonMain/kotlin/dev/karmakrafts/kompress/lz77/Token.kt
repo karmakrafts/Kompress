@@ -29,7 +29,8 @@ internal sealed interface Token {
     /**
      * A length-distance pair based token.
      */
-    data class Match(
-        val length: Int, val distance: Int
-    ) : Token
+    data class Match( // @formatter:off
+        val length: Int,
+        val distance: Int
+    ) : Token // @formatter:on
 }

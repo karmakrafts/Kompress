@@ -68,6 +68,7 @@ kotlin {
         commonMain {
             dependencies {
                 api(projects.kompressCore)
+                compileOnly(libs.karbide.core) // Provided by core
             }
         }
         commonTest {

@@ -45,7 +45,7 @@ interface Deflater : Compressor {
          * @param level The compression level between 0 and 9.
          * @param bufferSize The size of the intermediate buffer used during compression.
          * @return The compressed data.
-         * @throws DataFormatException when the compressor encounters invalid data.
+         * @throws dev.karmakrafts.kompress.exception.DataFormatException when the compressor encounters invalid data.
          */
         fun compress( // @formatter:off
             data: ByteArray,
@@ -138,12 +138,6 @@ private class NewDeflaterImpl( // @formatter:off
         remaining = size
     }
 
-    private fun encodeBlockHeader(hlit: Int, hdist: Int, hclen: Int) {
-        bitSink.writeBits(5, (hlit - DeflateConstants.HLIT_OFFSET).toULong())
-        bitSink.writeBits(5, (hdist - DeflateConstants.HDIST_OFFSET).toULong())
-        bitSink.writeBits(4, (hclen - DeflateConstants.HCLEN_OFFSET).toULong())
-    }
-
     // TODO: could probably cache this and reuse it -> pooling?
     private fun buildCodeLengthAlphabet(hlit: Int, hdist: Int): IntArray {
         val combinedLengths = IntArray(hlit + hdist)
@@ -155,7 +149,7 @@ private class NewDeflaterImpl( // @formatter:off
 
     private fun computeHclen(lengthTreeLengths: IntArray): Int {
         var hclen = DeflateConstants.ALPHABET_SIZE
-        while (hclen > 4 && lengthTreeLengths[DeflateConstants.CODE_LENGTH_ORDER[hclen - 1]] == 0) {
+        while (hclen > DeflateConstants.HCLEN_OFFSET && lengthTreeLengths[DeflateConstants.CODE_LENGTH_ORDER[hclen - 1]] == 0) {
             hclen--
         }
         return hclen
@@ -183,6 +177,12 @@ private class NewDeflaterImpl( // @formatter:off
         }
     }
 
+    private fun encodeDynamicHeader(hlit: Int, hdist: Int, hclen: Int) {
+        bitSink.writeBits(DeflateConstants.HLIT_SIZE, (hlit - DeflateConstants.HLIT_OFFSET).toULong())
+        bitSink.writeBits(DeflateConstants.HDIST_SIZE, (hdist - DeflateConstants.HDIST_OFFSET).toULong())
+        bitSink.writeBits(DeflateConstants.HCLEN_SIZE, (hclen - DeflateConstants.HCLEN_OFFSET).toULong())
+    }
+
     private fun encodeDynamicTrees() {
         // Derive the raw code lengths
         val literalLengths = literalTree.codeLengths()
@@ -199,7 +199,7 @@ private class NewDeflaterImpl( // @formatter:off
         // Compute HCLEN value and write it out
         val hclen = computeHclen(lengthTreeLengths)
         // Write the actual block header
-        encodeBlockHeader(hlit, hdist, hclen)
+        encodeDynamicHeader(hlit, hdist, hclen)
         // Write code-length tree
         for (index in 0..<hclen) {
             val symbol = DeflateConstants.CODE_LENGTH_ORDER[index]
@@ -208,6 +208,23 @@ private class NewDeflaterImpl( // @formatter:off
         // Write literal and distance lengths and encode repeats
         encodeLengths(literalLengths, lengthTree)
         encodeLengths(distanceLengths, lengthTree)
+    }
+
+    private fun encodeLengthExtra(length: Int, symbol: Int) {
+        val index = symbol - DeflateConstants.HLIT_OFFSET
+        val base = DeflateConstants.LENGTH_BASE[index]
+        val extraBits = DeflateConstants.LENGTH_EXTRA_BITS[index]
+        if (extraBits == 0) return
+        val value = length - base
+        bitSink.writeBits(extraBits, value.toULong())
+    }
+
+    private fun encodeDistanceExtra(distance: Int, symbol: Int) {
+        val base = DeflateConstants.DIST_BASE[symbol]
+        val extraBits = DeflateConstants.DIST_EXTRA_BITS[symbol]
+        if (extraBits == 0) return
+        val value = distance - base
+        bitSink.writeBits(extraBits, value.toULong())
     }
 
     private fun encodeDynamicBlock(tokens: List<Token>) {
@@ -219,8 +236,10 @@ private class NewDeflaterImpl( // @formatter:off
         for (token in tokens) when (token) {
             is Token.Literal -> literalFrequencies[token.value.toInt() and 0xFF]++
             is Token.Match -> {
-                literalFrequencies[DeflateConstants.computeSymbol(token.length)]++
-                distanceFrequencies[DeflateConstants.computeSymbol(token.distance)]++
+                val lengthSymbol = DeflateConstants.computeLengthSymbol(token.length)
+                literalFrequencies[lengthSymbol]++
+                val distanceSymbol = DeflateConstants.computeDistanceSymbol(token.distance)
+                distanceFrequencies[distanceSymbol]++
             }
         }
         literalFrequencies[DeflateConstants.SYM_EOF]++ // EOF always occurs once
@@ -232,7 +251,15 @@ private class NewDeflaterImpl( // @formatter:off
         for (token in tokens) when (token) {
             is Token.Literal -> literalTree.encodeSymbol(bitSink, token.value.toInt() and 0xFF)
             is Token.Match -> {
-                // TODO: implement this
+                val (length, distance) = token
+
+                val lengthSymbol = DeflateConstants.computeLengthSymbol(length)
+                literalTree.encodeSymbol(bitSink, lengthSymbol)
+                encodeLengthExtra(length, lengthSymbol)
+
+                val distanceSymbol = DeflateConstants.computeDistanceSymbol(distance)
+                distanceTree.encodeSymbol(bitSink, distanceSymbol)
+                encodeDistanceExtra(distance, distanceSymbol)
             }
         }
     }
@@ -258,6 +285,7 @@ private class NewDeflaterImpl( // @formatter:off
             return 0
         }
         // Compress new data
+        // TODO: re-use an ArrayList as a buffer
         val tokens = lz77.encode(_input, inputOffset, inputSize)
         encodeDynamicBlock(tokens)
         return buffer.readAtMostTo(output, offset, offset + size)

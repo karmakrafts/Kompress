@@ -67,6 +67,28 @@ internal class LZ77( // @formatter:off
         }
 
     private val head: IntArray = IntArray(HASH_SIZE) { DEFAULT_HEAD }
+    private val decodeBuffer: ArrayList<UByte> = ArrayList()
+
+    /**
+     * Decodes the given LZ77 token stream into the raw data it represents.
+     *
+     * @param tokens The list of tokens to decode.
+     * @return A new [ByteArray] containing the raw decompressed data
+     *  represented by the given token stream.
+     */
+    fun decode(tokens: Iterable<Token>): ByteArray {
+        decodeBuffer.clear() // Ensure the buffer is cleared before reconstructing data
+        for (token in tokens) when (token) {
+            is Token.Literal -> decodeBuffer += token.value
+            is Token.Match -> {
+                val start = decodeBuffer.size - token.distance
+                for (offset in 0..<token.length) {
+                    decodeBuffer += decodeBuffer[start + offset]
+                }
+            }
+        }
+        return decodeBuffer.toUByteArray().asByteArray()
+    }
 
     /**
      * Encodes the given data into an LZ77 token stream.

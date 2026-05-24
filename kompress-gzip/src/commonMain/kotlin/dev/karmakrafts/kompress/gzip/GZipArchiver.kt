@@ -16,14 +16,16 @@
 
 package dev.karmakrafts.kompress.gzip
 
-import dev.karmakrafts.kompress.CRC32_INITIAL_VALUE
+import dev.karmakrafts.karbide.writeUIntLeFast
+import dev.karmakrafts.karbide.writeUShortLeFast
 import dev.karmakrafts.kompress.Compressor
 import dev.karmakrafts.kompress.Deflater
 import dev.karmakrafts.kompress.InternalCompressionApi
 import dev.karmakrafts.kompress.archive.Archiver
 import dev.karmakrafts.kompress.compressingSink
-import dev.karmakrafts.kompress.crc32
-import dev.karmakrafts.kompress.crc32Round
+import dev.karmakrafts.kompress.crc.CRC32
+import dev.karmakrafts.kompress.crc.once
+import dev.karmakrafts.kompress.crc.round
 import dev.karmakrafts.kompress.util.FileUtils
 import dev.karmakrafts.kompress.util.writeLatin1String
 import dev.karmakrafts.kompress.util.zeroTerminate
@@ -34,9 +36,7 @@ import kotlinx.io.Sink
 import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
 import kotlinx.io.writeUByte
-import kotlinx.io.writeUIntLe
 import kotlinx.io.writeUShort
-import kotlinx.io.writeUShortLe
 import kotlin.time.Clock
 import kotlin.time.Instant
 
@@ -53,6 +53,7 @@ private class GZipArchiver( // @formatter:off
 
     private val buffer: Buffer = Buffer()
     private var isClosed: Boolean = false
+    private val crc32: CRC32 = CRC32()
 
     /**
      * See [RFC1952](https://datatracker.ietf.org/doc/html/rfc1952) 2.3.1.
@@ -66,15 +67,16 @@ private class GZipArchiver( // @formatter:off
 
     private fun appendExtraField(extraField: ByteArray) {
         check(extraField.size.toUShort() <= UShort.MAX_VALUE) { "Extra field size exceeds GZip maximum" }
-        buffer.writeUShortLe(extraField.size.toUShort())
+        buffer.writeUShortLeFast(extraField.size.toUShort())
         buffer.write(extraField)
     }
 
     private fun appendHeaderChecksum() {
         // HCRC is two least significant bytes of header CRC32 up until self
-        val crc32 = buffer.peek().crc32(buffer.size)
+        crc32.reset()
+        val crc32 = crc32.once(buffer.peek(), buffer.size)
         val crc16 = (crc32 and 0xFFFFU).toUShort()
-        buffer.writeUShortLe(crc16)
+        buffer.writeUShortLeFast(crc16)
     }
 
     private fun flushBuffer() {
@@ -89,7 +91,7 @@ private class GZipArchiver( // @formatter:off
         buffer.writeUShort(GZipConstants.MAGIC) // Magic is normally 2 separate bytes, so no LE
         buffer.writeUByte(GZipCompressionMethod.DEFLATE.encodedValue)
         buffer.writeUByte(flags.value)
-        buffer.writeUIntLe(entry.modificationTime.epochSeconds.toUInt())
+        buffer.writeUIntLeFast(entry.modificationTime.epochSeconds.toUInt())
         buffer.writeUByte(getCurrentXFL())
         buffer.writeUByte(entry.os.encodedValue)
         entry.extraField?.let(::appendExtraField)
@@ -100,13 +102,13 @@ private class GZipArchiver( // @formatter:off
     }
 
     private fun appendTrailer(crc32: UInt, uncompressedSize: Long) {
-        buffer.writeUIntLe(crc32)
-        buffer.writeUIntLe(uncompressedSize.toUInt())
+        buffer.writeUIntLeFast(crc32)
+        buffer.writeUIntLeFast(uncompressedSize.toUInt())
         flushBuffer()
     }
 
     private inline fun appendData(callback: (Sink) -> Boolean): Pair<UInt, Long> {
-        var crc32 = CRC32_INITIAL_VALUE
+        crc32.reset()
         var uncompressedSize = 0L
         sink.compressingSink( // @formatter:off
             compressor = deflater,
@@ -117,14 +119,14 @@ private class GZipArchiver( // @formatter:off
             while (hasMore) {
                 hasMore = callback(buffer)
                 if (buffer.size > 0L) {
-                    crc32 = buffer.peek().crc32Round(buffer.size, crc32)
+                    crc32.round(buffer.peek(), buffer.size)
                     val chunkSize = buffer.size
                     compressingSink.write(buffer, chunkSize)
                     uncompressedSize += chunkSize
                 }
             }
         }
-        return crc32.inv() to uncompressedSize
+        return crc32.finalize() to uncompressedSize
     }
 
     /**

@@ -16,14 +16,17 @@
 
 package dev.karmakrafts.kompress.zip
 
-import dev.karmakrafts.kompress.CRC32_INITIAL_VALUE
+import dev.karmakrafts.karbide.writeUIntLeFast
+import dev.karmakrafts.karbide.writeULongLeFast
+import dev.karmakrafts.karbide.writeUShortLeFast
 import dev.karmakrafts.kompress.Compressor
 import dev.karmakrafts.kompress.Deflater
 import dev.karmakrafts.kompress.ExperimentalCompressionApi
 import dev.karmakrafts.kompress.InternalCompressionApi
 import dev.karmakrafts.kompress.archive.Archiver
 import dev.karmakrafts.kompress.compressingSink
-import dev.karmakrafts.kompress.crc32Round
+import dev.karmakrafts.kompress.crc.CRC32
+import dev.karmakrafts.kompress.crc.round
 import dev.karmakrafts.kompress.exception.UnsupportedCompressionMethodException
 import dev.karmakrafts.kompress.util.packDateWord
 import dev.karmakrafts.kompress.util.packTimeWord
@@ -35,8 +38,6 @@ import kotlinx.io.RawSink
 import kotlinx.io.Sink
 import kotlinx.io.writeString
 import kotlinx.io.writeUIntLe
-import kotlinx.io.writeULongLe
-import kotlinx.io.writeUShortLe
 import kotlin.time.Instant
 
 @OptIn(InternalCompressionApi::class, ExperimentalCompressionApi::class)
@@ -56,6 +57,7 @@ private class ZipArchiver(
     private val buffer: Buffer = Buffer()
     private var isClosed: Boolean = false
     private val entries: ArrayDeque<QueuedEntry> = ArrayDeque()
+    private val crc32: CRC32 = CRC32()
 
     private fun flushBuffer() {
         sink.write(buffer, buffer.size)
@@ -75,8 +77,8 @@ private class ZipArchiver(
      */
     private fun writeTimestamp(value: Instant) {
         val localDateTime = value.toLocalDateTime(TimeZone.currentSystemDefault())
-        buffer.writeUShortLe(localDateTime.packTimeWord())
-        buffer.writeUShortLe(localDateTime.packDateWord())
+        buffer.writeUShortLeFast(localDateTime.packTimeWord())
+        buffer.writeUShortLeFast(localDateTime.packDateWord())
     }
 
     /**
@@ -86,27 +88,27 @@ private class ZipArchiver(
         buffer.writeUIntLe(checksum)
         // When dealing with ZIP64, size fields are 8 bytes instead of 4
         if (isZip64) {
-            buffer.writeULongLe(compressedSize.toULong())
-            buffer.writeULongLe(uncompressedSize.toULong())
+            buffer.writeULongLeFast(compressedSize.toULong())
+            buffer.writeULongLeFast(uncompressedSize.toULong())
             return
         }
-        buffer.writeUIntLe(compressedSize.toUInt())
-        buffer.writeUIntLe(uncompressedSize.toUInt())
+        buffer.writeUIntLeFast(compressedSize.toUInt())
+        buffer.writeUIntLeFast(uncompressedSize.toUInt())
     }
 
     /**
      * See [PKWARE APPNOTE](https://pkware.cachefly.net/webdocs/casestudies/APPNOTE.TXT) 4.3.7.
      */
     private fun appendLocalFileHeader(entry: ZipEntry) {
-        buffer.writeUIntLe(ZipConstants.LOCAL_FILE_HEADER_MAGIC)
-        buffer.writeUShortLe(ZipConstants.LATEST_ZIP_VERSION) // TODO: determine this based on features?
-        buffer.writeUShortLe(entry.gpbf.value)
-        buffer.writeUShortLe(entry.compressionMethod.encodedValue)
+        buffer.writeUIntLeFast(ZipConstants.LOCAL_FILE_HEADER_MAGIC)
+        buffer.writeUShortLeFast(ZipConstants.LATEST_ZIP_VERSION) // TODO: determine this based on features?
+        buffer.writeUShortLeFast(entry.gpbf.value)
+        buffer.writeUShortLeFast(entry.compressionMethod.encodedValue)
         writeTimestamp(entry.modificationTime)
         if (entry.gpbf.omitChecksumAndSizes) writeDataDescriptor(entry.isZip64, 0U, 0L, 0L)
         else writeDataDescriptor(entry.isZip64, 0U, 0L, 0L) // TODO: implement support for these
-        buffer.writeUShortLe(entry.name.length.toUShort())
-        buffer.writeUShortLe(entry.extraFields.byteSize.toUShort())
+        buffer.writeUShortLeFast(entry.name.length.toUShort())
+        buffer.writeUShortLeFast(entry.extraFields.byteSize.toUShort())
         writeString(entry.gpbf.languageEncoding, entry.name)
         entry.extraFields.encode(buffer)
         flushBuffer()
@@ -129,20 +131,20 @@ private class ZipArchiver(
         uncompressedSize: Long,
         compressedSize: Long
     ) { // @formatter:on
-        buffer.writeUIntLe(ZipConstants.CENTRAL_FILE_HEADER_MAGIC)
-        buffer.writeUShortLe(ZipConstants.LATEST_ZIP_VERSION) // TODO: determine this based on features?
-        buffer.writeUShortLe(ZipConstants.LATEST_ZIP_VERSION) // TODO: set a sensible default for our own version
-        buffer.writeUShortLe(entry.gpbf.value)
-        buffer.writeUShortLe(entry.compressionMethod.encodedValue)
+        buffer.writeUIntLeFast(ZipConstants.CENTRAL_FILE_HEADER_MAGIC)
+        buffer.writeUShortLeFast(ZipConstants.LATEST_ZIP_VERSION) // TODO: determine this based on features?
+        buffer.writeUShortLeFast(ZipConstants.LATEST_ZIP_VERSION) // TODO: set a sensible default for our own version
+        buffer.writeUShortLeFast(entry.gpbf.value)
+        buffer.writeUShortLeFast(entry.compressionMethod.encodedValue)
         writeTimestamp(entry.modificationTime)
         writeDataDescriptor(entry.isZip64, checksum, uncompressedSize, compressedSize)
-        buffer.writeUShortLe(0U) // TODO: file name length
-        buffer.writeUShortLe(0U) // TODO: extra field length
-        buffer.writeUShortLe(0U) // TODO: file comment length
-        buffer.writeUShortLe(0U) // TODO: disk number start
-        buffer.writeUShortLe(0U) // TODO: internal file attribs
-        buffer.writeUIntLe(0U) // TODO: external file attribs
-        buffer.writeUIntLe(0U) // TODO: relative offset of local header
+        buffer.writeUShortLeFast(0U) // TODO: file name length
+        buffer.writeUShortLeFast(0U) // TODO: extra field length
+        buffer.writeUShortLeFast(0U) // TODO: file comment length
+        buffer.writeUShortLeFast(0U) // TODO: disk number start
+        buffer.writeUShortLeFast(0U) // TODO: internal file attribs
+        buffer.writeUIntLeFast(0U) // TODO: external file attribs
+        buffer.writeUIntLeFast(0U) // TODO: relative offset of local header
         // TODO: file name
         // TODO: extra field
         // TODO: file comment
@@ -157,7 +159,7 @@ private class ZipArchiver(
     }
 
     private inline fun appendData(compressor: Compressor, callback: (Sink) -> Boolean): UInt {
-        var crc32 = CRC32_INITIAL_VALUE
+        crc32.reset()
         sink.compressingSink( // @formatter:off
             compressor = compressor,
             isSinkOwned = false,
@@ -167,13 +169,13 @@ private class ZipArchiver(
             while (hasMore) {
                 hasMore = callback(buffer)
                 if (buffer.size > 0L) {
-                    crc32 = buffer.peek().crc32Round(buffer.size, crc32)
+                    crc32.round(buffer.peek(), buffer.size)
                     val chunkSize = buffer.size
                     compressingSink.write(buffer, chunkSize)
                 }
             }
         }
-        return crc32.inv()
+        return crc32.finalize()
     }
 
     override fun appendEntry(entry: ZipEntry, callback: (Sink) -> Boolean) {

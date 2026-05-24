@@ -16,14 +16,14 @@
 
 package dev.karmakrafts.kompress.gzip
 
-import dev.karmakrafts.kompress.CRC32_INITIAL_VALUE
 import dev.karmakrafts.kompress.Decompressor
 import dev.karmakrafts.kompress.Inflater
 import dev.karmakrafts.kompress.InternalCompressionApi
 import dev.karmakrafts.kompress.archive.Unarchiver
 import dev.karmakrafts.kompress.archive.UnarchiverEntryCallback
-import dev.karmakrafts.kompress.crc32
-import dev.karmakrafts.kompress.crc32Round
+import dev.karmakrafts.kompress.crc.CRC32
+import dev.karmakrafts.kompress.crc.once
+import dev.karmakrafts.kompress.crc.round
 import dev.karmakrafts.kompress.decompressingSource
 import dev.karmakrafts.kompress.exception.InvalidChecksumException
 import dev.karmakrafts.kompress.util.readLatin1String
@@ -57,6 +57,7 @@ private class GZipUnarchiver( // @formatter:off
     private val buffer: Buffer = Buffer()
     private val decompressionBuffer: Buffer = Buffer()
     private var isClosed: Boolean = false
+    private val crc32: CRC32 = CRC32()
 
     // Allows buffering N bytes on demand based on the bytes already in the buffer
     private fun ensureBufferFilled(size: Long): Boolean {
@@ -94,7 +95,8 @@ private class GZipUnarchiver( // @formatter:off
         }
         entry.name?.let { name -> buffer.zeroTerminate { writeLatin1String(name) } }
         entry.comment?.let { comment -> buffer.zeroTerminate { writeLatin1String(comment) } }
-        return (buffer.crc32() and 0xFFFFU).toUShort()
+        crc32.reset()
+        return (crc32.once(buffer, buffer.size) and 0xFFFFU).toUShort()
     }
 
     private fun checkHeaderChecksum(computedCrc16: UShort): Boolean {
@@ -150,9 +152,9 @@ private class GZipUnarchiver( // @formatter:off
         callback: UnarchiverEntryCallback<GZipEntry>
     ): Pair<Boolean, UInt>? { // @formatter:on
         val compressedSize = Inflater.computeCompressedSize(source.peek())
-        if (compressedSize == 0L) return false to CRC32_INITIAL_VALUE // No more data
+        if (compressedSize == 0L) return false to CRC32.DEFAULT_INITIAL_VALUE // No more data
         if (!ensureBufferFilled(compressedSize)) return null // No more data
-        var computedCrc32 = CRC32_INITIAL_VALUE
+        crc32.reset()
         buffer.decompressingSource( // @formatter:off
             decompressor = inflater,
             isSourceOwned = false,
@@ -162,11 +164,11 @@ private class GZipUnarchiver( // @formatter:off
                 val result = decompressingSource.readAtMostTo(
                     decompressionBuffer, Decompressor.DEFAULT_BUFFER_SIZE.toLong()
                 )
-                if (result != -1L) computedCrc32 = decompressionBuffer.peek().crc32Round(initialValue = computedCrc32)
+                if (result != -1L) crc32.round(decompressionBuffer.peek(), decompressionBuffer.size)
                 result != -1L
             }
         }
-        return true to computedCrc32.inv()
+        return true to crc32.finalize()
     }
 
     override fun forEachEntry(callback: UnarchiverEntryCallback<GZipEntry>) {

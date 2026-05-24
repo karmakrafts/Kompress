@@ -30,12 +30,17 @@ internal object DeflateConstants {
     const val SYM_LONG_ZERO_LENGTH_RUN_SIZE: Int = 7
 
     const val BTYPE_SIZE: Int = 2
+    const val BTYPE_STORED: ULong = 0b00UL // TODO: check this
+    const val BTYPE_STATIC: ULong = 0b01UL // TODO: check this
     const val BTYPE_DYNAMIC: ULong = 0b10UL
 
     const val ALPHABET_SIZE: Int = 19
     const val HLIT_OFFSET: Int = 257
+    const val HLIT_SIZE: Int = 5
     const val HDIST_OFFSET: Int = 1
+    const val HDIST_SIZE: Int = 5
     const val HCLEN_OFFSET: Int = 4
+    const val HCLEN_SIZE: Int = 4
 
     /**
      * See [RFC1951](https://datatracker.ietf.org/doc/html/rfc1951) 3.2.7.
@@ -103,7 +108,7 @@ internal object DeflateConstants {
      * See [RFC1951](https://datatracker.ietf.org/doc/html/rfc1951) 3.2.5.
      */
     @JvmStatic
-    fun computeSymbol(length: Int): Int = when (length) {
+    fun computeLengthSymbol(length: Int): Int = when (length) {
         in 3..10 -> 257 + (length - 3)
         in 11..18 -> 265 + ((length - 11) / 2)
         in 19..34 -> 269 + ((length - 19) / 4)
@@ -112,5 +117,21 @@ internal object DeflateConstants {
         in 131..257 -> 281 + ((length - 131) / 32)
         258 -> 285
         else -> throw NoSuchSymbolException("Cannot compute symbol for length $length")
+    }
+
+    /**
+     * See [RFC1951](https://datatracker.ietf.org/doc/html/rfc1951) 3.2.5.
+     */
+    @JvmStatic
+    fun computeDistanceSymbol(distance: Int): Int {
+        var symbol = 0
+        var base = 1
+        var bits = 0
+        while (distance > base shl 1 && bits < 13) {
+            base = base shl 1
+            bits++
+            symbol += 2
+        }
+        return symbol + ((distance - 1) shr bits)
     }
 }
