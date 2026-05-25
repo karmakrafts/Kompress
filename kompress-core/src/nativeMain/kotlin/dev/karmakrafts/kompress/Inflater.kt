@@ -16,6 +16,7 @@
 
 package dev.karmakrafts.kompress
 
+import dev.karmakrafts.kompress.exception.DataFormatException
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.Pinned
 import kotlinx.cinterop.addressOf

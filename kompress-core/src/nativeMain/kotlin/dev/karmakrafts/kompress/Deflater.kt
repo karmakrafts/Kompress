@@ -16,6 +16,7 @@
 
 package dev.karmakrafts.kompress
 
+import dev.karmakrafts.kompress.exception.DataFormatException
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.Pinned
 import kotlinx.cinterop.addressOf
@@ -180,4 +181,4 @@ private class DeflaterImpl( // @formatter:off
     }
 }
 
-actual fun Deflater(raw: Boolean, level: Int): Deflater = DeflaterImpl(raw, level)
+actual fun Deflater(raw: Boolean, level: Int): Deflater = NewDeflater(level)

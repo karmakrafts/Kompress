@@ -128,8 +128,11 @@ internal class NewDeflater( // @formatter:off
         private set
 
     private val buffer: Buffer = Buffer()
-    private val bitSink: BitSink = buffer.bitSink(bitOrder = BitOrder.LSB_FIRST)
+    private var bitSink: BitSink = buffer.bitSink(bitOrder = BitOrder.LSB_FIRST)
     private var wroteFinalBlock: Boolean = false
+
+    private val literalFrequencies: IntArray = IntArray(DeflateConstants.LITERAL_ALPHABET_SIZE)
+    private val distanceFrequencies: IntArray = IntArray(DeflateConstants.DISTANCE_ALPHABET_SIZE)
 
     override fun setInput(data: ByteArray, offset: Int, size: Int) {
         _input = data
@@ -196,33 +199,33 @@ internal class NewDeflater( // @formatter:off
                 if (length == 0) {
                     while (remaining >= DeflateConstants.SYM_LONG_ZERO_LENGTH_RUN_MIN) {
                         val runLength = remaining.coerceAtMost(DeflateConstants.SYM_LONG_ZERO_LENGTH_RUN_MAX)
-                        encodedSymbols.add(DeflateConstants.SYM_LONG_ZERO_LENGTH_RUN.toLong() or ((runLength - DeflateConstants.SYM_LONG_ZERO_LENGTH_RUN_MIN).toLong() shl 32))
+                        encodedSymbols += DeflateConstants.SYM_LONG_ZERO_LENGTH_RUN.toLong() or ((runLength - DeflateConstants.SYM_LONG_ZERO_LENGTH_RUN_MIN).toLong() shl 32)
                         lengthFrequencies[DeflateConstants.SYM_LONG_ZERO_LENGTH_RUN]++
                         remaining -= runLength
                     }
                     if (remaining >= DeflateConstants.SYM_REPEAT_ZERO_LENGTH_MIN) {
-                        encodedSymbols.add(DeflateConstants.SYM_REPEAT_ZERO_LENGTH.toLong() or ((remaining - DeflateConstants.SYM_REPEAT_ZERO_LENGTH_MIN).toLong() shl 32))
+                        encodedSymbols += DeflateConstants.SYM_REPEAT_ZERO_LENGTH.toLong() or ((remaining - DeflateConstants.SYM_REPEAT_ZERO_LENGTH_MIN).toLong() shl 32)
                         lengthFrequencies[DeflateConstants.SYM_REPEAT_ZERO_LENGTH]++
                         remaining = 0
                     }
                     while (remaining > 0) {
-                        encodedSymbols.add(0L)
+                        encodedSymbols += 0L
                         lengthFrequencies[0]++
                         remaining--
                     }
                 }
                 else {
-                    encodedSymbols.add(length.toLong())
+                    encodedSymbols += length.toLong()
                     lengthFrequencies[length]++
                     remaining--
                     while (remaining >= DeflateConstants.SYM_REPEAT_PREVIOUS_MIN) {
                         val runLength = remaining.coerceAtMost(DeflateConstants.SYM_REPEAT_PREVIOUS_MAX)
-                        encodedSymbols.add(DeflateConstants.SYM_REPEAT_PREVIOUS.toLong() or ((runLength - DeflateConstants.SYM_REPEAT_PREVIOUS_MIN).toLong() shl 32))
+                        encodedSymbols += DeflateConstants.SYM_REPEAT_PREVIOUS.toLong() or ((runLength - DeflateConstants.SYM_REPEAT_PREVIOUS_MIN).toLong() shl 32)
                         lengthFrequencies[DeflateConstants.SYM_REPEAT_PREVIOUS]++
                         remaining -= runLength
                     }
                     while (remaining > 0) {
-                        encodedSymbols.add(length.toLong())
+                        encodedSymbols += length.toLong()
                         lengthFrequencies[length]++
                         remaining--
                     }
@@ -250,7 +253,8 @@ internal class NewDeflater( // @formatter:off
         for (packed in encodedSymbols) {
             val symbol = (packed and 0xFFFFFFFFL).toInt()
             val extraBits = (packed ushr 32).toInt()
-            lengthTree.encodeSymbol(bitSink, symbol)
+            val code = lengthTree.encodingOf(symbol)
+            bitSink.writeBits(code.length, code.bits.toULong())
             when (symbol) {
                 DeflateConstants.SYM_REPEAT_PREVIOUS -> bitSink.writeBitsLsb(
                     DeflateConstants.SYM_REPEAT_PREVIOUS_SIZE, extraBits.toULong()
@@ -303,8 +307,8 @@ internal class NewDeflater( // @formatter:off
         bitSink.writeBit(if (finishing) 1U else 0U) // BFINAL
         bitSink.writeBitsLsb(DeflateConstants.BTYPE_SIZE, DeflateConstants.BTYPE_DYNAMIC) // BTYPE
         // Compute frequency of literals and matches
-        val literalFrequencies = IntArray(DeflateConstants.LITERAL_ALPHABET_SIZE)
-        val distanceFrequencies = IntArray(DeflateConstants.DISTANCE_ALPHABET_SIZE)
+        literalFrequencies.fill(0)
+        distanceFrequencies.fill(0)
         for (token in tokens) when (token) {
             is Token.Literal -> literalFrequencies[token.value.toInt() and 0xFF]++
             is Token.Match -> {
@@ -321,20 +325,27 @@ internal class NewDeflater( // @formatter:off
         encodeDynamicTrees(literalTree, distanceTree)
         // Encode the token stream
         for (token in tokens) when (token) {
-            is Token.Literal -> literalTree.encodeSymbol(bitSink, token.value.toInt() and 0xFF)
+            is Token.Literal -> {
+                val code = literalTree.encodingOf(token.value.toInt() and 0xFF)
+                bitSink.writeBits(code.length, code.bits.toULong())
+            }
+
             is Token.Match -> {
                 val (length, distance) = token
 
                 val lengthSymbol = DeflateConstants.computeLengthSymbol(length)
-                literalTree.encodeSymbol(bitSink, lengthSymbol)
+                val lengthCode = literalTree.encodingOf(lengthSymbol)
+                bitSink.writeBits(lengthCode.length, lengthCode.bits.toULong())
                 encodeLengthExtra(length, lengthSymbol)
 
                 val distanceSymbol = DeflateConstants.computeDistanceSymbol(distance)
-                distanceTree.encodeSymbol(bitSink, distanceSymbol)
+                val distanceCode = distanceTree.encodingOf(distanceSymbol)
+                bitSink.writeBits(distanceCode.length, distanceCode.bits.toULong())
                 encodeDistanceExtra(distance, distanceSymbol)
             }
         }
-        literalTree.encodeSymbol(bitSink, DeflateConstants.SYM_EOF)
+        val eofCode = literalTree.encodingOf(DeflateConstants.SYM_EOF)
+        bitSink.writeBits(eofCode.length, eofCode.bits.toULong())
     }
 
     override fun compress( // @formatter:off
@@ -392,7 +403,12 @@ internal class NewDeflater( // @formatter:off
         finished = false
         wroteFinalBlock = false
         setInput(ByteArray(0))
+        bytesRead = 0L
+        bytesWritten = 0L
         buffer.clear()
+        bitSink.reset()
+        literalFrequencies.fill(0)
+        distanceFrequencies.fill(0)
     }
 
     override fun close() {

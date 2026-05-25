@@ -27,6 +27,7 @@ import dev.karmakrafts.conventions.kotlin.withNodeJs
 import dev.karmakrafts.conventions.kotlin.withWeb
 import dev.karmakrafts.conventions.setProjectInfo
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
+import org.jetbrains.kotlin.gradle.plugin.mpp.NativeBuildType
 import org.jetbrains.kotlin.gradle.targets.jvm.tasks.KotlinJvmTest
 
 plugins {
@@ -51,7 +52,11 @@ kotlin {
     defaultCompilerOptions()
     withSourcesJar()
     withAndroidLibrary("$group.core")
-    withNative()
+    withNative {
+        binaries {
+            test(listOf(NativeBuildType.RELEASE))
+        }
+    }
     withJvm()
     withWeb {
         withBrowser {

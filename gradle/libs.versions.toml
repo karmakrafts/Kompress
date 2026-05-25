@@ -13,8 +13,8 @@ dokka = "2.2.0" # https://github.com/Kotlin/dokka/releases
 karmaConventions = "1.16.4" # https://github.com/karmakrafts/karma-conventions/tags
 gradleNexus = "2.0.0" # https://github.com/gradle-nexus/publish-plugin/releases
 fflate = "0.8.2" # https://github.com/101arrowz/fflate/releases # TODO: replace with zlib-ng via emscripten wrapper
-oshi = "7.1.0" # https://github.com/oshi/oshi/releases
-karbide = "1.6.0" # https://github.com/karmakrafts/Karbide/releases
+oshi = "7.2.0" # https://github.com/oshi/oshi/releases
+karbide = "1.7.0" # https://github.com/karmakrafts/Karbide/releases
 
 [libraries]
 
