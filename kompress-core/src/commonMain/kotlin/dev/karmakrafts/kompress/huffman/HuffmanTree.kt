@@ -31,72 +31,12 @@ internal class HuffmanTree(lengths: IntArray = IntArray(0)) {
     // TODO: optimize this by using lookup by code prefix length -> benchmark!
     private val decodeTable: HashMap<HuffmanCode, Int> = HashMap()
     private val encodeTable: ArrayList<HuffmanCode> = ArrayList()
-    private var maxBits: Int = 0
-
-    var lengths: IntArray = lengths
-        set(value) {
-            initTables(value)
-            field = value
-        }
+    private var maxBits: Int = lengths.maxOrNull() ?: 0
 
     init {
-        initTables(lengths)
-    }
-
-    companion object {
-        fun fromFrequencies(frequencies: IntArray): HuffmanTree {
-            class Node(val symbol: Int, val frequency: Int, val left: Node? = null, val right: Node? = null)
-
-            val nodes = mutableListOf<Node>()
-            for (i in frequencies.indices) {
-                if (frequencies[i] > 0) {
-                    nodes.add(Node(i, frequencies[i]))
-                }
-            }
-
-            if (nodes.isEmpty()) {
-                return HuffmanTree(IntArray(frequencies.size))
-            }
-
-            if (nodes.size == 1) {
-                val lengths = IntArray(frequencies.size)
-                lengths[nodes[0].symbol] = 1
-                return HuffmanTree(lengths)
-            }
-
-            while (nodes.size > 1) {
-                nodes.sortBy { it.frequency }
-                val left = nodes.removeAt(0)
-                val right = nodes.removeAt(0)
-                nodes.add(Node(-1, left.frequency + right.frequency, left, right))
-            }
-
-            val lengths = IntArray(frequencies.size)
-            fun walk(node: Node, depth: Int) {
-                if (node.symbol != -1) {
-                    lengths[node.symbol] = depth
-                }
-                else {
-                    walk(node.left!!, depth + 1)
-                    walk(node.right!!, depth + 1)
-                }
-            }
-            walk(nodes[0], 0)
-
-            return HuffmanTree(lengths)
-        }
-    }
-
-    private fun initTables(lengths: IntArray) {
-        // Clear state
-        decodeTable.clear()
-        encodeTable.clear()
         repeat(lengths.size) {
             encodeTable.add(HuffmanCode())
         }
-        maxBits = lengths.maxOrNull() ?: 0
-        if (maxBits == 0) return
-
         // Determine how many symbols use each bit length.
         // See RFC1951 3.2.2, step 1.
         val bitLengthCounts = IntArray(maxBits + 1)
@@ -121,6 +61,49 @@ internal class HuffmanTree(lengths: IntArray = IntArray(0)) {
             val code = HuffmanCode(canonical, bitLength)
             encodeTable[symbol] = code
             decodeTable[code] = symbol
+        }
+    }
+
+    companion object {
+        fun fromFrequencies(frequencies: IntArray): HuffmanTree {
+            class Node(val symbol: Int, val frequency: Int, val left: Node? = null, val right: Node? = null)
+
+            val nodes = ArrayList<Node>()
+            for (index in frequencies.indices) {
+                if (frequencies[index] > 0) {
+                    nodes.add(Node(index, frequencies[index]))
+                }
+            }
+
+            if (nodes.isEmpty()) {
+                return HuffmanTree(IntArray(frequencies.size))
+            }
+
+            if (nodes.size == 1) {
+                val lengths = IntArray(frequencies.size)
+                lengths[nodes[0].symbol] = 1
+                return HuffmanTree(lengths)
+            }
+
+            while (nodes.size > 1) {
+                nodes.sortBy { it.frequency }
+                val left = nodes.removeAt(0)
+                val right = nodes.removeAt(0)
+                nodes.add(Node(-1, left.frequency + right.frequency, left, right))
+            }
+
+            val lengths = IntArray(frequencies.size)
+            fun walk(node: Node, depth: Int) {
+                if (node.symbol != -1) {
+                    lengths[node.symbol] = depth
+                    return
+                }
+                walk(node.left!!, depth + 1)
+                walk(node.right!!, depth + 1)
+            }
+            walk(nodes[0], 0)
+
+            return HuffmanTree(lengths)
         }
     }
 

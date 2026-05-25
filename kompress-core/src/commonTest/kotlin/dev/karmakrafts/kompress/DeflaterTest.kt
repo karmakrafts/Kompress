@@ -20,7 +20,6 @@ import kotlinx.io.Buffer
 import kotlinx.io.RawSource
 import kotlinx.io.buffered
 import kotlinx.io.readByteArray
-import kotlin.test.Ignore
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertTrue
@@ -33,32 +32,13 @@ class DeflaterTest {
         data.forEach { println("Byte: 0x${it.toHexString()}") }
     }
 
-    @Ignore // TODO: Deflater only supports raw compression now, framing is done by Archiver
-    @Test
-    fun `compression sanity check`() {
-        val data = Deflater.compress("Hello!".encodeToByteArray(), raw = false)
-        assertTrue(data.isNotEmpty())
-        data.forEach { println("Byte: 0x${it.toHexString()}") }
-    }
-
     @Test
     fun `raw deflating source buffered immediate read`() {
         val value = "Hello, World!".encodeToByteArray()
         val source = Buffer().apply { write(value) }
-        val compressed = (source as RawSource).deflatingSource(raw = true).buffered()
+        val compressed = (source as RawSource).deflatingSource().buffered()
         val compressedBytes = compressed.readByteArray()
-        val decompressedBytes = Inflater.decompress(compressedBytes, raw = true)
-        assertContentEquals(value, decompressedBytes)
-    }
-
-    @Ignore // TODO: Deflater only supports raw compression now, framing is done by Archiver
-    @Test
-    fun `deflating source buffered immediate read`() {
-        val value = "Hello, World!".encodeToByteArray()
-        val source = Buffer().apply { write(value) }
-        val compressed = (source as RawSource).deflatingSource(raw = false).buffered()
-        val compressedBytes = compressed.readByteArray()
-        val decompressedBytes = Inflater.decompress(compressedBytes, raw = false)
+        val decompressedBytes = Inflater.decompress(compressedBytes)
         assertContentEquals(value, decompressedBytes)
     }
 }

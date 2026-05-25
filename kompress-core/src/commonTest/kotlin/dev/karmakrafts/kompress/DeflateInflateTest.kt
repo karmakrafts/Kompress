@@ -22,7 +22,6 @@ import kotlinx.io.readByteArray
 import kotlinx.io.readString
 import kotlinx.io.writeString
 import kotlin.random.Random
-import kotlin.test.Ignore
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
@@ -33,15 +32,6 @@ class DeflateInflateTest {
         val value = "Hellou, World!"
         val compressedData = Deflater.compress(value.encodeToByteArray())
         val decompressedData = Inflater.decompress(compressedData)
-        assertEquals(value, decompressedData.decodeToString())
-    }
-
-    @Ignore
-    @Test
-    fun `deflate and inflate small array`() {
-        val value = "Hellou, World!"
-        val compressedData = Deflater.compress(value.encodeToByteArray(), raw = false)
-        val decompressedData = Inflater.decompress(compressedData, raw = false)
         assertEquals(value, decompressedData.decodeToString())
     }
 
@@ -57,33 +47,11 @@ class DeflateInflateTest {
         assertEquals(value, decompressedBuffer.readString())
     }
 
-    @Ignore
-    @Test
-    fun `deflate and inflate small buffer`() {
-        val value = "Hello, World!"
-        val buffer = Buffer()
-        buffer.writeString(value)
-        val compressedBuffer = Buffer()
-        compressedBuffer.transferFrom((buffer as RawSource).deflatingSource(false))
-        val decompressedBuffer = Buffer()
-        decompressedBuffer.transferFrom(compressedBuffer.inflatingSource(false))
-        assertEquals(value, decompressedBuffer.readString())
-    }
-
     @Test
     fun `deflate and inflate large array raw`() {
         val value = Random.nextBytes(1024 * 1024)
         val compressedData = Deflater.compress(value)
         val decompressedData = Inflater.decompress(compressedData)
-        assertContentEquals(value, decompressedData)
-    }
-
-    @Ignore
-    @Test
-    fun `deflate and inflate large array`() {
-        val value = Random.nextBytes(1024 * 1024)
-        val compressedData = Deflater.compress(value, raw = false)
-        val decompressedData = Inflater.decompress(compressedData, raw = false)
         assertContentEquals(value, decompressedData)
     }
 
@@ -99,33 +67,11 @@ class DeflateInflateTest {
         assertContentEquals(value, decompressedBuffer.readByteArray())
     }
 
-    @Ignore
-    @Test
-    fun `deflate and inflate large buffer`() {
-        val value = Random.nextBytes(1024 * 1024)
-        val buffer = Buffer()
-        buffer.write(value)
-        val compressedBuffer = Buffer()
-        compressedBuffer.transferFrom((buffer as RawSource).deflatingSource(false))
-        val decompressedBuffer = Buffer()
-        decompressedBuffer.transferFrom(compressedBuffer.inflatingSource(false))
-        assertContentEquals(value, decompressedBuffer.readByteArray())
-    }
-
     @Test
     fun `deflate and inflate empty array raw`() {
         val value = byteArrayOf()
         val compressedData = Deflater.compress(value)
         val decompressedData = Inflater.decompress(compressedData)
-        assertContentEquals(value, decompressedData)
-    }
-
-    @Ignore
-    @Test
-    fun `deflate and inflate empty array`() {
-        val value = byteArrayOf()
-        val compressedData = Deflater.compress(value, raw = false)
-        val decompressedData = Inflater.decompress(compressedData, raw = false)
         assertContentEquals(value, decompressedData)
     }
 
@@ -136,17 +82,6 @@ class DeflateInflateTest {
         compressedBuffer.transferFrom((buffer as RawSource).deflatingSource())
         val decompressedBuffer = Buffer()
         decompressedBuffer.transferFrom(compressedBuffer.inflatingSource())
-        assertEquals(0, decompressedBuffer.size)
-    }
-
-    @Ignore
-    @Test
-    fun `deflate and inflate empty buffer`() {
-        val buffer = Buffer()
-        val compressedBuffer = Buffer()
-        compressedBuffer.transferFrom((buffer as RawSource).deflatingSource(false))
-        val decompressedBuffer = Buffer()
-        decompressedBuffer.transferFrom(compressedBuffer.inflatingSource(false))
         assertEquals(0, decompressedBuffer.size)
     }
 }

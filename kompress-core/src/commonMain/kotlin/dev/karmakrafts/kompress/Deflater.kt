@@ -21,7 +21,6 @@ import dev.karmakrafts.karbide.BitSink
 import dev.karmakrafts.karbide.bitSink
 import dev.karmakrafts.karbide.writeBit
 import dev.karmakrafts.karbide.writeBitsLsb
-import dev.karmakrafts.kompress.Deflater.Companion.compress
 import dev.karmakrafts.kompress.huffman.HuffmanTree
 import dev.karmakrafts.kompress.lz77.LZ77
 import dev.karmakrafts.kompress.lz77.Token
@@ -41,8 +40,6 @@ interface Deflater : Compressor {
          * compression level and buffer size.
          *
          * @param data The data to compress.
-         * @param raw If true, the ZLIB header and checksum fields will not be used
-         *  in order to support the compression format used in both GZIP and PKZIP.
          * @param level The compression level between 0 and 9.
          * @param bufferSize The size of the intermediate buffer used during compression.
          * @return The compressed data.
@@ -50,26 +47,11 @@ interface Deflater : Compressor {
          */
         fun compress( // @formatter:off
             data: ByteArray,
-            raw: Boolean = true,
             level: Int = DEFAULT_LEVEL,
             bufferSize: Int = Compressor.DEFAULT_BUFFER_SIZE
-        ): ByteArray = Deflater(raw, level).use { deflater -> // @formatter:on
+        ): ByteArray = Deflater(level).use { deflater -> // @formatter:on
             deflater.compressBulk(data, bufferSize)
         }
-
-        /**
-         * @see compress
-         */
-        @Deprecated(
-            message = "This API will be removed in 2.0",
-            replaceWith = ReplaceWith("compress(data, raw, level, bufferSize)")
-        )
-        fun deflate( // @formatter:off
-            data: ByteArray,
-            raw: Boolean = true,
-            level: Int = DEFAULT_LEVEL,
-            bufferSize: Int = Compressor.DEFAULT_BUFFER_SIZE
-        ): ByteArray = compress(data, raw, level, bufferSize) // @formatter:on
     }
 
     /**
@@ -81,16 +63,10 @@ interface Deflater : Compressor {
      * **DO NOT change this during compression as it will corrupt your data!**
      */
     var level: Int
-
-    /**
-     * @see compress
-     */
-    @Deprecated(message = "This API will be removed in 2.0", replaceWith = ReplaceWith("compress(output)"))
-    fun deflate(output: ByteArray): Int = compress(output)
 }
 
 @Suppress("OVERRIDE_DEPRECATION")
-internal class NewDeflater( // @formatter:off
+internal class DeflaterImpl( // @formatter:off
     level: Int
 ) : Deflater { // @formatter:on
     private val lz77: LZ77 = LZ77(level)
@@ -133,6 +109,7 @@ internal class NewDeflater( // @formatter:off
 
     private val literalFrequencies: IntArray = IntArray(DeflateConstants.LITERAL_ALPHABET_SIZE)
     private val distanceFrequencies: IntArray = IntArray(DeflateConstants.DISTANCE_ALPHABET_SIZE)
+    private val tokenBuffer: ArrayList<Token> = ArrayList()
 
     override fun setInput(data: ByteArray, offset: Int, size: Int) {
         _input = data
@@ -380,13 +357,13 @@ internal class NewDeflater( // @formatter:off
             return 0
         }
         // Compress new data
-        // TODO: re-use an ArrayList as a buffer
-        val tokens = lz77.encode(_input, inputOffset, inputSize)
+        tokenBuffer.clear()
+        lz77.encode(tokenBuffer, _input, inputOffset, inputSize)
         bytesRead += inputSize
         if (finishing) {
             wroteFinalBlock = true
         }
-        encodeDynamicBlock(tokens)
+        encodeDynamicBlock(tokenBuffer)
         remaining = 0
         // Flush out any pending data before returning
         flushed = buffer.readAtMostTo(output, offset, offset + size).coerceAtLeast(0)
@@ -422,15 +399,12 @@ internal class NewDeflater( // @formatter:off
  * Creates a new compressor using the specified compression level.
  * **Note that [Deflater] instances are NOT threadsafe!**
  *
- * @param raw If true, the ZLIB header and checksum fields will not be used
- *  in order to support the compression format used in both GZIP and PKZIP.
  * @param level The compression level between 0 and 9.
  * @return A new [Deflater] instance with the given parameters.
  */
-expect fun Deflater( // @formatter:off
-    raw: Boolean = true,
+fun Deflater( // @formatter:off
     level: Int = Deflater.DEFAULT_LEVEL
-): Deflater // @formatter:on
+): Deflater = DeflaterImpl(level) // @formatter:on
 
 /**
  * Returns a [RawSource] that reads uncompressed bytes from this source and
@@ -440,32 +414,15 @@ expect fun Deflater( // @formatter:off
  * from the returned source. Close the returned source when finished to free
  * any underlying resources.
  *
- * @param raw If true (default), the compressed stream is in "deflate-raw"
- *  format without ZLIB header/footer. Set to false to include ZLIB wrapper
- *  fields, which some consumers may require.
  * @param level Compression level in range 0..9. See [Deflater.level].
  * @param bufferSize Size of the internal working buffers used during
  *  compression.
  * @return A [RawSource] that produces compressed data.
  */
 fun RawSource.deflatingSource( // @formatter:off
-    raw: Boolean = true,
     level: Int = Deflater.DEFAULT_LEVEL,
     bufferSize: Int = Compressor.DEFAULT_BUFFER_SIZE
-): RawSource = compressingSource(Deflater(raw, level), bufferSize) // @formatter:on
-
-/**
- * @see deflatingSource
- */
-@Deprecated( // @formatter:off
-    message = "This API will be removed in 2.0",
-    replaceWith = ReplaceWith("deflatingSource(raw, level, bufferSize)")
-) // @formatter:on
-fun RawSource.deflating( // @formatter:off
-    raw: Boolean = true,
-    level: Int = Deflater.DEFAULT_LEVEL,
-    bufferSize: Int = Compressor.DEFAULT_BUFFER_SIZE
-): RawSource = deflatingSource(raw, level, bufferSize) // @formatter:on
+): RawSource = compressingSource(Deflater(level), bufferSize) // @formatter:on
 
 /**
  * Returns a [RawSink] that compresses written bytes using DEFLATE and
@@ -475,16 +432,12 @@ fun RawSource.deflating( // @formatter:off
  * to the returned sink. Close the returned sink when finished to free
  * any underlying resources and ensure all data is flushed.
  *
- * @param raw If true (default), the compressed stream is in "deflate-raw"
- *  format without ZLIB header/footer. Set to false to include ZLIB wrapper
- *  fields, which some consumers may require.
  * @param level Compression level in range 0..9. See [Deflater.level].
  * @param bufferSize Size of the internal working buffers used during
  *  compression.
  * @return A [RawSink] that accepts uncompressed data and writes compressed data.
  */
 fun RawSink.deflatingSink( // @formatter:off
-    raw: Boolean = true,
     level: Int = Deflater.DEFAULT_LEVEL,
     bufferSize: Int = Compressor.DEFAULT_BUFFER_SIZE
-): RawSink = compressingSink(Deflater(raw, level), bufferSize) // @formatter:on
+): RawSink = compressingSink(Deflater(level), bufferSize) // @formatter:on

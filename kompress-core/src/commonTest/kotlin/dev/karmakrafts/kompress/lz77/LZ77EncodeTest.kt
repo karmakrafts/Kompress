@@ -25,7 +25,8 @@ class LZ77EncodeTest {
     @Test
     fun `empty input`() {
         val lz77 = LZ77()
-        val tokens = lz77.encode(byteArrayOf())
+        val tokens = ArrayList<Token>()
+        lz77.encode(tokens, byteArrayOf())
         assertTrue(tokens.isEmpty(), "Tokens should be empty for empty input")
     }
 
@@ -33,7 +34,8 @@ class LZ77EncodeTest {
     fun `small input`() {
         val lz77 = LZ77()
         val data = byteArrayOf(1, 2)
-        val tokens = lz77.encode(data)
+        val tokens = ArrayList<Token>()
+        lz77.encode(tokens, data)
         assertEquals(2, tokens.size)
         assertIs<Token.Literal>(tokens[0])
         assertEquals(1.toUByte(), (tokens[0] as Token.Literal).value)
@@ -45,7 +47,8 @@ class LZ77EncodeTest {
     fun `no matches`() {
         val lz77 = LZ77()
         val data = byteArrayOf(1, 2, 3, 4, 5)
-        val tokens = lz77.encode(data)
+        val tokens = ArrayList<Token>()
+        lz77.encode(tokens, data)
         assertEquals(5, tokens.size)
         tokens.forEachIndexed { index, token ->
             assertIs<Token.Literal>(token)
@@ -57,7 +60,8 @@ class LZ77EncodeTest {
     fun `simple match`() {
         val lz77 = LZ77()
         val data = "abcabc ".encodeToByteArray()
-        val tokens = lz77.encode(data)
+        val tokens = ArrayList<Token>()
+        lz77.encode(tokens, data)
         assertEquals(5, tokens.size)
         assertEquals(Token.Literal('a'.code.toUByte()), tokens[0])
         assertEquals(Token.Literal('b'.code.toUByte()), tokens[1])
@@ -70,7 +74,8 @@ class LZ77EncodeTest {
     fun `long match`() {
         val lz77 = LZ77(maxMatch = 10)
         val data = "aaaaaaaaaaa ".encodeToByteArray()
-        val tokens = lz77.encode(data)
+        val tokens = ArrayList<Token>()
+        lz77.encode(tokens, data)
         assertTrue(tokens.any { it is Token.Match })
         val match = tokens.find { it is Token.Match } as Token.Match
         assertEquals(10, match.length)
@@ -81,7 +86,8 @@ class LZ77EncodeTest {
     fun `window size`() {
         val lz77 = LZ77(windowSize = 5)
         val data = "abcdefgabc ".encodeToByteArray()
-        val tokens = lz77.encode(data)
+        val tokens = ArrayList<Token>()
+        lz77.encode(tokens, data)
         assertTrue(tokens.none { it is Token.Match }, "Should not find match outside window")
     }
 
@@ -89,7 +95,8 @@ class LZ77EncodeTest {
     fun `overlapping match`() {
         val lz77 = LZ77()
         val data = "abababa ".encodeToByteArray()
-        val tokens = lz77.encode(data)
+        val tokens = ArrayList<Token>()
+        lz77.encode(tokens, data)
         assertTrue(tokens.any { it is Token.Match })
     }
 
@@ -97,7 +104,8 @@ class LZ77EncodeTest {
     fun `repeated pattern`() {
         val lz77 = LZ77()
         val data = "abcdeabcdeabcde ".encodeToByteArray()
-        val tokens = lz77.encode(data)
+        val tokens = ArrayList<Token>()
+        lz77.encode(tokens, data)
         val matches = tokens.filterIsInstance<Token.Match>()
         assertEquals(1, matches.size)
         assertEquals(Token.Match(10, 5), matches[0])
@@ -107,7 +115,8 @@ class LZ77EncodeTest {
     fun `max match`() {
         val lz77 = LZ77(maxMatch = 5)
         val data = "aaaaaaaaaaaaaaaa ".encodeToByteArray()
-        val tokens = lz77.encode(data)
+        val tokens = ArrayList<Token>()
+        lz77.encode(tokens, data)
         val matches = tokens.filterIsInstance<Token.Match>()
         assertTrue(matches.isNotEmpty())
         for (match in matches) {
@@ -118,9 +127,11 @@ class LZ77EncodeTest {
     @Test
     fun `different levels`() {
         val data = "abcabcabcabcabcabcabcabcabcabc ".encodeToByteArray()
+        val tokens = ArrayList<Token>()
         for (level in listOf(1, 4, 7, 9)) {
             val lz77 = LZ77(level = level)
-            val tokens = lz77.encode(data)
+            tokens.clear()
+            lz77.encode(tokens, data)
             assertTrue(tokens.any { it is Token.Match }, "Should find matches at level $level")
         }
     }
@@ -135,7 +146,8 @@ class LZ77EncodeTest {
         }
         builder.append("abc ")
         val data = builder.toString().encodeToByteArray()
-        val tokens = lz77.encode(data)
+        val tokens = ArrayList<Token>()
+        lz77.encode(tokens, data)
         assertTrue(tokens.any { it is Token.Match && it.distance == 10003 }, "Should find match with large distance")
     }
 
@@ -143,7 +155,8 @@ class LZ77EncodeTest {
     fun `exact window size`() {
         val lz77 = LZ77(windowSize = 5)
         val data = "abcdeabc ".encodeToByteArray()
-        val tokens = lz77.encode(data)
+        val tokens = ArrayList<Token>()
+        lz77.encode(tokens, data)
         assertTrue(tokens.any { it is Token.Match && it.distance == 5 }, "Should find match at exact window size")
     }
 
@@ -151,7 +164,8 @@ class LZ77EncodeTest {
     fun `encode with offset`() {
         val lz77 = LZ77()
         val data = byteArrayOf(0, 0, 1, 2, 3)
-        val tokens = lz77.encode(data, offset = 2)
+        val tokens = ArrayList<Token>()
+        lz77.encode(tokens, data, offset = 2)
         assertEquals(3, tokens.size)
         assertEquals(Token.Literal(1.toUByte()), tokens[0])
         assertEquals(Token.Literal(2.toUByte()), tokens[1])
@@ -162,7 +176,8 @@ class LZ77EncodeTest {
     fun `encode with size`() {
         val lz77 = LZ77()
         val data = byteArrayOf(1, 2, 3, 4, 5)
-        val tokens = lz77.encode(data, size = 3)
+        val tokens = ArrayList<Token>()
+        lz77.encode(tokens, data, size = 3)
         assertEquals(3, tokens.size)
         assertEquals(Token.Literal(1.toUByte()), tokens[0])
         assertEquals(Token.Literal(2.toUByte()), tokens[1])
@@ -173,7 +188,8 @@ class LZ77EncodeTest {
     fun `encode with offset and size`() {
         val lz77 = LZ77()
         val data = "padding abcabc ".encodeToByteArray()
-        val tokens = lz77.encode(data, offset = 8, size = 7)
+        val tokens = ArrayList<Token>()
+        lz77.encode(tokens, data, offset = 8, size = 7)
         assertEquals(5, tokens.size)
         assertEquals(Token.Literal('a'.code.toUByte()), tokens[0])
         assertEquals(Token.Literal('b'.code.toUByte()), tokens[1])

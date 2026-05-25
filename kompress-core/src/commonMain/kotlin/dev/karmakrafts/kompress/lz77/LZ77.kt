@@ -79,13 +79,13 @@ internal class LZ77( // @formatter:off
      * @return A list of LZ77 tokens corresponding to the original data.
      */
     fun encode( // @formatter:off
+        tokens: MutableList<Token>,
         data: ByteArray,
         offset: Int = 0,
         size: Int = data.size - offset
-    ): List<Token> { // @formatter:on
+    ) { // @formatter:on
         // Reset the hash table for each encoding run
         head.fill(DEFAULT_HEAD)
-        val tokens = ArrayList<Token>()
         // 'next' stores the previous position in the hash chain for each input position
         val next = IntArray(size) { DEFAULT_NEXT }
         var pos = 0
@@ -145,6 +145,5 @@ internal class LZ77( // @formatter:off
                 Token.Literal(data[offset + pos++].toUByte())
             }
         }
-        return tokens
     }
 }

@@ -19,23 +19,22 @@ package dev.karmakrafts.kompress
 import kotlinx.io.Buffer
 import kotlinx.io.readByteArray
 import kotlin.random.Random
-import kotlin.test.Ignore
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import java.util.zip.Deflater as JDeflater
 import java.util.zip.Inflater as JInflater
 
 class JvmInteropTest {
-    private fun testKompressToJvm(raw: Boolean, data: ByteArray) {
+    private fun testKompressToJvm(data: ByteArray) {
         val compressedBuffer = Buffer()
-        val deflater = Deflater(raw = raw)
+        val deflater = Deflater()
         compressedBuffer.compressingSink(deflater).use { sink ->
             sink.write(Buffer().apply { write(data) }, data.size.toLong())
         }
 
         val compressedData = compressedBuffer.readByteArray()
 
-        val jInflater = JInflater(raw)
+        val jInflater = JInflater(true)
         jInflater.setInput(compressedData)
 
         val decompressedData = ByteArray(data.size)
@@ -45,8 +44,8 @@ class JvmInteropTest {
         jInflater.end()
     }
 
-    private fun testJvmToKompress(raw: Boolean, data: ByteArray) {
-        val jDeflater = JDeflater(JDeflater.DEFAULT_COMPRESSION, raw)
+    private fun testJvmToKompress(data: ByteArray) {
+        val jDeflater = JDeflater(JDeflater.DEFAULT_COMPRESSION, true)
         jDeflater.setInput(data)
         jDeflater.finish()
 
@@ -55,7 +54,7 @@ class JvmInteropTest {
         jDeflater.end()
 
         val source = Buffer().apply { write(compressedData, 0, compressedLength) }
-        val inflater = Inflater(raw = raw)
+        val inflater = Inflater(raw = true)
         val decompressedBuffer = Buffer()
         source.decompressingSource(inflater).use { decompressingSource ->
             decompressedBuffer.transferFrom(decompressingSource)
@@ -64,9 +63,9 @@ class JvmInteropTest {
         assertContentEquals(data, decompressedBuffer.readByteArray())
     }
 
-    private fun testKompressSourceToJvm(raw: Boolean, data: ByteArray) {
+    private fun testKompressSourceToJvm(data: ByteArray) {
         val source = Buffer().apply { write(data) }
-        val deflater = Deflater(raw = raw)
+        val deflater = Deflater()
         val compressedBuffer = Buffer()
         source.compressingSource(deflater).use { compressingSource ->
             compressedBuffer.transferFrom(compressingSource)
@@ -74,7 +73,7 @@ class JvmInteropTest {
 
         val compressedData = compressedBuffer.readByteArray()
 
-        val jInflater = JInflater(raw)
+        val jInflater = JInflater(true)
         jInflater.setInput(compressedData)
 
         val decompressedData = ByteArray(data.size)
@@ -89,8 +88,8 @@ class JvmInteropTest {
         jInflater.end()
     }
 
-    private fun testJvmToKompressSink(raw: Boolean, data: ByteArray) {
-        val jDeflater = JDeflater(JDeflater.DEFAULT_COMPRESSION, raw)
+    private fun testJvmToKompressSink(data: ByteArray) {
+        val jDeflater = JDeflater(JDeflater.DEFAULT_COMPRESSION, true)
         jDeflater.setInput(data)
         jDeflater.finish()
 
@@ -99,7 +98,7 @@ class JvmInteropTest {
         jDeflater.end()
 
         val decompressedBuffer = Buffer()
-        val inflater = Inflater(raw = raw)
+        val inflater = Inflater(raw = true)
         decompressedBuffer.decompressingSink(inflater).use { sink ->
             sink.write(Buffer().apply { write(compressedData, 0, compressedLength) }, compressedLength.toLong())
         }
@@ -109,92 +108,45 @@ class JvmInteropTest {
 
     @Test
     fun `kompress deflater to jvm inflater raw`() {
-        val data = "Hello, World! This is a test of the kompress deflater against the JVM inflater.".encodeToByteArray()
-        testKompressToJvm(true, data)
-    }
-
-    @Ignore
-    @Test
-    fun `kompress deflater to jvm inflater zlib`() {
-        val data = "Hello, World! This is a test of the kompress deflater against the JVM inflater.".encodeToByteArray()
-        testKompressToJvm(false, data)
+        testKompressToJvm("Hello, World! This is a test of the kompress deflater against the JVM inflater.".encodeToByteArray())
     }
 
     @Test
     fun `jvm deflater to kompress inflater raw`() {
-        val data = "Hello, World! This is a test of the JVM deflater against the kompress inflater.".encodeToByteArray()
-        testJvmToKompress(true, data)
-    }
-
-    @Test
-    fun `jvm deflater to kompress inflater zlib`() {
-        val data = "Hello, World! This is a test of the JVM deflater against the kompress inflater.".encodeToByteArray()
-        testJvmToKompress(false, data)
+        testJvmToKompress("Hello, World! This is a test of the JVM deflater against the kompress inflater.".encodeToByteArray())
     }
 
     @Test
     fun `large data kompress deflater to jvm inflater raw`() {
         val data = Random(42).nextBytes(1024 * 1024)
-        testKompressToJvm(true, data)
+        testKompressToJvm(data)
     }
 
     @Test
     fun `large data jvm deflater to kompress inflater raw`() {
         val data = Random(42).nextBytes(1024 * 1024)
-        testJvmToKompress(true, data)
+        testJvmToKompress(data)
     }
 
     @Test
     fun `kompress deflater source to jvm inflater raw`() {
-        val data =
-            "Hello, World! This is a test of the kompress deflating source against the JVM inflater.".encodeToByteArray()
-        testKompressSourceToJvm(true, data)
+        testKompressSourceToJvm("Hello, World! This is a test of the kompress deflating source against the JVM inflater.".encodeToByteArray())
     }
 
     @Test
     fun `jvm deflater to kompress decompressing sink raw`() {
-        val data =
-            "Hello, World! This is a test of the JVM deflater against the kompress decompressing sink.".encodeToByteArray()
-        testJvmToKompressSink(true, data)
+        testJvmToKompressSink("Hello, World! This is a test of the JVM deflater against the kompress decompressing sink.".encodeToByteArray())
     }
 
     @Test
     fun `large data kompress deflater source to jvm inflater raw`() {
         val data = Random(42).nextBytes(1024 * 1024)
-        testKompressSourceToJvm(true, data)
+        testKompressSourceToJvm(data)
     }
 
     @Test
     fun `large data jvm deflater to kompress decompressing sink raw`() {
         val data = Random(42).nextBytes(1024 * 1024)
-        testJvmToKompressSink(true, data)
-    }
-
-    @Ignore
-    @Test
-    fun `kompress deflater source to jvm inflater zlib`() {
-        val data =
-            "Hello, World! This is a test of the kompress deflating source against the JVM inflater.".encodeToByteArray()
-        testKompressSourceToJvm(false, data)
-    }
-
-    @Test
-    fun `jvm deflater to kompress decompressing sink zlib`() {
-        val data =
-            "Hello, World! This is a test of the JVM deflater against the kompress decompressing sink.".encodeToByteArray()
-        testJvmToKompressSink(false, data)
-    }
-
-    @Ignore
-    @Test
-    fun `large data kompress deflater source to jvm inflater zlib`() {
-        val data = Random(42).nextBytes(1024 * 1024)
-        testKompressSourceToJvm(false, data)
-    }
-
-    @Test
-    fun `large data jvm deflater to kompress decompressing sink zlib`() {
-        val data = Random(42).nextBytes(1024 * 1024)
-        testJvmToKompressSink(false, data)
+        testJvmToKompressSink(data)
     }
 }
