@@ -131,6 +131,7 @@ internal class NewDeflater( // @formatter:off
     private val bitSink: BitSink = buffer.bitSink(bitOrder = BitOrder.LSB_FIRST)
     private val literalTree: HuffmanTree = HuffmanTree()
     private val distanceTree: HuffmanTree = HuffmanTree()
+    private var wroteFinalBlock: Boolean = false
 
     override fun setInput(data: ByteArray, offset: Int, size: Int) {
         _input = data
@@ -357,9 +358,15 @@ internal class NewDeflater( // @formatter:off
         if (remaining == 0) {
             // If we are just finishing up, make sure to flush the last pending byte and return
             if (finishing && !finished) {
+                if (!wroteFinalBlock) {
+                    encodeDynamicBlock(emptyList())
+                    wroteFinalBlock = true
+                }
                 bitSink.flush()
-                finished = true
                 flushed = buffer.readAtMostTo(output, offset, offset + size).coerceAtLeast(0)
+                if (buffer.size == 0L) {
+                    finished = true
+                }
                 bytesWritten += flushed
                 return flushed
             }
@@ -369,6 +376,9 @@ internal class NewDeflater( // @formatter:off
         // TODO: re-use an ArrayList as a buffer
         val tokens = lz77.encode(_input, inputOffset, inputSize)
         bytesRead += inputSize
+        if (finishing) {
+            wroteFinalBlock = true
+        }
         encodeDynamicBlock(tokens)
         remaining = 0
         // Flush out any pending data before returning
@@ -384,6 +394,7 @@ internal class NewDeflater( // @formatter:off
     override fun reset() {
         finishing = false
         finished = false
+        wroteFinalBlock = false
         setInput(ByteArray(0))
         buffer.clear()
     }

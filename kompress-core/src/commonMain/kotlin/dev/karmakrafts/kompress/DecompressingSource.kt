@@ -35,14 +35,16 @@ private class DecompressingSource( // @formatter:off
     override fun readAtMostTo(sink: Buffer, byteCount: Long): Long {
         if (byteCount == 0L) return 0L
         var totalWritten = 0L
+        var inputExhausted = false
         while (totalWritten < byteCount) {
             // If the decompressor needs input, try to read more compressed data from the delegate.
-            if (decompressor.needsInput) {
+            if (decompressor.needsInput && !inputExhausted) {
                 if (buffer.size == 0L && delegate.readAtMostTo(buffer, bufferSize.toLong()) == -1L) {
                     // No more compressed input available.
+                    inputExhausted = true
                     decompressor.finish()
                 }
-                else {
+                if (!inputExhausted && buffer.size > 0L) {
                     // Provide a chunk of compressed data to the decompressor.
                     val toProvide = min(buffer.size, bufferSize.toLong()).toInt()
                     val provided = buffer.readByteArray(toProvide)
@@ -60,6 +62,10 @@ private class DecompressingSource( // @formatter:off
                 continue
             }
             if (decompressor.finished) break
+
+            if (written == 0 && (inputExhausted || !decompressor.needsInput)) {
+                break
+            }
         }
         return if (totalWritten == 0L && decompressor.finished) -1L else totalWritten
     }

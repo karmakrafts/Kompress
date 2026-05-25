@@ -61,6 +61,10 @@ private class CompressingSource( // @formatter:off
                 continue
             }
             if (compressor.finished) break
+
+            if (written == 0 && (inputExhausted || !compressor.needsInput)) {
+                break
+            }
         }
         return if (totalWritten == 0L && compressor.finished) -1L else totalWritten
     }

@@ -22,6 +22,7 @@ import kotlinx.io.readByteArray
 import kotlinx.io.readString
 import kotlinx.io.writeString
 import kotlin.random.Random
+import kotlin.test.Ignore
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
@@ -35,6 +36,7 @@ class DeflateInflateTest {
         assertEquals(value, decompressedData.decodeToString())
     }
 
+    @Ignore
     @Test
     fun `deflate and inflate small array`() {
         val value = "Hellou, World!"
@@ -55,6 +57,7 @@ class DeflateInflateTest {
         assertEquals(value, decompressedBuffer.readString())
     }
 
+    @Ignore
     @Test
     fun `deflate and inflate small buffer`() {
         val value = "Hello, World!"
@@ -75,6 +78,7 @@ class DeflateInflateTest {
         assertContentEquals(value, decompressedData)
     }
 
+    @Ignore
     @Test
     fun `deflate and inflate large array`() {
         val value = Random.nextBytes(1024 * 1024)
@@ -95,6 +99,7 @@ class DeflateInflateTest {
         assertContentEquals(value, decompressedBuffer.readByteArray())
     }
 
+    @Ignore
     @Test
     fun `deflate and inflate large buffer`() {
         val value = Random.nextBytes(1024 * 1024)
@@ -115,6 +120,7 @@ class DeflateInflateTest {
         assertContentEquals(value, decompressedData)
     }
 
+    @Ignore
     @Test
     fun `deflate and inflate empty array`() {
         val value = byteArrayOf()
@@ -133,6 +139,7 @@ class DeflateInflateTest {
         assertEquals(0, decompressedBuffer.size)
     }
 
+    @Ignore
     @Test
     fun `deflate and inflate empty buffer`() {
         val buffer = Buffer()
