@@ -81,13 +81,9 @@ internal class DeflaterImpl( // @formatter:off
             field = value
         }
 
-    private var _input: ByteArray = ByteArray(0)
-    override var input: ByteArray
-        get() = _input
-        set(value) {
-            setInput(value)
-        }
 
+    override var input: ByteArray = ByteArray(0)
+        private set
     override var inputOffset: Int = 0
         private set
     override var inputSize: Int = 0
@@ -115,7 +111,7 @@ internal class DeflaterImpl( // @formatter:off
     private val tokenBuffer: ArrayList<Token> = ArrayList()
 
     override fun setInput(data: ByteArray, offset: Int, size: Int) {
-        _input = data
+        input = data
         inputOffset = offset
         inputSize = size
         remaining = size
@@ -361,7 +357,7 @@ internal class DeflaterImpl( // @formatter:off
         }
         // Compress new data
         tokenBuffer.clear()
-        lz77.encode(tokenBuffer, _input, inputOffset, inputSize)
+        lz77.encode(tokenBuffer, input, inputOffset, inputSize)
         bytesRead += inputSize
         if (finishing) {
             wroteFinalBlock = true

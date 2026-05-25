@@ -30,8 +30,7 @@ interface Decompressor : AutoCloseable {
     /**
      * The current input buffer.
      */
-    @set:Deprecated(message = "This API will be removed in 2.0", replaceWith = ReplaceWith("setInput(input)"))
-    var input: ByteArray
+    val input: ByteArray
 
     /**
      * The offset into the current input buffer in bytes.
