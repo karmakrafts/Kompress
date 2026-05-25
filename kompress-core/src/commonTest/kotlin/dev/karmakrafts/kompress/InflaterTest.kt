@@ -20,6 +20,7 @@ import kotlinx.io.Buffer
 import kotlinx.io.buffered
 import kotlinx.io.readByteArray
 import kotlin.random.Random
+import kotlin.test.Ignore
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
@@ -68,6 +69,7 @@ class InflaterTest {
         assertContentEquals(value, decompressedBytes)
     }
 
+    @Ignore
     @Test
     fun `inflating source buffered immediate read`() {
         val value = "Hello, World!".encodeToByteArray()

@@ -19,7 +19,6 @@ package dev.karmakrafts.kompress.huffman
 import dev.karmakrafts.karbide.BitSink
 import dev.karmakrafts.karbide.BitSource
 import dev.karmakrafts.karbide.readBit
-import dev.karmakrafts.kompress.DeflateConstants
 import dev.karmakrafts.kompress.exception.NoSuchCodeException
 import dev.karmakrafts.kompress.exception.NoSuchSymbolException
 

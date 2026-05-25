@@ -129,8 +129,6 @@ internal class NewDeflater( // @formatter:off
 
     private val buffer: Buffer = Buffer()
     private val bitSink: BitSink = buffer.bitSink(bitOrder = BitOrder.LSB_FIRST)
-    private val literalTree: HuffmanTree = HuffmanTree()
-    private val distanceTree: HuffmanTree = HuffmanTree()
     private var wroteFinalBlock: Boolean = false
 
     override fun setInput(data: ByteArray, offset: Int, size: Int) {
@@ -161,12 +159,10 @@ internal class NewDeflater( // @formatter:off
     private fun encodeDynamicHeader(literalCodesCount: Int, distanceCodesCount: Int, codeLengthCodesCount: Int) {
         bitSink.writeBitsLsb(DeflateConstants.HLIT_SIZE, (literalCodesCount - DeflateConstants.HLIT_OFFSET).toULong())
         bitSink.writeBitsLsb(
-            DeflateConstants.HDIST_SIZE,
-            (distanceCodesCount - DeflateConstants.HDIST_OFFSET).toULong()
+            DeflateConstants.HDIST_SIZE, (distanceCodesCount - DeflateConstants.HDIST_OFFSET).toULong()
         )
         bitSink.writeBitsLsb(
-            DeflateConstants.HCLEN_SIZE,
-            (codeLengthCodesCount - DeflateConstants.HCLEN_OFFSET).toULong()
+            DeflateConstants.HCLEN_SIZE, (codeLengthCodesCount - DeflateConstants.HCLEN_OFFSET).toULong()
         )
     }
 
@@ -175,7 +171,7 @@ internal class NewDeflater( // @formatter:off
      *
      * See [RFC1951](https://datatracker.ietf.org/doc/html/rfc1951) 3.2.7.
      */
-    private fun encodeDynamicTrees() {
+    private fun encodeDynamicTrees(literalTree: HuffmanTree, distanceTree: HuffmanTree) {
         // Derive the raw code lengths
         val literalLengths = literalTree.codeLengths()
         val distanceLengths = distanceTree.codeLengths()
@@ -320,9 +316,9 @@ internal class NewDeflater( // @formatter:off
         }
         literalFrequencies[DeflateConstants.SYM_EOF]++ // EOF always occurs once
         // Construct huffman trees from frequencies and encode them
-        literalTree.lengths = HuffmanTree.fromFrequencies(literalFrequencies).lengths
-        distanceTree.lengths = HuffmanTree.fromFrequencies(distanceFrequencies).lengths
-        encodeDynamicTrees()
+        val literalTree = HuffmanTree.fromFrequencies(literalFrequencies)
+        val distanceTree = HuffmanTree.fromFrequencies(distanceFrequencies)
+        encodeDynamicTrees(literalTree, distanceTree)
         // Encode the token stream
         for (token in tokens) when (token) {
             is Token.Literal -> literalTree.encodeSymbol(bitSink, token.value.toInt() and 0xFF)

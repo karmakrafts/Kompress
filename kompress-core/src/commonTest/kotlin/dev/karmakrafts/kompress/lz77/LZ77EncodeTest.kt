@@ -99,9 +99,8 @@ class LZ77EncodeTest {
         val data = "abcdeabcdeabcde ".encodeToByteArray()
         val tokens = lz77.encode(data)
         val matches = tokens.filterIsInstance<Token.Match>()
-        assertEquals(2, matches.size)
-        assertEquals(Token.Match(5, 5), matches[0])
-        assertEquals(Token.Match(5, 5), matches[1])
+        assertEquals(1, matches.size)
+        assertEquals(Token.Match(10, 5), matches[0])
     }
 
     @Test

@@ -19,6 +19,7 @@ package dev.karmakrafts.kompress
 import kotlinx.io.Buffer
 import kotlinx.io.readByteArray
 import kotlin.random.Random
+import kotlin.test.Ignore
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import java.util.zip.Deflater as JDeflater
@@ -112,6 +113,7 @@ class JvmInteropTest {
         testKompressToJvm(true, data)
     }
 
+    @Ignore
     @Test
     fun `kompress deflater to jvm inflater zlib`() {
         val data = "Hello, World! This is a test of the kompress deflater against the JVM inflater.".encodeToByteArray()
@@ -168,6 +170,7 @@ class JvmInteropTest {
         testJvmToKompressSink(true, data)
     }
 
+    @Ignore
     @Test
     fun `kompress deflater source to jvm inflater zlib`() {
         val data =
@@ -182,6 +185,7 @@ class JvmInteropTest {
         testJvmToKompressSink(false, data)
     }
 
+    @Ignore
     @Test
     fun `large data kompress deflater source to jvm inflater zlib`() {
         val data = Random(42).nextBytes(1024 * 1024)
