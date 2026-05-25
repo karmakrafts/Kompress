@@ -67,31 +67,11 @@ internal class LZ77( // @formatter:off
         }
 
     private val head: IntArray = IntArray(HASH_SIZE) { DEFAULT_HEAD }
-    private val decodeBuffer: ArrayList<UByte> = ArrayList()
-
-    /**
-     * Decodes the given LZ77 token stream into the raw data it represents.
-     *
-     * @param tokens The list of tokens to decode.
-     * @return A new [ByteArray] containing the raw decompressed data
-     *  represented by the given token stream.
-     */
-    fun decode(tokens: Iterable<Token>): ByteArray {
-        decodeBuffer.clear() // Ensure the buffer is cleared before reconstructing data
-        for (token in tokens) when (token) {
-            is Token.Literal -> decodeBuffer += token.value
-            is Token.Match -> {
-                val start = decodeBuffer.size - token.distance
-                for (offset in 0..<token.length) {
-                    decodeBuffer += decodeBuffer[start + offset]
-                }
-            }
-        }
-        return decodeBuffer.toUByteArray().asByteArray()
-    }
 
     /**
      * Encodes the given data into an LZ77 token stream.
+     *
+     * See [RFC1951](https://datatracker.ietf.org/doc/html/rfc1951) 3.2.5.
      *
      * @param data The raw bytes to encode.
      * @param offset The offset into the input array to start reading from.
@@ -103,40 +83,43 @@ internal class LZ77( // @formatter:off
         offset: Int = 0,
         size: Int = data.size - offset
     ): List<Token> { // @formatter:on
+        // Reset the hash table for each encoding run
         head.fill(DEFAULT_HEAD)
         val tokens = ArrayList<Token>()
+        // 'next' stores the previous position in the hash chain for each input position
         val next = IntArray(size) { DEFAULT_NEXT }
         var pos = 0
         while (pos < size) {
             var bestLength = 0
             var bestDistance = 0
-            // Wait until we have enough bytes available to match against
+            // Wait until we have enough bytes available to match against (minimum match length)
             if (pos + minMatch <= size) {
                 val hash = rollingHash(data, pos + offset)
-                var candidate = head[hash] // Newest candidate position
+                var candidate = head[hash] // Newest candidate position in hash chain
                 var chain = 0
-                // Search backwards through previous matches
+                // Search backwards through previous matches in the hash chain
                 while (candidate >= 0 && chain++ < maxChain) {
                     val distance = pos - candidate // Distance backwards into sliding window
                     if (distance > windowSize) break // Stop searching if we reach window size limit
+
                     var length = 0
-                    // Extend match while bytes remain equal
+                    // Extend match while bytes remain equal and we haven't exceeded maxMatch
                     while( // @formatter:off
                         length < maxMatch &&
                         pos + length < size &&
-                        distance !in minMatch..length &&
                         data[candidate + offset + length] == data[pos + offset + length]
                     ) { // @formatter:on
                         length++
                     }
-                    // Keep the best match
+                    // Keep the best match found so far
                     if (length >= minMatch && length > bestLength) {
                         bestLength = length
                         bestDistance = distance
-                        // Check if this is already a perfect match
+                        // Check if this is already a perfect (maximum length) match
                         if (length == maxMatch) break
                     }
-                    candidate = next[candidate]
+                    // Follow the chain to the next (older) candidate
+                    candidate = if (candidate < size) next[candidate] else DEFAULT_NEXT
                 }
                 // Insert current position into the hash chain
                 next[pos] = head[hash]
@@ -145,6 +128,7 @@ internal class LZ77( // @formatter:off
             // Emit the according token
             tokens += if (bestLength >= minMatch) {
                 // Update the hash chain for every extra byte we skip through the match
+                // to ensure we can match against these positions later
                 for (chainOffset in 1 until bestLength) {
                     val currentPosition = pos + chainOffset
                     if (currentPosition + minMatch <= size) {
@@ -156,7 +140,10 @@ internal class LZ77( // @formatter:off
                 pos += bestLength // Increment by total match length
                 Token.Match(bestLength, bestDistance)
             }
-            else Token.Literal(data[offset + pos++].toUByte())
+            else {
+                // No match found or match too short, emit a literal byte
+                Token.Literal(data[offset + pos++].toUByte())
+            }
         }
         return tokens
     }

@@ -84,4 +84,4 @@ private class DeflaterImpl( // @formatter:off
     override fun reset() = impl.reset()
 }
 
-actual fun Deflater(raw: Boolean, level: Int): Deflater = DeflaterImpl(raw, level)
+actual fun Deflater(raw: Boolean, level: Int): Deflater = NewDeflater(level)

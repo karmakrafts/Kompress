@@ -19,48 +19,108 @@ package dev.karmakrafts.kompress.huffman
 import dev.karmakrafts.karbide.BitSink
 import dev.karmakrafts.karbide.BitSource
 import dev.karmakrafts.karbide.readBit
+import dev.karmakrafts.kompress.DeflateConstants
 import dev.karmakrafts.kompress.exception.NoSuchCodeException
 import dev.karmakrafts.kompress.exception.NoSuchSymbolException
 
-internal class HuffmanTree(lengths: IntArray) {
+/**
+ * Implementation of a Huffman tree for Deflate compression and decompression.
+ *
+ * See [RFC1951](https://datatracker.ietf.org/doc/html/rfc1951) 3.2.2.
+ */
+internal class HuffmanTree(lengths: IntArray = IntArray(0)) {
     // TODO: optimize this by using lookup by code prefix length -> benchmark!
     private val decodeTable: HashMap<HuffmanCode, Int> = HashMap()
-    private var encodeTable: ArrayList<HuffmanCode> = ArrayList(lengths.size) // Pre-allocate to initial size
-    private var maxBits: Int = lengths.maxOrNull() ?: 0
+    private val encodeTable: ArrayList<HuffmanCode> = ArrayList()
+    private var maxBits: Int = 0
 
     var lengths: IntArray = lengths
         set(value) {
+            initTables(value)
             field = value
-            initTables()
         }
 
-    constructor() : this(IntArray(0))
+    init {
+        initTables(lengths)
+    }
 
-    private fun initTables() {
+    companion object {
+        fun fromFrequencies(frequencies: IntArray): HuffmanTree {
+            class Node(val symbol: Int, val frequency: Int, val left: Node? = null, val right: Node? = null)
+
+            val nodes = mutableListOf<Node>()
+            for (i in frequencies.indices) {
+                if (frequencies[i] > 0) {
+                    nodes.add(Node(i, frequencies[i]))
+                }
+            }
+
+            if (nodes.isEmpty()) {
+                return HuffmanTree(IntArray(frequencies.size))
+            }
+
+            if (nodes.size == 1) {
+                val lengths = IntArray(frequencies.size)
+                lengths[nodes[0].symbol] = 1
+                return HuffmanTree(lengths)
+            }
+
+            while (nodes.size > 1) {
+                nodes.sortBy { it.frequency }
+                val left = nodes.removeAt(0)
+                val right = nodes.removeAt(0)
+                nodes.add(Node(-1, left.frequency + right.frequency, left, right))
+            }
+
+            val lengths = IntArray(frequencies.size)
+            fun walk(node: Node, depth: Int) {
+                if (node.symbol != -1) {
+                    lengths[node.symbol] = depth
+                }
+                else {
+                    walk(node.left!!, depth + 1)
+                    walk(node.right!!, depth + 1)
+                }
+            }
+            walk(nodes[0], 0)
+
+            return HuffmanTree(lengths)
+        }
+    }
+
+    private fun initTables(lengths: IntArray) {
         // Clear state
         decodeTable.clear()
         encodeTable.clear()
+        repeat(lengths.size) {
+            encodeTable.add(HuffmanCode())
+        }
         maxBits = lengths.maxOrNull() ?: 0
-        // Determine how many symbols use each bit length
+        if (maxBits == 0) return
+
+        // Determine how many symbols use each bit length.
+        // See RFC1951 3.2.2, step 1.
         val bitLengthCounts = IntArray(maxBits + 1)
         for (length in lengths) {
             if (length == 0) continue
             bitLengthCounts[length]++
         }
-        // Compute canonical next code table
+        // Compute canonical next code table.
+        // See RFC1951 3.2.2, step 2.
         val nextCode = IntArray(maxBits + 1)
         var code = 0
         for (bit in 1..maxBits) {
             code = (code + bitLengthCounts[bit - 1]) shl 1
             nextCode[bit] = code
         }
-        // Build decode- and encode-tables
+        // Build decode- and encode-tables by assigning numerical values to all codes.
+        // See RFC1951 3.2.2, step 3.
         for (symbol in lengths.indices) {
             val bitLength = lengths[symbol]
             if (bitLength == 0) continue // Skip any 0-length symbols
             val canonical = nextCode[bitLength]++
             val code = HuffmanCode(canonical, bitLength)
-            encodeTable.add(symbol, code)
+            encodeTable[symbol] = code
             decodeTable[code] = symbol
         }
     }

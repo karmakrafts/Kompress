@@ -20,6 +20,7 @@ import dev.karmakrafts.karbide.BitOrder
 import dev.karmakrafts.karbide.BitSink
 import dev.karmakrafts.karbide.bitSink
 import dev.karmakrafts.karbide.writeBit
+import dev.karmakrafts.karbide.writeBitsLsb
 import dev.karmakrafts.kompress.Deflater.Companion.compress
 import dev.karmakrafts.kompress.huffman.HuffmanTree
 import dev.karmakrafts.kompress.lz77.LZ77
@@ -89,7 +90,7 @@ interface Deflater : Compressor {
 }
 
 @Suppress("OVERRIDE_DEPRECATION")
-private class NewDeflaterImpl( // @formatter:off
+internal class NewDeflater( // @formatter:off
     level: Int
 ) : Deflater { // @formatter:on
     private val lz77: LZ77 = LZ77(level)
@@ -138,101 +139,175 @@ private class NewDeflaterImpl( // @formatter:off
         remaining = size
     }
 
-    // TODO: could probably cache this and reuse it -> pooling?
-    private fun buildCodeLengthAlphabet(hlit: Int, hdist: Int): IntArray {
-        val combinedLengths = IntArray(hlit + hdist)
-        var index = 0
-        for (literalLength in literalTree.lengths) combinedLengths[index++] = literalLength
-        for (distanceLength in distanceTree.lengths) combinedLengths[index++] = distanceLength
-        return combinedLengths
-    }
-
+    /**
+     * Computes the HCLEN value for the dynamic Huffman block header.
+     *
+     * See [RFC1951](https://datatracker.ietf.org/doc/html/rfc1951) 3.2.7.
+     */
     private fun computeHclen(lengthTreeLengths: IntArray): Int {
-        var hclen = DeflateConstants.ALPHABET_SIZE
-        while (hclen > DeflateConstants.HCLEN_OFFSET && lengthTreeLengths[DeflateConstants.CODE_LENGTH_ORDER[hclen - 1]] == 0) {
-            hclen--
+        var codeLengthCodesCount = DeflateConstants.ALPHABET_SIZE
+        while (codeLengthCodesCount > DeflateConstants.HCLEN_OFFSET && lengthTreeLengths[DeflateConstants.CODE_LENGTH_ORDER[codeLengthCodesCount - 1]] == 0) {
+            codeLengthCodesCount--
         }
-        return hclen
+        return codeLengthCodesCount
     }
 
-    private fun encodeLengths(codeLengths: IntArray, tree: HuffmanTree) {
-        var previous = -1
-        for (length in codeLengths) {
-            when (length) { // @formatter:off
-                0 if previous == 0 -> {
-                    tree.encodeSymbol(bitSink, DeflateConstants.SYM_LONG_ZERO_LENGTH_RUN)
-                    bitSink.writeBits(DeflateConstants.SYM_LONG_ZERO_LENGTH_RUN_SIZE, 0UL)
-                }
-                0 -> {
-                    tree.encodeSymbol(bitSink, DeflateConstants.SYM_REPEAT_ZERO_LENGTH)
-                    bitSink.writeBits(DeflateConstants.SYM_REPEAT_ZERO_LENGTH_SIZE, 0UL)
-                }
-                previous -> {
-                    tree.encodeSymbol(bitSink, DeflateConstants.SYM_REPEAT_PREVIOUS)
-                    bitSink.writeBits(DeflateConstants.SYM_REPEAT_PREVIOUS_SIZE, 0UL)
-                }
-                else -> tree.encodeSymbol(bitSink, length)
-            } // @formatter:on
-            previous = length
-        }
+    /**
+     * Encodes the dynamic Huffman block header (HLIT, HDIST, HCLEN).
+     *
+     * See [RFC1951](https://datatracker.ietf.org/doc/html/rfc1951) 3.2.7.
+     */
+    private fun encodeDynamicHeader(literalCodesCount: Int, distanceCodesCount: Int, codeLengthCodesCount: Int) {
+        bitSink.writeBitsLsb(DeflateConstants.HLIT_SIZE, (literalCodesCount - DeflateConstants.HLIT_OFFSET).toULong())
+        bitSink.writeBitsLsb(
+            DeflateConstants.HDIST_SIZE,
+            (distanceCodesCount - DeflateConstants.HDIST_OFFSET).toULong()
+        )
+        bitSink.writeBitsLsb(
+            DeflateConstants.HCLEN_SIZE,
+            (codeLengthCodesCount - DeflateConstants.HCLEN_OFFSET).toULong()
+        )
     }
 
-    private fun encodeDynamicHeader(hlit: Int, hdist: Int, hclen: Int) {
-        bitSink.writeBits(DeflateConstants.HLIT_SIZE, (hlit - DeflateConstants.HLIT_OFFSET).toULong())
-        bitSink.writeBits(DeflateConstants.HDIST_SIZE, (hdist - DeflateConstants.HDIST_OFFSET).toULong())
-        bitSink.writeBits(DeflateConstants.HCLEN_SIZE, (hclen - DeflateConstants.HCLEN_OFFSET).toULong())
-    }
-
+    /**
+     * Encodes the Huffman trees for the current block using dynamic Huffman coding.
+     *
+     * See [RFC1951](https://datatracker.ietf.org/doc/html/rfc1951) 3.2.7.
+     */
     private fun encodeDynamicTrees() {
         // Derive the raw code lengths
         val literalLengths = literalTree.codeLengths()
         val distanceLengths = distanceTree.codeLengths()
-        val hlit = literalLengths.size
-        val hdist = distanceLengths.size
-        // Build the code length alphabet
-        val combinedLengths = buildCodeLengthAlphabet(hlit, hdist)
+        val literalCodesCount = literalLengths.size
+        val distanceCodesCount = distanceLengths.size
+
+        // We need to count frequencies of symbols used to encode these lengths
+        val lengthFrequencies = IntArray(DeflateConstants.CODE_LENGTH_ALPHABET_SIZE)
+
+        // Use a temporary list to store symbols and extra bits
+        val encodedSymbols = ArrayList<Long>() // symbol in low 32 bits, extra in high 32 bits
+
+        fun collect(lengths: IntArray) {
+            var index = 0
+            while (index < lengths.size) {
+                var count = 1
+                val length = lengths[index]
+                while (index + count < lengths.size && lengths[index + count] == length) {
+                    count++
+                }
+                var remaining = count
+                if (length == 0) {
+                    while (remaining >= DeflateConstants.SYM_LONG_ZERO_LENGTH_RUN_MIN) {
+                        val runLength = remaining.coerceAtMost(DeflateConstants.SYM_LONG_ZERO_LENGTH_RUN_MAX)
+                        encodedSymbols.add(DeflateConstants.SYM_LONG_ZERO_LENGTH_RUN.toLong() or ((runLength - DeflateConstants.SYM_LONG_ZERO_LENGTH_RUN_MIN).toLong() shl 32))
+                        lengthFrequencies[DeflateConstants.SYM_LONG_ZERO_LENGTH_RUN]++
+                        remaining -= runLength
+                    }
+                    if (remaining >= DeflateConstants.SYM_REPEAT_ZERO_LENGTH_MIN) {
+                        encodedSymbols.add(DeflateConstants.SYM_REPEAT_ZERO_LENGTH.toLong() or ((remaining - DeflateConstants.SYM_REPEAT_ZERO_LENGTH_MIN).toLong() shl 32))
+                        lengthFrequencies[DeflateConstants.SYM_REPEAT_ZERO_LENGTH]++
+                        remaining = 0
+                    }
+                    while (remaining > 0) {
+                        encodedSymbols.add(0L)
+                        lengthFrequencies[0]++
+                        remaining--
+                    }
+                }
+                else {
+                    encodedSymbols.add(length.toLong())
+                    lengthFrequencies[length]++
+                    remaining--
+                    while (remaining >= DeflateConstants.SYM_REPEAT_PREVIOUS_MIN) {
+                        val runLength = remaining.coerceAtMost(DeflateConstants.SYM_REPEAT_PREVIOUS_MAX)
+                        encodedSymbols.add(DeflateConstants.SYM_REPEAT_PREVIOUS.toLong() or ((runLength - DeflateConstants.SYM_REPEAT_PREVIOUS_MIN).toLong() shl 32))
+                        lengthFrequencies[DeflateConstants.SYM_REPEAT_PREVIOUS]++
+                        remaining -= runLength
+                    }
+                    while (remaining > 0) {
+                        encodedSymbols.add(length.toLong())
+                        lengthFrequencies[length]++
+                        remaining--
+                    }
+                }
+                index += count
+            }
+        }
+
+        collect(literalLengths)
+        collect(distanceLengths)
+
         // Derive length tree by frequencies
-        val lengthFrequencies = IntArray(DeflateConstants.ALPHABET_SIZE)
-        for (length in combinedLengths) lengthFrequencies[length]++
-        val lengthTree = HuffmanTree(lengthFrequencies)
+        val lengthTree = HuffmanTree.fromFrequencies(lengthFrequencies)
         val lengthTreeLengths = lengthTree.codeLengths()
         // Compute HCLEN value and write it out
-        val hclen = computeHclen(lengthTreeLengths)
+        val codeLengthCodesCount = computeHclen(lengthTreeLengths)
         // Write the actual block header
-        encodeDynamicHeader(hlit, hdist, hclen)
+        encodeDynamicHeader(literalCodesCount, distanceCodesCount, codeLengthCodesCount)
         // Write code-length tree
-        for (index in 0..<hclen) {
+        for (index in 0..<codeLengthCodesCount) {
             val symbol = DeflateConstants.CODE_LENGTH_ORDER[index]
-            bitSink.writeBits(3, lengthTreeLengths[symbol].toULong())
+            bitSink.writeBitsLsb(DeflateConstants.CL_CODE_LENGTH_SIZE, lengthTreeLengths[symbol].toULong())
         }
         // Write literal and distance lengths and encode repeats
-        encodeLengths(literalLengths, lengthTree)
-        encodeLengths(distanceLengths, lengthTree)
+        for (packed in encodedSymbols) {
+            val symbol = (packed and 0xFFFFFFFFL).toInt()
+            val extraBits = (packed ushr 32).toInt()
+            lengthTree.encodeSymbol(bitSink, symbol)
+            when (symbol) {
+                DeflateConstants.SYM_REPEAT_PREVIOUS -> bitSink.writeBitsLsb(
+                    DeflateConstants.SYM_REPEAT_PREVIOUS_SIZE, extraBits.toULong()
+                )
+
+                DeflateConstants.SYM_REPEAT_ZERO_LENGTH -> bitSink.writeBitsLsb(
+                    DeflateConstants.SYM_REPEAT_ZERO_LENGTH_SIZE, extraBits.toULong()
+                )
+
+                DeflateConstants.SYM_LONG_ZERO_LENGTH_RUN -> bitSink.writeBitsLsb(
+                    DeflateConstants.SYM_LONG_ZERO_LENGTH_RUN_SIZE, extraBits.toULong()
+                )
+            }
+        }
     }
 
+    /**
+     * Encodes the extra bits for a length symbol.
+     *
+     * See [RFC1951](https://datatracker.ietf.org/doc/html/rfc1951) 3.2.5.
+     */
     private fun encodeLengthExtra(length: Int, symbol: Int) {
         val index = symbol - DeflateConstants.HLIT_OFFSET
-        val base = DeflateConstants.LENGTH_BASE[index]
+        val baseLength = DeflateConstants.LENGTH_BASE[index]
         val extraBits = DeflateConstants.LENGTH_EXTRA_BITS[index]
         if (extraBits == 0) return
-        val value = length - base
-        bitSink.writeBits(extraBits, value.toULong())
+        val extraValue = length - baseLength
+        bitSink.writeBitsLsb(extraBits, extraValue.toULong())
     }
 
+    /**
+     * Encodes the extra bits for a distance symbol.
+     *
+     * See [RFC1951](https://datatracker.ietf.org/doc/html/rfc1951) 3.2.5.
+     */
     private fun encodeDistanceExtra(distance: Int, symbol: Int) {
-        val base = DeflateConstants.DIST_BASE[symbol]
+        val baseDistance = DeflateConstants.DIST_BASE[symbol]
         val extraBits = DeflateConstants.DIST_EXTRA_BITS[symbol]
         if (extraBits == 0) return
-        val value = distance - base
-        bitSink.writeBits(extraBits, value.toULong())
+        val extraValue = distance - baseDistance
+        bitSink.writeBitsLsb(extraBits, extraValue.toULong())
     }
 
+    /**
+     * Encodes a block of tokens using dynamic Huffman coding.
+     *
+     * See [RFC1951](https://datatracker.ietf.org/doc/html/rfc1951) 3.2.3 and 3.2.7.
+     */
     private fun encodeDynamicBlock(tokens: List<Token>) {
         bitSink.writeBit(if (finishing) 1U else 0U) // BFINAL
-        bitSink.writeBits(DeflateConstants.BTYPE_SIZE, DeflateConstants.BTYPE_DYNAMIC) // BTYPE
+        bitSink.writeBitsLsb(DeflateConstants.BTYPE_SIZE, DeflateConstants.BTYPE_DYNAMIC) // BTYPE
         // Compute frequency of literals and matches
-        val literalFrequencies = IntArray(286)
-        val distanceFrequencies = IntArray(30)
+        val literalFrequencies = IntArray(DeflateConstants.LITERAL_ALPHABET_SIZE)
+        val distanceFrequencies = IntArray(DeflateConstants.DISTANCE_ALPHABET_SIZE)
         for (token in tokens) when (token) {
             is Token.Literal -> literalFrequencies[token.value.toInt() and 0xFF]++
             is Token.Match -> {
@@ -244,8 +319,8 @@ private class NewDeflaterImpl( // @formatter:off
         }
         literalFrequencies[DeflateConstants.SYM_EOF]++ // EOF always occurs once
         // Construct huffman trees from frequencies and encode them
-        literalTree.lengths = literalFrequencies
-        distanceTree.lengths = distanceFrequencies
+        literalTree.lengths = HuffmanTree.fromFrequencies(literalFrequencies).lengths
+        distanceTree.lengths = HuffmanTree.fromFrequencies(distanceFrequencies).lengths
         encodeDynamicTrees()
         // Encode the token stream
         for (token in tokens) when (token) {
@@ -262,6 +337,7 @@ private class NewDeflaterImpl( // @formatter:off
                 encodeDistanceExtra(distance, distanceSymbol)
             }
         }
+        literalTree.encodeSymbol(bitSink, DeflateConstants.SYM_EOF)
     }
 
     override fun compress( // @formatter:off
@@ -270,9 +346,9 @@ private class NewDeflaterImpl( // @formatter:off
         size: Int,
         flush: Boolean
     ): Int { // @formatter:on
-        if (size <= 0) return 0
+        if (size <= 0 || finished) return 0
         // If any pending output exists, flush that out first
-        var flushed = buffer.readAtMostTo(output, offset, offset + size)
+        var flushed = buffer.readAtMostTo(output, offset, offset + size).coerceAtLeast(0)
         if (flushed > 0) {
             bytesWritten += flushed
             return flushed
@@ -283,7 +359,7 @@ private class NewDeflaterImpl( // @formatter:off
             if (finishing && !finished) {
                 bitSink.flush()
                 finished = true
-                flushed = buffer.readAtMostTo(output, offset, offset + size)
+                flushed = buffer.readAtMostTo(output, offset, offset + size).coerceAtLeast(0)
                 bytesWritten += flushed
                 return flushed
             }
@@ -296,7 +372,7 @@ private class NewDeflaterImpl( // @formatter:off
         encodeDynamicBlock(tokens)
         remaining = 0
         // Flush out any pending data before returning
-        flushed = buffer.readAtMostTo(output, offset, offset + size)
+        flushed = buffer.readAtMostTo(output, offset, offset + size).coerceAtLeast(0)
         bytesWritten += flushed
         return flushed
     }

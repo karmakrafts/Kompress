@@ -16,22 +16,35 @@
 
 package dev.karmakrafts.kompress
 
-import dev.karmakrafts.kompress.exception.NoSuchSymbolException
 import kotlin.jvm.JvmField
 import kotlin.jvm.JvmStatic
 
 internal object DeflateConstants {
     const val SYM_EOF: Int = 256
     const val SYM_REPEAT_PREVIOUS: Int = 16
+    const val SYM_REPEAT_PREVIOUS_MIN: Int = 3
+    const val SYM_REPEAT_PREVIOUS_MAX: Int = 6
     const val SYM_REPEAT_PREVIOUS_SIZE: Int = 2
     const val SYM_REPEAT_ZERO_LENGTH: Int = 17
+    const val SYM_REPEAT_ZERO_LENGTH_MIN: Int = 3
+    const val SYM_REPEAT_ZERO_LENGTH_MAX: Int = 10
     const val SYM_REPEAT_ZERO_LENGTH_SIZE: Int = 3
     const val SYM_LONG_ZERO_LENGTH_RUN: Int = 18
+    const val SYM_LONG_ZERO_LENGTH_RUN_MIN: Int = 11
+    const val SYM_LONG_ZERO_LENGTH_RUN_MAX: Int = 138
     const val SYM_LONG_ZERO_LENGTH_RUN_SIZE: Int = 7
 
+    const val LITERAL_ALPHABET_SIZE: Int = 286
+    const val DISTANCE_ALPHABET_SIZE: Int = 30
+    const val CODE_LENGTH_ALPHABET_SIZE: Int = 19
+
+    const val MAX_CODE_LENGTH: Int = 15
+    const val MAX_CL_CODE_LENGTH: Int = 7
+    const val CL_CODE_LENGTH_SIZE: Int = 3
+
     const val BTYPE_SIZE: Int = 2
-    const val BTYPE_STORED: ULong = 0b00UL // TODO: check this
-    const val BTYPE_STATIC: ULong = 0b01UL // TODO: check this
+    const val BTYPE_STORED: ULong = 0b00UL
+    const val BTYPE_STATIC: ULong = 0b01UL
     const val BTYPE_DYNAMIC: ULong = 0b10UL
 
     const val ALPHABET_SIZE: Int = 19
@@ -45,7 +58,6 @@ internal object DeflateConstants {
     /**
      * See [RFC1951](https://datatracker.ietf.org/doc/html/rfc1951) 3.2.7.
      */
-    @JvmStatic
     @JvmField
     val CODE_LENGTH_ORDER: IntArray = intArrayOf( // @formatter:off
         16, 17, 18, 0, 8,  7,
@@ -54,7 +66,6 @@ internal object DeflateConstants {
         15
     ) // @formatter:on
 
-    @JvmStatic
     @JvmField
     val LENGTH_BASE: IntArray = intArrayOf( // @formatter:off
         3, 4, 5, 6, 7, 8, 9, 10,
@@ -66,7 +77,6 @@ internal object DeflateConstants {
         258
     ) // @formatter:on
 
-    @JvmStatic
     @JvmField
     val LENGTH_EXTRA_BITS: IntArray = intArrayOf( // @formatter:off
         0, 0, 0, 0, 0, 0, 0, 0,
@@ -78,7 +88,6 @@ internal object DeflateConstants {
         0
     ) // @formatter:on
 
-    @JvmStatic
     @JvmField
     val DIST_BASE: IntArray = intArrayOf( // @formatter:off
         1, 2, 3, 4,
@@ -91,7 +100,6 @@ internal object DeflateConstants {
         16385, 24577
     ) // @formatter:on
 
-    @JvmStatic
     @JvmField
     val DIST_EXTRA_BITS: IntArray = intArrayOf( // @formatter:off
         0, 0, 0, 0,
@@ -108,15 +116,20 @@ internal object DeflateConstants {
      * See [RFC1951](https://datatracker.ietf.org/doc/html/rfc1951) 3.2.5.
      */
     @JvmStatic
-    fun computeLengthSymbol(length: Int): Int = when (length) {
-        in 3..10 -> 257 + (length - 3)
-        in 11..18 -> 265 + ((length - 11) / 2)
-        in 19..34 -> 269 + ((length - 19) / 4)
-        in 35..66 -> 273 + ((length - 35) / 8)
-        in 67..130 -> 277 + ((length - 67) / 16)
-        in 131..257 -> 281 + ((length - 131) / 32)
-        258 -> 285
-        else -> throw NoSuchSymbolException("Cannot compute symbol for length $length")
+    fun computeLengthSymbol(length: Int): Int {
+        if (length == 258) return 285
+        var low = 0
+        var high = LENGTH_BASE.size - 1
+        while (low <= high) {
+            val mid = (low + high) / 2
+            if (LENGTH_BASE[mid] <= length) {
+                low = mid + 1
+            }
+            else {
+                high = mid - 1
+            }
+        }
+        return 257 + high
     }
 
     /**
@@ -124,14 +137,17 @@ internal object DeflateConstants {
      */
     @JvmStatic
     fun computeDistanceSymbol(distance: Int): Int {
-        var symbol = 0
-        var base = 1
-        var bits = 0
-        while (distance > base shl 1 && bits < 13) {
-            base = base shl 1
-            bits++
-            symbol += 2
+        var low = 0
+        var high = DIST_BASE.size - 1
+        while (low <= high) {
+            val mid = (low + high) / 2
+            if (DIST_BASE[mid] <= distance) {
+                low = mid + 1
+            }
+            else {
+                high = mid - 1
+            }
         }
-        return symbol + ((distance - 1) shr bits)
+        return high
     }
 }
