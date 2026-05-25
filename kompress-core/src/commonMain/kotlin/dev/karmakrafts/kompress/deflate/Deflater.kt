@@ -14,13 +14,16 @@
  * limitations under the License.
  */
 
-package dev.karmakrafts.kompress
+package dev.karmakrafts.kompress.deflate
 
 import dev.karmakrafts.karbide.BitOrder
 import dev.karmakrafts.karbide.BitSink
 import dev.karmakrafts.karbide.bitSink
 import dev.karmakrafts.karbide.writeBit
 import dev.karmakrafts.karbide.writeBitsLsb
+import dev.karmakrafts.kompress.Compressor
+import dev.karmakrafts.kompress.compressingSink
+import dev.karmakrafts.kompress.compressingSource
 import dev.karmakrafts.kompress.huffman.HuffmanTree
 import dev.karmakrafts.kompress.lz77.LZ77
 import dev.karmakrafts.kompress.lz77.Token

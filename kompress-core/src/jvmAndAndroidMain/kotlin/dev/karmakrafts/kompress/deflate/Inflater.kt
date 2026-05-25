@@ -16,7 +16,7 @@
 
 @file:JvmName("Inflater$")
 
-package dev.karmakrafts.kompress
+package dev.karmakrafts.kompress.deflate
 
 import dev.karmakrafts.kompress.exception.DataFormatException
 import java.util.zip.DataFormatException as JavaDataFormatException

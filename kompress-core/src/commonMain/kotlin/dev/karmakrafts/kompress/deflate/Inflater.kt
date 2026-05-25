@@ -14,10 +14,13 @@
  * limitations under the License.
  */
 
-package dev.karmakrafts.kompress
+package dev.karmakrafts.kompress.deflate
 
 import dev.karmakrafts.karbide.BitSource
-import dev.karmakrafts.kompress.Inflater.Companion.decompress
+import dev.karmakrafts.kompress.Decompressor
+import dev.karmakrafts.kompress.decompressingSink
+import dev.karmakrafts.kompress.decompressingSource
+import dev.karmakrafts.kompress.deflate.Inflater.Companion.decompress
 import dev.karmakrafts.kompress.huffman.HuffmanTree
 import kotlinx.io.Buffer
 import kotlinx.io.RawSink
@@ -246,15 +249,6 @@ fun RawSource.inflatingSource( // @formatter:off
     raw: Boolean = true,
     bufferSize: Int = Decompressor.DEFAULT_BUFFER_SIZE
 ): RawSource = decompressingSource(Inflater(raw), bufferSize) // @formatter:on
-
-/**
- * @see inflatingSource
- */
-@Deprecated(message = "This API will be removed in 2.0", replaceWith = ReplaceWith("inflatingSource(raw, bufferSize)"))
-fun RawSource.inflating( // @formatter:off
-    raw: Boolean = true,
-    bufferSize: Int = Decompressor.DEFAULT_BUFFER_SIZE
-): RawSource = inflatingSource(raw, bufferSize) // @formatter:on
 
 /**
  * Returns a [RawSink] that decompresses written bytes using DEFLATE and

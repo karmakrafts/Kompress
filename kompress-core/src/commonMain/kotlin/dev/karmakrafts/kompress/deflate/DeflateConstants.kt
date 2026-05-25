@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package dev.karmakrafts.kompress
+package dev.karmakrafts.kompress.deflate
 
 import kotlin.jvm.JvmField
 import kotlin.jvm.JvmStatic

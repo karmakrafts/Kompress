@@ -17,7 +17,6 @@
 package dev.karmakrafts.kompress.gzip
 
 import dev.karmakrafts.kompress.Decompressor
-import dev.karmakrafts.kompress.Inflater
 import dev.karmakrafts.kompress.InternalCompressionApi
 import dev.karmakrafts.kompress.archive.Unarchiver
 import dev.karmakrafts.kompress.archive.UnarchiverEntryCallback
@@ -25,6 +24,7 @@ import dev.karmakrafts.kompress.crc.CRC32
 import dev.karmakrafts.kompress.crc.once
 import dev.karmakrafts.kompress.crc.round
 import dev.karmakrafts.kompress.decompressingSource
+import dev.karmakrafts.kompress.deflate.Inflater
 import dev.karmakrafts.kompress.exception.InvalidChecksumException
 import dev.karmakrafts.kompress.util.readLatin1String
 import dev.karmakrafts.kompress.util.writeLatin1String

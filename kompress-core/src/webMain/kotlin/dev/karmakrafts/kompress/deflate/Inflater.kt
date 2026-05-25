@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package dev.karmakrafts.kompress
+package dev.karmakrafts.kompress.deflate
 
 import dev.karmakrafts.kompress.fflate.FlateStream
 import dev.karmakrafts.kompress.fflate.Inflate

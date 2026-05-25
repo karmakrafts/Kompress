@@ -14,15 +14,17 @@
  * limitations under the License.
  */
 
-package dev.karmakrafts.kompress
+package dev.karmakrafts.kompress.deflate
 
+import dev.karmakrafts.kompress.compressingSink
+import dev.karmakrafts.kompress.compressingSource
+import dev.karmakrafts.kompress.decompressingSink
+import dev.karmakrafts.kompress.decompressingSource
 import kotlinx.io.Buffer
 import kotlinx.io.readByteArray
 import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
-import java.util.zip.Deflater as JDeflater
-import java.util.zip.Inflater as JInflater
 
 class JvmInteropTest {
     private fun testKompressToJvm(data: ByteArray) {
@@ -34,7 +36,7 @@ class JvmInteropTest {
 
         val compressedData = compressedBuffer.readByteArray()
 
-        val jInflater = JInflater(true)
+        val jInflater = java.util.zip.Inflater(true)
         jInflater.setInput(compressedData)
 
         val decompressedData = ByteArray(data.size)
@@ -45,7 +47,7 @@ class JvmInteropTest {
     }
 
     private fun testJvmToKompress(data: ByteArray) {
-        val jDeflater = JDeflater(JDeflater.DEFAULT_COMPRESSION, true)
+        val jDeflater = java.util.zip.Deflater(java.util.zip.Deflater.DEFAULT_COMPRESSION, true)
         jDeflater.setInput(data)
         jDeflater.finish()
 
@@ -73,7 +75,7 @@ class JvmInteropTest {
 
         val compressedData = compressedBuffer.readByteArray()
 
-        val jInflater = JInflater(true)
+        val jInflater = java.util.zip.Inflater(true)
         jInflater.setInput(compressedData)
 
         val decompressedData = ByteArray(data.size)
@@ -89,7 +91,7 @@ class JvmInteropTest {
     }
 
     private fun testJvmToKompressSink(data: ByteArray) {
-        val jDeflater = JDeflater(JDeflater.DEFAULT_COMPRESSION, true)
+        val jDeflater = java.util.zip.Deflater(java.util.zip.Deflater.DEFAULT_COMPRESSION, true)
         jDeflater.setInput(data)
         jDeflater.finish()
 

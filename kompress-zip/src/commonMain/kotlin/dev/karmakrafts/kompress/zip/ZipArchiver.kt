@@ -20,7 +20,7 @@ import dev.karmakrafts.karbide.writeUIntLeFast
 import dev.karmakrafts.karbide.writeULongLeFast
 import dev.karmakrafts.karbide.writeUShortLeFast
 import dev.karmakrafts.kompress.Compressor
-import dev.karmakrafts.kompress.Deflater
+import dev.karmakrafts.kompress.deflate.Deflater
 import dev.karmakrafts.kompress.ExperimentalCompressionApi
 import dev.karmakrafts.kompress.InternalCompressionApi
 import dev.karmakrafts.kompress.archive.Archiver
