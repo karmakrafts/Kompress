@@ -143,7 +143,7 @@ internal class NewDeflater( // @formatter:off
      *
      * See [RFC1951](https://datatracker.ietf.org/doc/html/rfc1951) 3.2.7.
      */
-    private fun computeHclen(lengthTreeLengths: IntArray): Int {
+    private fun computeCodeLengthCodesCount(lengthTreeLengths: IntArray): Int {
         var codeLengthCodesCount = DeflateConstants.ALPHABET_SIZE
         while (codeLengthCodesCount > DeflateConstants.HCLEN_OFFSET && lengthTreeLengths[DeflateConstants.CODE_LENGTH_ORDER[codeLengthCodesCount - 1]] == 0) {
             codeLengthCodesCount--
@@ -238,7 +238,7 @@ internal class NewDeflater( // @formatter:off
         val lengthTree = HuffmanTree.fromFrequencies(lengthFrequencies)
         val lengthTreeLengths = lengthTree.codeLengths()
         // Compute HCLEN value and write it out
-        val codeLengthCodesCount = computeHclen(lengthTreeLengths)
+        val codeLengthCodesCount = computeCodeLengthCodesCount(lengthTreeLengths)
         // Write the actual block header
         encodeDynamicHeader(literalCodesCount, distanceCodesCount, codeLengthCodesCount)
         // Write code-length tree
