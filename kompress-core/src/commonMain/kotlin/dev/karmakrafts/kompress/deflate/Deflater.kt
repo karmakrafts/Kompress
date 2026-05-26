@@ -108,6 +108,7 @@ internal class DeflaterImpl( // @formatter:off
 
     private val literalFrequencies: IntArray = IntArray(DeflateConstants.LITERAL_ALPHABET_SIZE)
     private val distanceFrequencies: IntArray = IntArray(DeflateConstants.DISTANCE_ALPHABET_SIZE)
+    private val lengthFrequencies: IntArray = IntArray(DeflateConstants.CODE_LENGTH_ALPHABET_SIZE)
     private val tokenBuffer: ArrayList<Token> = ArrayList()
     private val symbolBuffer: ArrayList<EncodedSymbol> = ArrayList()
 
@@ -152,17 +153,12 @@ internal class DeflaterImpl( // @formatter:off
      * See [RFC1951](https://datatracker.ietf.org/doc/html/rfc1951) 3.2.7.
      */
     private fun encodeDynamicTrees(literalTree: HuffmanTree, distanceTree: HuffmanTree) {
-        // Derive the raw code lengths
         val literalLengths = literalTree.codeLengths()
         val distanceLengths = distanceTree.codeLengths()
         val literalCodesCount = literalLengths.size
         val distanceCodesCount = distanceLengths.size
 
-        // We need to count frequencies of symbols used to encode these lengths
-        val lengthFrequencies = IntArray(DeflateConstants.CODE_LENGTH_ALPHABET_SIZE)
-
-        // Use a temporary list to store symbols and extra bits
-        //val encodedSymbols = ArrayList<EncodedSymbol>() // symbol in low 32 bits, extra in high 32 bits
+        lengthFrequencies.fill(0)
         symbolBuffer.clear()
 
         fun collect(lengths: IntArray) {
@@ -283,6 +279,29 @@ internal class DeflaterImpl( // @formatter:off
         bitSink.writeBitsLsb(extraBits, extraValue.toULong())
     }
 
+    private fun encodeTokens(tokens: List<Token>, literalTree: HuffmanTree, distanceTree: HuffmanTree) {
+        for (token in tokens) when (token) {
+            is Token.Literal -> {
+                val code = literalTree.encodingOf(token.value.toInt() and 0xFF)
+                bitSink.writeBits(code.length, code.bits.toULong())
+            }
+
+            is Token.Match -> {
+                val (length, distance) = token
+
+                val lengthSymbol = DeflateConstants.computeLengthSymbol(length)
+                val lengthCode = literalTree.encodingOf(lengthSymbol)
+                bitSink.writeBits(lengthCode.length, lengthCode.bits.toULong())
+                encodeLengthExtra(length, lengthSymbol)
+
+                val distanceSymbol = DeflateConstants.computeDistanceSymbol(distance)
+                val distanceCode = distanceTree.encodingOf(distanceSymbol)
+                bitSink.writeBits(distanceCode.length, distanceCode.bits.toULong())
+                encodeDistanceExtra(distance, distanceSymbol)
+            }
+        }
+    }
+
     /**
      * Encodes a block of tokens using dynamic Huffman coding.
      *
@@ -309,26 +328,7 @@ internal class DeflaterImpl( // @formatter:off
         val distanceTree = HuffmanTree.fromFrequencies(distanceFrequencies)
         encodeDynamicTrees(literalTree, distanceTree)
         // Encode the token stream
-        for (token in tokens) when (token) {
-            is Token.Literal -> {
-                val code = literalTree.encodingOf(token.value.toInt() and 0xFF)
-                bitSink.writeBits(code.length, code.bits.toULong())
-            }
-
-            is Token.Match -> {
-                val (length, distance) = token
-
-                val lengthSymbol = DeflateConstants.computeLengthSymbol(length)
-                val lengthCode = literalTree.encodingOf(lengthSymbol)
-                bitSink.writeBits(lengthCode.length, lengthCode.bits.toULong())
-                encodeLengthExtra(length, lengthSymbol)
-
-                val distanceSymbol = DeflateConstants.computeDistanceSymbol(distance)
-                val distanceCode = distanceTree.encodingOf(distanceSymbol)
-                bitSink.writeBits(distanceCode.length, distanceCode.bits.toULong())
-                encodeDistanceExtra(distance, distanceSymbol)
-            }
-        }
+        encodeTokens(tokens, literalTree, distanceTree)
         val eofCode = literalTree.encodingOf(DeflateConstants.SYM_EOF)
         bitSink.writeBits(eofCode.length, eofCode.bits.toULong())
     }
