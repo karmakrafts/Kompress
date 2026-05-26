@@ -109,6 +109,7 @@ internal class DeflaterImpl( // @formatter:off
     private val literalFrequencies: IntArray = IntArray(DeflateConstants.LITERAL_ALPHABET_SIZE)
     private val distanceFrequencies: IntArray = IntArray(DeflateConstants.DISTANCE_ALPHABET_SIZE)
     private val tokenBuffer: ArrayList<Token> = ArrayList()
+    private val symbolBuffer: ArrayList<EncodedSymbol> = ArrayList()
 
     override fun setInput(data: ByteArray, offset: Int, size: Int) {
         input = data
@@ -161,7 +162,8 @@ internal class DeflaterImpl( // @formatter:off
         val lengthFrequencies = IntArray(DeflateConstants.CODE_LENGTH_ALPHABET_SIZE)
 
         // Use a temporary list to store symbols and extra bits
-        val encodedSymbols = ArrayList<Long>() // symbol in low 32 bits, extra in high 32 bits
+        //val encodedSymbols = ArrayList<EncodedSymbol>() // symbol in low 32 bits, extra in high 32 bits
+        symbolBuffer.clear()
 
         fun collect(lengths: IntArray) {
             var index = 0
@@ -175,33 +177,42 @@ internal class DeflaterImpl( // @formatter:off
                 if (length == 0) {
                     while (remaining >= DeflateConstants.SYM_LONG_ZERO_LENGTH_RUN_MIN) {
                         val runLength = remaining.coerceAtMost(DeflateConstants.SYM_LONG_ZERO_LENGTH_RUN_MAX)
-                        encodedSymbols += DeflateConstants.SYM_LONG_ZERO_LENGTH_RUN.toLong() or ((runLength - DeflateConstants.SYM_LONG_ZERO_LENGTH_RUN_MIN).toLong() shl 32)
+                        symbolBuffer += EncodedSymbol( // @formatter:off
+                            symbol = DeflateConstants.SYM_LONG_ZERO_LENGTH_RUN,
+                            extraBits = runLength - DeflateConstants.SYM_LONG_ZERO_LENGTH_RUN_MIN
+                        ) // @formatter:on
                         lengthFrequencies[DeflateConstants.SYM_LONG_ZERO_LENGTH_RUN]++
                         remaining -= runLength
                     }
                     if (remaining >= DeflateConstants.SYM_REPEAT_ZERO_LENGTH_MIN) {
-                        encodedSymbols += DeflateConstants.SYM_REPEAT_ZERO_LENGTH.toLong() or ((remaining - DeflateConstants.SYM_REPEAT_ZERO_LENGTH_MIN).toLong() shl 32)
+                        symbolBuffer += EncodedSymbol( // @formatter:off
+                            symbol = DeflateConstants.SYM_REPEAT_ZERO_LENGTH,
+                            extraBits = remaining - DeflateConstants.SYM_REPEAT_ZERO_LENGTH_MIN
+                        ) // @formatter:on
                         lengthFrequencies[DeflateConstants.SYM_REPEAT_ZERO_LENGTH]++
                         remaining = 0
                     }
                     while (remaining > 0) {
-                        encodedSymbols += 0L
+                        symbolBuffer += EncodedSymbol()
                         lengthFrequencies[0]++
                         remaining--
                     }
                 }
                 else {
-                    encodedSymbols += length.toLong()
+                    symbolBuffer += EncodedSymbol(length)
                     lengthFrequencies[length]++
                     remaining--
                     while (remaining >= DeflateConstants.SYM_REPEAT_PREVIOUS_MIN) {
                         val runLength = remaining.coerceAtMost(DeflateConstants.SYM_REPEAT_PREVIOUS_MAX)
-                        encodedSymbols += DeflateConstants.SYM_REPEAT_PREVIOUS.toLong() or ((runLength - DeflateConstants.SYM_REPEAT_PREVIOUS_MIN).toLong() shl 32)
+                        symbolBuffer += EncodedSymbol( // @formatter:off
+                            symbol = DeflateConstants.SYM_REPEAT_PREVIOUS,
+                            extraBits = runLength - DeflateConstants.SYM_REPEAT_PREVIOUS_MIN
+                        ) // @formatter:on
                         lengthFrequencies[DeflateConstants.SYM_REPEAT_PREVIOUS]++
                         remaining -= runLength
                     }
                     while (remaining > 0) {
-                        encodedSymbols += length.toLong()
+                        symbolBuffer += EncodedSymbol(length)
                         lengthFrequencies[length]++
                         remaining--
                     }
@@ -226,11 +237,9 @@ internal class DeflaterImpl( // @formatter:off
             bitSink.writeBitsLsb(DeflateConstants.CL_CODE_LENGTH_SIZE, lengthTreeLengths[symbol].toULong())
         }
         // Write literal and distance lengths and encode repeats
-        for (packed in encodedSymbols) {
-            val symbol = (packed and 0xFFFFFFFFL).toInt()
-            val extraBits = (packed ushr 32).toInt()
-            val code = lengthTree.encodingOf(symbol)
-            bitSink.writeBits(code.length, code.bits.toULong())
+        for ((symbol, extraBits) in symbolBuffer) {
+            val (bits, length) = lengthTree.encodingOf(symbol)
+            bitSink.writeBits(length, bits.toULong())
             when (symbol) {
                 DeflateConstants.SYM_REPEAT_PREVIOUS -> bitSink.writeBitsLsb(
                     DeflateConstants.SYM_REPEAT_PREVIOUS_SIZE, extraBits.toULong()

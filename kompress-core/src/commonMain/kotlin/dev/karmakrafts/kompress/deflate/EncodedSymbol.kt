@@ -14,30 +14,27 @@
  * limitations under the License.
  */
 
-package dev.karmakrafts.kompress.huffman
+package dev.karmakrafts.kompress.deflate
 
-import dev.karmakrafts.karbide.BitSink
 import kotlin.jvm.JvmInline
 
 @JvmInline
-internal value class HuffmanCode(val value: ULong) {
-    inline val bits: Int
-        get() = ((value shr 32) and 0xFFFFFFFFU).toInt()
+internal value class EncodedSymbol(val value: ULong) {
+    inline val symbol: Int
+        get() = (value and UInt.MAX_VALUE.toULong()).toInt()
 
-    inline val length: Int
-        get() = (value and 0xFFFFFFFFU).toInt()
+    inline val extraBits: Int
+        get() = (value shr UInt.SIZE_BITS).toInt()
 
-    constructor( // @formatter:off
-        bits: Int = 0,
-        length: Int = 0
-    ) : this((bits.toULong() shl 32) or length.toULong()) // @formatter:on
+    constructor(symbol: Int, extraBits: Int = 0) : this(
+        (extraBits.toULong() shl UInt.SIZE_BITS) or symbol.toULong()
+    )
 
-    @Suppress("NOTHING_TO_INLINE")
-    inline fun encode(sink: BitSink) = sink.writeBits(length, bits.toULong())
+    constructor() : this(0UL)
 
     @Suppress("NOTHING_TO_INLINE")
-    inline operator fun component1(): Int = bits
+    inline operator fun component1(): Int = symbol
 
     @Suppress("NOTHING_TO_INLINE")
-    inline operator fun component2(): Int = length
+    inline operator fun component2(): Int = extraBits
 }
