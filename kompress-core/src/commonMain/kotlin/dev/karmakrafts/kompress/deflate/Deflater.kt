@@ -80,7 +80,6 @@ internal class DeflaterImpl( // @formatter:off
             field = value
         }
 
-
     override var input: ByteArray = ByteArray(0)
         private set
     override var inputOffset: Int = 0

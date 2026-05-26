@@ -18,9 +18,9 @@ package dev.karmakrafts.kompress.zip
 
 import dev.karmakrafts.kompress.Decompressor
 import dev.karmakrafts.kompress.ExperimentalCompressionApi
-import dev.karmakrafts.kompress.deflate.Inflater
 import dev.karmakrafts.kompress.archive.Unarchiver
 import dev.karmakrafts.kompress.archive.UnarchiverEntryCallback
+import dev.karmakrafts.kompress.deflate.Inflater
 import kotlinx.io.RawSource
 import kotlinx.io.Source
 import kotlinx.io.buffered
