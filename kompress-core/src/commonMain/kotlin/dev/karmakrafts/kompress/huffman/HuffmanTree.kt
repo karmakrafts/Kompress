@@ -71,7 +71,7 @@ internal class HuffmanTree(lengths: IntArray = IntArray(0)) {
             val nodes = ArrayList<Node>()
             for (index in frequencies.indices) {
                 if (frequencies[index] > 0) {
-                    nodes.add(Node(index, frequencies[index]))
+                    nodes += Node(index, frequencies[index])
                 }
             }
 
@@ -89,7 +89,7 @@ internal class HuffmanTree(lengths: IntArray = IntArray(0)) {
                 nodes.sortBy { node -> node.frequency }
                 val left = nodes.removeAt(0)
                 val right = nodes.removeAt(0)
-                nodes.add(Node(-1, left.frequency + right.frequency, left, right))
+                nodes += Node(-1, left.frequency + right.frequency, left, right)
             }
 
             val lengths = IntArray(frequencies.size)

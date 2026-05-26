@@ -166,8 +166,7 @@ private class CRC32Impl( // @formatter:off
         value = (value ushr 8) xor baseTable[tableIndex]
     }
 
-    @Suppress("NOTHING_TO_INLINE")
-    private inline fun roundSlice8(data: ByteArray, offset: Int) {
+    private fun roundSlice8(data: ByteArray, offset: Int) {
         val b0 = data[offset + 0].toInt() and 0xFF
         val b1 = data[offset + 1].toInt() and 0xFF
         val b2 = data[offset + 2].toInt() and 0xFF
