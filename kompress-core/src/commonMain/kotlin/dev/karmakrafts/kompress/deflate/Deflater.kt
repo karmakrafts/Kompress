@@ -392,8 +392,6 @@ internal class DeflaterImpl( // @formatter:off
         bytesWritten = 0L
         buffer.clear()
         bitSink.reset()
-        literalFrequencies.fill(0)
-        distanceFrequencies.fill(0)
     }
 
     override fun close() {
