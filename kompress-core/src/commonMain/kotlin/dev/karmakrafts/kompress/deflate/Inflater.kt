@@ -122,12 +122,6 @@ interface Inflater : Decompressor {
             totalRead - inflater.remaining
         }
     }
-
-    /**
-     * @see decompress
-     */
-    @Deprecated(message = "This API will be removed in 2.0", replaceWith = ReplaceWith("decompress(output)"))
-    fun inflate(output: ByteArray): Int = decompress(output)
 }
 
 private class NewInflaterImpl : Inflater {

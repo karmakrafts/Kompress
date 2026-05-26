@@ -68,7 +68,6 @@ interface Deflater : Compressor {
     var level: Int
 }
 
-@Suppress("OVERRIDE_DEPRECATION")
 internal class DeflaterImpl( // @formatter:off
     level: Int
 ) : Deflater { // @formatter:on
