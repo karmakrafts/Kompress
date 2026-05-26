@@ -17,6 +17,7 @@
 package dev.karmakrafts.kompress.crc
 
 import kotlinx.io.Source
+import kotlin.math.min
 
 /**
  * Interface for calculating CRC32 checksums.
@@ -54,7 +55,7 @@ interface CRC32 {
      *
      * @param data The data to update the CRC32 value with.
      */
-    fun round(data: ByteArray)
+    fun round(data: ByteArray, offset: Int = 0, size: Int = data.size)
 
     /**
      * Updates the CRC32 value with the given [byte].
@@ -89,10 +90,14 @@ fun CRC32.once(data: ByteArray): UInt {
  * @param size The number of bytes to read from the source.
  */
 fun CRC32.round(source: Source, size: Long) {
-    var index = 0L
-    while (!source.exhausted() && index < size) {
-        round(source.readByte())
-        index++
+    var remaining = size
+    val buffer = ByteArray(4096)
+    while (remaining > 0 && !source.exhausted()) {
+        val chunkSize = min(4096, remaining).toInt()
+        val read = source.readAtMostTo(buffer, 0, chunkSize)
+        if (read == -1) break
+        round(buffer, size = read)
+        remaining -= read
     }
 }
 
@@ -104,11 +109,7 @@ fun CRC32.round(source: Source, size: Long) {
  * @return The calculated CRC32 checksum.
  */
 fun CRC32.once(source: Source, size: Long): UInt {
-    var index = 0L
-    while (!source.exhausted() && index < size) {
-        round(source.readByte())
-        index++
-    }
+    round(source, size)
     return finalize()
 }
 
@@ -176,7 +177,7 @@ private class CRC32Impl( // @formatter:off
         val b6 = data[offset + 6].toInt() and 0xFF
         val b7 = data[offset + 7].toInt() and 0xFF
         // XOR first 4 bytes into CRC
-        val base = value xor b0 or (b1 shl 8) or (b2 shl 16) or (b3 shl 24)
+        val base = value xor (b0 or (b1 shl 8) or (b2 shl 16) or (b3 shl 24))
         // Fold 8 bytes using the parallel table
         // @formatter:off
         value = parallelTable[(7 shl TABLE_SHIFT) or (base and 0xFF)] xor
@@ -190,20 +191,20 @@ private class CRC32Impl( // @formatter:off
         // @formatter:on
     }
 
-    override fun round(data: ByteArray) {
+    override fun round(data: ByteArray, offset: Int, size: Int) {
         if (data.isEmpty()) return
         // Compute round for bulk data using slicing
-        var remaining = data.size
+        var remaining = size
         var index = 0
         while (remaining > 0) when {
             remaining >= 8 -> {
-                roundSlice8(data, index)
+                roundSlice8(data, offset + index)
                 index += 8
                 remaining -= 8
             }
 
             else -> { // Single bytes
-                round(data[index++])
+                round(data[offset + index++])
                 remaining--
             }
         }
