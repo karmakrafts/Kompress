@@ -22,15 +22,15 @@ import kotlin.jvm.JvmInline
 @JvmInline
 internal value class HuffmanCode(val value: ULong) {
     inline val bits: Int
-        get() = ((value shr 32) and 0xFFFFFFFFU).toInt()
+        get() = (value shr UInt.SIZE_BITS).toInt()
 
     inline val length: Int
-        get() = (value and 0xFFFFFFFFU).toInt()
+        get() = value.toInt()
 
     constructor( // @formatter:off
         bits: Int = 0,
         length: Int = 0
-    ) : this((bits.toULong() shl 32) or length.toULong()) // @formatter:on
+    ) : this((bits.toULong() shl UInt.SIZE_BITS) or length.toULong()) // @formatter:on
 
     @Suppress("NOTHING_TO_INLINE")
     inline fun encode(sink: BitSink) = sink.writeBits(length, bits.toULong())

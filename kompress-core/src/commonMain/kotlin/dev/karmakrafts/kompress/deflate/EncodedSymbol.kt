@@ -21,7 +21,7 @@ import kotlin.jvm.JvmInline
 @JvmInline
 internal value class EncodedSymbol(val value: ULong) {
     inline val symbol: Int
-        get() = (value and UInt.MAX_VALUE.toULong()).toInt()
+        get() = value.toInt()
 
     inline val extraBits: Int
         get() = (value shr UInt.SIZE_BITS).toInt()
