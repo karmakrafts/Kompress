@@ -116,37 +116,100 @@ private class CRC32Impl( // @formatter:off
     override val polynomial: UInt,
     override val initialValue: UInt
 ) : CRC32 { // @formatter:on
-    private var value: UInt = initialValue
+    companion object {
+        private const val TABLE_SIZE: Int = 256
+        private const val TABLE_SHIFT: Int = 8
+        private const val SLICING_FACTOR: Int = 8
+    }
 
-    private val table: UIntArray = UIntArray(256) { index ->
-        var value = index.toUInt()
-        repeat(8) {
+    private var value: Int = initialValue.toInt()
+
+    private val baseTable: IntArray = IntArray(TABLE_SIZE) { index ->
+        var value = index
+        repeat(Byte.SIZE_BITS) {
             value = when {
-                value and 0x1U != 0x0U -> (value shr 1) xor polynomial
-                else -> value shr 1
+                value and 0x1 != 0x0 -> (value ushr 1) xor polynomial.toInt()
+                else -> value ushr 1
             }
         }
         value
     }
 
+    private val parallelTable: IntArray = IntArray(TABLE_SIZE * SLICING_FACTOR) { index ->
+        val sliceIndex = index / TABLE_SIZE
+        val tableIndex = index % TABLE_SIZE
+        when (sliceIndex) {
+            0 -> baseTable[tableIndex]
+            else -> 0
+        }
+    }
+
+    init {
+        // Generate parallel tables for slicing
+        for (sliceIndex in 1..<SLICING_FACTOR) {
+            for (tableIndex in 0..<TABLE_SIZE) {
+                val index = tableIndex + sliceIndex * TABLE_SIZE
+                val previousIndex = tableIndex + (sliceIndex - 1) * TABLE_SIZE
+                val previous = parallelTable[previousIndex]
+                parallelTable[index] = (previous ushr 8) xor baseTable[previous and 0xFF]
+            }
+        }
+    }
+
     override fun reset() {
-        value = initialValue
+        value = initialValue.toInt()
     }
 
     override fun round(byte: Byte) {
-        val tableIndex = (value xor (byte.toUInt() and 0xFFU)) and 0xFFU
-        value = (value shr 8) xor table[tableIndex.toInt()]
+        val tableIndex = (value xor (byte.toInt() and 0xFF)) and 0xFF
+        value = (value ushr 8) xor baseTable[tableIndex]
+    }
+
+    @Suppress("NOTHING_TO_INLINE")
+    private inline fun roundSlice8(data: ByteArray, offset: Int) {
+        val b0 = data[offset + 0].toInt() and 0xFF
+        val b1 = data[offset + 1].toInt() and 0xFF
+        val b2 = data[offset + 2].toInt() and 0xFF
+        val b3 = data[offset + 3].toInt() and 0xFF
+        val b4 = data[offset + 4].toInt() and 0xFF
+        val b5 = data[offset + 5].toInt() and 0xFF
+        val b6 = data[offset + 6].toInt() and 0xFF
+        val b7 = data[offset + 7].toInt() and 0xFF
+        // XOR first 4 bytes into CRC
+        val base = value xor b0 or (b1 shl 8) or (b2 shl 16) or (b3 shl 24)
+        // Fold 8 bytes using the parallel table
+        // @formatter:off
+        value = parallelTable[(7 shl TABLE_SHIFT) or (base and 0xFF)] xor
+            parallelTable[(6 shl TABLE_SHIFT) or ((base ushr 8) and 0xFF)] xor
+            parallelTable[(5 shl TABLE_SHIFT) or ((base ushr 16) and 0xFF)] xor
+            parallelTable[(4 shl TABLE_SHIFT) or ((base ushr 24) and 0xFF)] xor
+            parallelTable[(3 shl TABLE_SHIFT) or b4] xor
+            parallelTable[(2 shl TABLE_SHIFT) or b5] xor
+            parallelTable[(1 shl TABLE_SHIFT) or b6] xor
+            parallelTable[b7]
+        // @formatter:on
     }
 
     override fun round(data: ByteArray) {
         if (data.isEmpty()) return
-        for (index in data.indices) {
-            val tableIndex = (value xor (data[index].toUInt() and 0xFFU)) and 0xFFU
-            value = (value shr 8) xor table[tableIndex.toInt()]
+        // Compute round for bulk data using slicing
+        var remaining = data.size
+        var index = 0
+        while (remaining > 0) when {
+            remaining >= 8 -> {
+                roundSlice8(data, index)
+                index += 8
+                remaining -= 8
+            }
+
+            else -> { // Single bytes
+                round(data[index++])
+                remaining--
+            }
         }
     }
 
-    override fun finalize(): UInt = value.inv()
+    override fun finalize(): UInt = value.toUInt().inv()
 }
 
 /**

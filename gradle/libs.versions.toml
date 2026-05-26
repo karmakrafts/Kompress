@@ -1,12 +1,10 @@
 [versions]
 
 java = "17"
-
 androidGradle = "9.2.1" # https://developer.android.com/reference/tools/gradle-api
 kompress = "2.0.0"
 kotlin = "2.3.21" # https://github.com/JetBrains/kotlin/releases
 kotlinxIo = "0.9.0" # https://github.com/Kotlin/kotlinx-io/releases
-kotlinxBenchmark = "0.4.17" # https://github.com/Kotlin/kotlinx-benchmark/releases
 kotlinxDateTime = "0.8.0" # https://github.com/Kotlin/kotlinx-datetime/releases
 kotlinBrowser = "2026.5.6" # https://github.com/JetBrains/kotlin-wrappers/releases
 dokka = "2.2.0" # https://github.com/Kotlin/dokka/releases
@@ -16,16 +14,25 @@ fflate = "0.8.2" # https://github.com/101arrowz/fflate/releases # TODO: replace 
 oshi = "7.2.0" # https://github.com/oshi/oshi/releases
 karbide = "1.7.0" # https://github.com/karmakrafts/Karbide/releases
 
+# kompress-benchmarks
+
+kotlinxBenchmark = "0.4.17" # https://github.com/Kotlin/kotlinx-benchmark/releases
+jmh = "1.37" # https://github.com/openjdk/jmh/tags
+
 [libraries]
 
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
 kotlin-wrappers-browser = { module = "org.jetbrains.kotlin-wrappers:kotlin-browser", version.ref = "kotlinBrowser" }
 kotlinx-io-bytestring = { module = "org.jetbrains.kotlinx:kotlinx-io-bytestring", version.ref = "kotlinxIo" }
 kotlinx-io-core = { module = "org.jetbrains.kotlinx:kotlinx-io-core", version.ref = "kotlinxIo" }
-kotlinx-benchmark-runtime = { module = "org.jetbrains.kotlinx:kotlinx-benchmark-runtime", version.ref = "kotlinxBenchmark" }
 kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinxDateTime" }
 oshi-core = { module = "com.github.oshi:oshi-core", version.ref = "oshi" }
 karbide-core = { module = "dev.karmakrafts.karbide:karbide-core", version.ref = "karbide" }
+
+# kompress-benchmarks
+
+kotlinx-benchmark-runtime = { module = "org.jetbrains.kotlinx:kotlinx-benchmark-runtime", version.ref = "kotlinxBenchmark" }
+jmh-core = { module = "org.openjdk.jmh:jmh-core", version.ref = "jmh" }
 
 [plugins]
 
@@ -34,4 +41,7 @@ kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref 
 dokka = { id = "org.jetbrains.dokka", version.ref = "dokka" }
 karmaConventions = { id = "dev.karmakrafts.conventions.karma-conventions", version.ref = "karmaConventions" }
 gradleNexus = { id = "io.github.gradle-nexus.publish-plugin", version.ref = "gradleNexus" }
+
+# kompress-benchmarks
+
 kotlinx-benchmark = { id = "org.jetbrains.kotlinx.benchmark", version.ref = "kotlinxBenchmark" }
