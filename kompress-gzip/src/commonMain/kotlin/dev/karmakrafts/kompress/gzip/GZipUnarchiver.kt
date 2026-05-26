@@ -16,6 +16,10 @@
 
 package dev.karmakrafts.kompress.gzip
 
+import dev.karmakrafts.karbide.readUIntLeFast
+import dev.karmakrafts.karbide.readUShortLeFast
+import dev.karmakrafts.karbide.writeUIntLeFast
+import dev.karmakrafts.karbide.writeUShortLeFast
 import dev.karmakrafts.kompress.Decompressor
 import dev.karmakrafts.kompress.InternalCompressionApi
 import dev.karmakrafts.kompress.archive.Unarchiver
@@ -35,13 +39,9 @@ import kotlinx.io.Source
 import kotlinx.io.buffered
 import kotlinx.io.readByteArray
 import kotlinx.io.readUByte
-import kotlinx.io.readUIntLe
 import kotlinx.io.readUShort
-import kotlinx.io.readUShortLe
 import kotlinx.io.writeUByte
-import kotlinx.io.writeUIntLe
 import kotlinx.io.writeUShort
-import kotlinx.io.writeUShortLe
 import kotlin.time.Instant
 
 @OptIn(InternalCompressionApi::class)
@@ -75,7 +75,7 @@ private class GZipUnarchiver( // @formatter:off
 
     private fun parseExtraField(): ByteArray? {
         if (!ensureBufferFilled(UShort.SIZE_BYTES.toLong())) return null
-        val extraBytes = buffer.readUShortLe().toInt()
+        val extraBytes = buffer.readUShortLeFast().toInt()
         if (!ensureBufferFilled(extraBytes.toLong())) return null
         return buffer.readByteArray(extraBytes)
     }
@@ -85,12 +85,12 @@ private class GZipUnarchiver( // @formatter:off
         buffer.writeUShort(GZipConstants.MAGIC) // Magic is normally 2 separate bytes, so no LE
         buffer.writeUByte(GZipCompressionMethod.DEFLATE.encodedValue)
         buffer.writeUByte(flags.value)
-        buffer.writeUIntLe(entry.modificationTime.epochSeconds.toUInt())
+        buffer.writeUIntLeFast(entry.modificationTime.epochSeconds.toUInt())
         buffer.writeUByte(xfl)
         buffer.writeUByte(entry.os.encodedValue)
         entry.extraField?.let { extraField ->
             check(extraField.size.toUShort() <= UShort.MAX_VALUE) { "Extra field size exceeds GZip maximum" }
-            buffer.writeUShortLe(extraField.size.toUShort())
+            buffer.writeUShortLeFast(extraField.size.toUShort())
             buffer.write(extraField)
         }
         entry.name?.let { name -> buffer.zeroTerminate { writeLatin1String(name) } }
@@ -101,7 +101,7 @@ private class GZipUnarchiver( // @formatter:off
 
     private fun checkHeaderChecksum(computedCrc16: UShort): Boolean {
         if (!ensureBufferFilled(UShort.SIZE_BYTES.toLong())) return false
-        val crc16 = buffer.readUShortLe()
+        val crc16 = buffer.readUShortLeFast()
         if (crc16 != computedCrc16) throw InvalidChecksumException(crc16.toUInt(), computedCrc16.toUInt())
         return true
     }
@@ -117,7 +117,7 @@ private class GZipUnarchiver( // @formatter:off
             "Unsupported GZip compression method 0x${method.encodedValue.toHexString()}"
         }
         val flags = GZipEntryFlags(buffer.readUByte())
-        val modificationTime = Instant.fromEpochSeconds(buffer.readUIntLe().toLong())
+        val modificationTime = Instant.fromEpochSeconds(buffer.readUIntLeFast().toLong())
         val xfl = buffer.readUByte()
         val os = GZipOs.byEncodedValue(buffer.readUByte())
         // Read extra field if present
@@ -141,7 +141,7 @@ private class GZipUnarchiver( // @formatter:off
 
     private fun parseAndCheckTrailer(computedCrc32: UInt): Boolean {
         if (!ensureBufferFilled(GZipConstants.TRAILER_SIZE.toLong())) return false // Source is exhausted
-        val crc32 = buffer.readUIntLe()
+        val crc32 = buffer.readUIntLeFast()
         if (crc32 != computedCrc32) throw InvalidChecksumException(crc32, computedCrc32)
         buffer.skip(UInt.SIZE_BYTES.toLong()) // Skip decompressed size
         return true
