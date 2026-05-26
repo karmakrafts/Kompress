@@ -36,6 +36,8 @@ import kotlinx.io.RawSource
  */
 interface Deflater : Compressor {
     companion object {
+        const val MIN_LEVEL: Int = 1
+        const val MAX_LEVEL: Int = 9
         const val DEFAULT_LEVEL: Int = 6
 
         /**

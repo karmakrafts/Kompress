@@ -14,28 +14,10 @@
  * limitations under the License.
  */
 
-package dev.karmakrafts.kompress
+package dev.karmakrafts.kompress.deflate
 
-import dev.karmakrafts.kompress.crc.CRC32
-import kotlinx.benchmark.Benchmark
 import kotlinx.benchmark.Scope
 import kotlinx.benchmark.State
-import kotlin.jvm.JvmName
-import kotlin.random.Random
-import kotlin.time.Clock
 
 @State(Scope.Benchmark)
-open class CRC32Benchmark {
-    private val crc32: CRC32 = CRC32()
-    private val random: Random = Random(Clock.System.now().epochSeconds)
-
-    @JvmName("run")
-    @Benchmark
-    fun runBenchmark(): UInt {
-        repeat(100) {
-            val data = random.nextBytes(128)
-            crc32.round(data)
-        }
-        return crc32.finalize()
-    }
-}
+open class JvmDeflaterMaxLevelBenchmark : AbstractJvmDeflaterBenchmark(Deflater.MAX_LEVEL)
