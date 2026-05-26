@@ -16,12 +16,9 @@
 
 package dev.karmakrafts.kompress.deflate
 
-import dev.karmakrafts.karbide.BitSource
 import dev.karmakrafts.kompress.Decompressor
 import dev.karmakrafts.kompress.decompressingSink
 import dev.karmakrafts.kompress.decompressingSource
-import dev.karmakrafts.kompress.deflate.Inflater.Companion.decompress
-import dev.karmakrafts.kompress.huffman.HuffmanTree
 import kotlinx.io.Buffer
 import kotlinx.io.RawSink
 import kotlinx.io.RawSource
@@ -50,19 +47,6 @@ interface Inflater : Decompressor {
         ): ByteArray = Inflater(raw).use { inflater -> // @formatter:on
             inflater.decompressBulk(data, bufferSize)
         }
-
-        /**
-         * @see decompress
-         */
-        @Deprecated( // @formatter:off
-            message = "This API will be removed in 2.0",
-            replaceWith = ReplaceWith("decompress(data, raw, bufferSize)")
-        ) // @formatter:on
-        fun inflate( // @formatter:off
-            data: ByteArray,
-            raw: Boolean = true,
-            bufferSize: Int = Decompressor.DEFAULT_BUFFER_SIZE
-        ): ByteArray = decompress(data, raw, bufferSize) // @formatter:on
 
         /**
          * Computes the compressed size of the given data by inflating it and
@@ -124,10 +108,9 @@ interface Inflater : Decompressor {
     }
 }
 
-private class NewInflaterImpl : Inflater {
-    override var input: ByteArray
+private class NewInflater : Inflater {
+    override val input: ByteArray
         get() = TODO("Not yet implemented")
-        set(value) {}
     override val inputOffset: Int
         get() = TODO("Not yet implemented")
     override val inputSize: Int
@@ -145,51 +128,6 @@ private class NewInflaterImpl : Inflater {
 
     override fun setInput(data: ByteArray, offset: Int, size: Int) {
         TODO("Not yet implemented")
-    }
-
-    /**
-     * See [RFC1951](https://datatracker.ietf.org/doc/html/rfc1951) 3.2.7.
-     */
-    private fun decodeDynamicTrees(source: BitSource): Pair<HuffmanTree, HuffmanTree> {
-        val hlit = source.readBits(5).toInt() + 257
-        val hdist = source.readBits(5).toInt() + 1
-        val hclen = source.readBits(4).toInt() + 4
-        val codeLengthLengths = IntArray(19)
-        for (index in 0..<hclen) {
-            codeLengthLengths[DeflateConstants.CODE_LENGTH_ORDER[index]] = source.readBits(3).toInt()
-        }
-        val lengthTree = HuffmanTree(codeLengthLengths)
-        val lengthsCount = hlit + hdist
-        val lengths = IntArray(lengthsCount)
-        var index = 0
-        while (index < lengthsCount) when (val symbol = lengthTree.decodeSymbol(source)) {
-            // Handle direct code length
-            in 0..15 -> lengths[index++] = symbol
-            // Repeat previous code length
-            DeflateConstants.SYM_REPEAT_PREVIOUS -> {
-                val repeatCount = source.readBits(DeflateConstants.SYM_REPEAT_PREVIOUS_SIZE).toInt() + 3
-                val previous = lengths[index - 1]
-                repeat(repeatCount) {
-                    lengths[index++] = previous
-                }
-            }
-            // Repeat zero length
-            DeflateConstants.SYM_REPEAT_ZERO_LENGTH -> {
-                val repeatCount = source.readBits(DeflateConstants.SYM_REPEAT_ZERO_LENGTH_SIZE).toInt() + 3
-                repeat(repeatCount) {
-                    lengths[index++] = 0
-                }
-            }
-            // Long zero length run
-            DeflateConstants.SYM_LONG_ZERO_LENGTH_RUN -> {
-                val repeatCount = source.readBits(DeflateConstants.SYM_LONG_ZERO_LENGTH_RUN_SIZE).toInt() + 11
-                repeat(repeatCount) {
-                    lengths[index++] = 0
-                }
-            }
-        }
-        // Split into final trees
-        return HuffmanTree(lengths.copyOfRange(0, hlit)) to HuffmanTree(lengths.copyOfRange(hlit, hlit + hdist))
     }
 
     override fun decompress( // @formatter:off

@@ -101,7 +101,7 @@ internal class DeflaterImpl( // @formatter:off
         private set
 
     private val buffer: Buffer = Buffer()
-    private var bitSink: BitSink = buffer.bitSink(bitOrder = BitOrder.LSB_FIRST)
+    private val bitSink: BitSink = buffer.bitSink(bitOrder = BitOrder.LSB_FIRST)
     private var wroteFinalBlock: Boolean = false
 
     private val literalFrequencies: IntArray = IntArray(DeflateConstants.LITERAL_ALPHABET_SIZE)

@@ -86,7 +86,7 @@ internal class HuffmanTree(lengths: IntArray = IntArray(0)) {
             }
 
             while (nodes.size > 1) {
-                nodes.sortBy { it.frequency }
+                nodes.sortBy { node -> node.frequency }
                 val left = nodes.removeAt(0)
                 val right = nodes.removeAt(0)
                 nodes.add(Node(-1, left.frequency + right.frequency, left, right))
