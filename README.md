@@ -8,24 +8,25 @@
 [![](https://img.shields.io/badge/2.3.21-blue?logo=kotlin&label=kotlin)](https://kotlinlang.org/)
 [![](https://img.shields.io/badge/documentation-black?logo=kotlin)](https://docs.karmakrafts.dev/kompress-core)
 
-Lightweight zlib (de)compression API for Kotlin Multiplatform.
+Compression and decompression APIs for Kotlin Multiplatform.
 
 ### Features
 
-- General purpose `Compressor` and `Decompressor` APIs for modeling streaming compressors.
-- General purpose `Archiver<E>` and `Unarchiver<E>` APIs for modeling streaming archivers.
+- **100% implemented in Kotlin common code!**
 - Supports all Kotlin Multiplatform targets
+- General purpose `Compressor` and `Decompressor` APIs for modeling streaming compressors
+- General purpose `Archiver<E>` and `Unarchiver<E>` APIs for modeling streaming archivers
 - Support for various compression algorithms, including DEFLATE, DEFLATE Raw and LZ4
 - Create and read various archive types, including GZIP and ZIP.
 - Synchronous streaming API inspired by Java's `Inflater`/`Deflater` APIs
 - Integration with [kotlinx.io](https://github.com/Kotlin/kotlinx-io)
 - Customizable compression-level for supported (de)compressors
-- Extra lightweight on JVM and native because it wraps available platform APIs
 
 ### Modules
 
-- **kompress-core**: Core DEFLATE and CRC APIs, GZIP and ZIP support
-- **kompress-lz4**: LZ4 compression (for high-throughput applications)
+- **kompress-core**: Core compression and CRC APIs, provides a common DEFLATE implementation
+- **kompress-gzip**: Support for the GZIP archive container format
+- **kompress-zip**: Support for the ZIP archive container format **(WIP)**
 - **kompress-benchmarks**: Various benchmarks comparing Kompress implementations against platform references
 
 ### How to use it
@@ -67,13 +68,15 @@ are what you're probably looking for:
 ```kotlin
 fun main() {
     val myData = "Hello, World! This is an important message."
-    val compressedData = Deflater.deflate(
+    val compressedData = Deflater.compress(
         data = myData.encodeToByteArray(), raw = false, // Control if you want the gzip/pkzip header
         level = 9, // Control the compression level
         bufferSize = 1024 // Control the internal buffer size
     )
-    val decompressedData = Inflater.inflate(
-        data = compressedData, raw = false, bufferSize = 1024
+    val decompressedData = Inflater.decompress(
+        data = compressedData, 
+        raw = false, 
+        bufferSize = 1024
     )
     println(myData == decompressedData.decodeToString())
 }
@@ -102,7 +105,7 @@ fun main() {
         if (!hasMoreInput) deflater.finish() // Signal that we are done compressing
         deflater.input = getInputChunk()
         while (!deflater.finished) {
-            deflater.deflate(outputBuffer) // Deflate data into the buffer
+            deflater.compress(outputBuffer) // Deflate data into the buffer
             copyChunkToSomeTarget(outputBuffer)
         }
     }
@@ -119,9 +122,9 @@ fun main() {
     buffer.writeFloat(4.20F)
 
     val compressedBuffer = Buffer()
-    buffer.deflating().use(compressedBuffer::transferFrom)
+    buffer.deflatingSource().use(compressedBuffer::transferFrom)
 
     val decompressedBuffer = Buffer()
-    compressedBuffer.inflating().use(decompressedBuffer::transferFrom)
+    compressedBuffer.inflatingSource().use(decompressedBuffer::transferFrom)
 }
 ```
