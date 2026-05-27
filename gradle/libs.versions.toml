@@ -11,7 +11,7 @@ dokka = "2.2.0" # https://github.com/Kotlin/dokka/releases
 karmaConventions = "1.16.4" # https://github.com/karmakrafts/karma-conventions/tags
 gradleNexus = "2.0.0" # https://github.com/gradle-nexus/publish-plugin/releases
 oshi = "7.2.0" # https://github.com/oshi/oshi/releases
-karbide = "1.8.0.40-SNAPSHOT" # https://github.com/karmakrafts/Karbide/releases
+karbide = "1.8.0" # https://github.com/karmakrafts/Karbide/releases
 
 # kompress-benchmarks
 
