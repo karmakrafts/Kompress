@@ -35,16 +35,6 @@ class InflaterTest {
     }
 
     @Test
-    fun `decompression sanity check`() {
-        val data = Inflater.decompress(
-            ubyteArrayOf(
-                0x78U, 0x9CU, 0xF3U, 0x48U, 0xCDU, 0xC9U, 0xC9U, 0x57U, 0x04U, 0x00U, 0x07U, 0xA2U, 0x02U, 0x16U
-            ).asByteArray(), raw = false
-        )
-        assertTrue(data.isNotEmpty())
-    }
-
-    @Test
     fun `inflating source flushes pending output when delegate reaches EOF`() {
         val value = Random(4).nextBytes(3 * 1024 * 1024)
         val compressedData = Deflater.compress(value)
@@ -63,7 +53,7 @@ class InflaterTest {
         val value = "Hello, World!".encodeToByteArray()
         val compressedBytes = Deflater.compress(value)
         val buffer = Buffer().apply { write(compressedBytes) }
-        val decompressed = buffer.inflatingSource(raw = true).buffered()
+        val decompressed = buffer.inflatingSource().buffered()
         val decompressedBytes = decompressed.readByteArray()
         assertContentEquals(value, decompressedBytes)
     }

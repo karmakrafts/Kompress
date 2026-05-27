@@ -71,9 +71,10 @@ interface Deflater : Compressor {
 }
 
 internal class DeflaterImpl( // @formatter:off
-    level: Int
+    level: Int,
+    windowSize: Int = LZ77.DEFAULT_WINDOW_SIZE
 ) : Deflater { // @formatter:on
-    private val lz77: LZ77 = LZ77(level)
+    private val lz77: LZ77 = LZ77(level = level, windowSize = windowSize)
     private var isClosed: Boolean = false
 
     override var level: Int = level

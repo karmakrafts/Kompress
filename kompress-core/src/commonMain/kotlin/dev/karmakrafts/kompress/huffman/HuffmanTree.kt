@@ -119,6 +119,22 @@ internal class HuffmanTree(lengths: IntArray = IntArray(0)) {
         code.encode(sink)
     }
 
+    fun peekSymbol(source: BitSource): Pair<Int, Int>? {
+        for (length in 1..maxBits) {
+            if (!source.requestBits(length)) return null
+            val bits = source.peekBits(length).toInt()
+            val symbol = decodeTable[HuffmanCode(bits, length)] ?: continue
+            return symbol to length
+        }
+        throw NoSuchCodeException("No symbol in huffman tree")
+    }
+
+    fun decodeSymbolOrNull(source: BitSource): Int? {
+        val (symbol, length) = peekSymbol(source) ?: return null
+        source.skipBits(length)
+        return symbol
+    }
+
     fun decodeSymbol(source: BitSource): Int {
         var bits = 0
         for (length in 1..maxBits) {

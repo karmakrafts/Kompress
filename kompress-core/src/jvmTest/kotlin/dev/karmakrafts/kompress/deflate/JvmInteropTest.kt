@@ -56,7 +56,7 @@ class JvmInteropTest {
         jDeflater.end()
 
         val source = Buffer().apply { write(compressedData, 0, compressedLength) }
-        val inflater = Inflater(raw = true)
+        val inflater = Inflater()
         val decompressedBuffer = Buffer()
         source.decompressingSource(inflater).use { decompressingSource ->
             decompressedBuffer.transferFrom(decompressingSource)
@@ -100,7 +100,7 @@ class JvmInteropTest {
         jDeflater.end()
 
         val decompressedBuffer = Buffer()
-        val inflater = Inflater(raw = true)
+        val inflater = Inflater()
         decompressedBuffer.decompressingSink(inflater).use { sink ->
             sink.write(Buffer().apply { write(compressedData, 0, compressedLength) }, compressedLength.toLong())
         }

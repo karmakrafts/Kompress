@@ -27,7 +27,6 @@ internal object DeflateConstants {
     const val SYM_REPEAT_PREVIOUS_SIZE: Int = 2
     const val SYM_REPEAT_ZERO_LENGTH: Int = 17
     const val SYM_REPEAT_ZERO_LENGTH_MIN: Int = 3
-    const val SYM_REPEAT_ZERO_LENGTH_MAX: Int = 10
     const val SYM_REPEAT_ZERO_LENGTH_SIZE: Int = 3
     const val SYM_LONG_ZERO_LENGTH_RUN: Int = 18
     const val SYM_LONG_ZERO_LENGTH_RUN_MIN: Int = 11
@@ -39,7 +38,6 @@ internal object DeflateConstants {
     const val CODE_LENGTH_ALPHABET_SIZE: Int = 19
 
     const val MAX_CODE_LENGTH: Int = 15
-    const val MAX_CL_CODE_LENGTH: Int = 7
     const val CL_CODE_LENGTH_SIZE: Int = 3
 
     const val BTYPE_SIZE: Int = 2
@@ -54,6 +52,19 @@ internal object DeflateConstants {
     const val HDIST_SIZE: Int = 5
     const val HCLEN_OFFSET: Int = 4
     const val HCLEN_SIZE: Int = 4
+
+    @JvmField
+    val FIXED_LIT_TREE_LENGTHS: IntArray = IntArray(288) { i ->
+        when (i) {
+            in 0..143 -> 8
+            in 144..255 -> 9
+            in 256..279 -> 7
+            else -> 8
+        }
+    }
+
+    @JvmField
+    val FIXED_DIST_TREE_LENGTHS: IntArray = IntArray(32) { 5 }
 
     /**
      * See [RFC1951](https://datatracker.ietf.org/doc/html/rfc1951) 3.2.7.
