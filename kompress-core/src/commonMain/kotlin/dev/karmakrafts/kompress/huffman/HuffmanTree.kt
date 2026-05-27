@@ -18,6 +18,7 @@ package dev.karmakrafts.kompress.huffman
 
 import dev.karmakrafts.karbide.BitSink
 import dev.karmakrafts.karbide.BitSource
+import dev.karmakrafts.karbide.reverseBits
 import dev.karmakrafts.kompress.exception.NoSuchCodeException
 import dev.karmakrafts.kompress.exception.NoSuchSymbolException
 
@@ -154,16 +155,6 @@ internal class HuffmanTree(
         return NO_SYMBOL
     }
 
-    private fun reverseBits(bits: Int, length: Int): Int {
-        var value = bits
-        var result = 0
-        repeat(length) {
-            result = (result shl 1) or (value and 1)
-            value = value ushr 1
-        }
-        return result
-    }
-
     fun peekSymbolCode(source: BitSource): Int {
         if (maxBits == 0) throw NoSuchCodeException("No symbol in huffman tree")
         if (source.requestBits(maxBits)) {
@@ -183,12 +174,12 @@ internal class HuffmanTree(
     fun peekSymbolCode(bits: Int, count: Int): Int {
         if (maxBits == 0) throw NoSuchCodeException("No symbol in huffman tree")
         if (count >= maxBits) {
-            val code = decodeTable[reverseBits(bits and ((1 shl maxBits) - 1), maxBits)]
+            val code = decodeTable[(bits and ((1 shl maxBits) - 1)).reverseBits(maxBits)]
             if (code != NO_SYMBOL) return code
             throw NoSuchCodeException("No symbol in huffman tree")
         }
         for (length in 1..count) {
-            val code = exactSymbolCode(reverseBits(bits and ((1 shl length) - 1), length), length)
+            val code = exactSymbolCode((bits and ((1 shl length) - 1)).reverseBits(length), length)
             if (code != NO_SYMBOL) return code
         }
         return NO_SYMBOL
