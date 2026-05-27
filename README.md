@@ -16,7 +16,6 @@ Compression and decompression APIs for Kotlin Multiplatform.
 - Supports all Kotlin Multiplatform targets
 - General purpose `Compressor` and `Decompressor` APIs for modeling streaming compressors
 - General purpose `Archiver<E>` and `Unarchiver<E>` APIs for modeling streaming archivers
-- Support for various compression algorithms, including DEFLATE, DEFLATE Raw and LZ4
 - Create and read various archive types, including GZIP and ZIP.
 - Synchronous streaming API inspired by Java's `Inflater`/`Deflater` APIs
 - Integration with [kotlinx.io](https://github.com/Kotlin/kotlinx-io)
