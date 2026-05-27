@@ -108,7 +108,6 @@ kotlin {
         webMain {
             dependencies {
                 implementation(libs.kotlin.wrappers.browser)
-                implementation(npm("fflate", libs.versions.fflate.get()))
             }
         }
     }
