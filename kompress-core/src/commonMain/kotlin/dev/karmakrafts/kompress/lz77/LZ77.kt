@@ -136,7 +136,7 @@ internal class LZ77( // @formatter:off
             tokens += if (bestLength >= minMatch) {
                 // Update the hash chain for every extra byte we skip through the match
                 // to ensure we can match against these positions later
-                for (chainOffset in 1 until bestLength) {
+                for (chainOffset in 1..<bestLength) {
                     val currentPosition = pos + chainOffset
                     if (currentPosition + minMatch <= size) {
                         val currentHash = rollingHash(data, currentPosition + offset)
