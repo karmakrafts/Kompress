@@ -13,10 +13,11 @@
 - Added `RawSink.crc32Sink` and `RawSource.crc32Source` extension functions
 - Added `crc32(ByteArray)` function
 - Added `kompress-gzip` module for GZip archive support via `RawSink.gzip` and `Source.ungzip` extensions
-- Added `kompress-lz4` module for LZ4 compression support via `LZ4Compressor` and `LZ4Decompressor`
+- Added `kompress-zip` module for Zip archive support via `RawSink.zip` and `Source.unzip` extensions
 
 ### Changed
 
+- Pure Kotlin implementation of `Deflater` and `Inflater`!
 - Updated to Karma Conventions 1.16.4
 - Updated to Gradle 9.5.1
 - Updated to Kotlin Wrappers 2026.5.4
