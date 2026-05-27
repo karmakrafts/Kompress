@@ -191,12 +191,12 @@ internal class InflaterImpl(
         return false
     }
 
-    private fun peekSymbol(tree: HuffmanTree): Pair<Int, Int>? {
-        return tree.peekSymbol(bitSource) ?: run {
-            if (finishing) throw DataFormatException("Unexpected end of DEFLATE stream")
-            isInputNeeded = true
-            null
-        }
+    private fun peekSymbol(tree: HuffmanTree): Int {
+        val code = tree.peekSymbolCode(bitSource)
+        if (code != HuffmanTree.NO_SYMBOL) return code
+        if (finishing) throw DataFormatException("Unexpected end of DEFLATE stream")
+        isInputNeeded = true
+        return HuffmanTree.NO_SYMBOL
     }
 
     private fun finishBlock() {
@@ -280,7 +280,10 @@ internal class InflaterImpl(
 
     private fun decodeDynamicTreeLengths(): Boolean {
         while (dynamicLengthIndex < dynamicLengths.size) {
-            val (symbol, codeLength) = peekSymbol(dynamicLengthTree) ?: return false
+            val code = peekSymbol(dynamicLengthTree)
+            if (code == HuffmanTree.NO_SYMBOL) return false
+            val symbol = HuffmanTree.unpackSymbol(code)
+            val codeLength = HuffmanTree.unpackLength(code)
             val extraBits = when (symbol) {
                 in 0..DeflateConstants.MAX_CODE_LENGTH -> 0
                 DeflateConstants.SYM_REPEAT_PREVIOUS -> DeflateConstants.SYM_REPEAT_PREVIOUS_SIZE
@@ -335,12 +338,8 @@ internal class InflaterImpl(
                 }
             }
         }
-        val literalLengths = dynamicLengths.copyOfRange(0, dynamicLiteralCodesCount)
-        val distanceLengths = dynamicLengths.copyOfRange(
-            dynamicLiteralCodesCount, dynamicLiteralCodesCount + dynamicDistanceCodesCount
-        )
-        literalTree = HuffmanTree(literalLengths)
-        distanceTree = HuffmanTree(distanceLengths)
+        literalTree = HuffmanTree(dynamicLengths, size = dynamicLiteralCodesCount)
+        distanceTree = HuffmanTree(dynamicLengths, dynamicLiteralCodesCount, dynamicDistanceCodesCount)
         state = State.COMPRESSED
         return true
     }
@@ -364,7 +363,10 @@ internal class InflaterImpl(
     }
 
     private fun inflatePendingMatch(): Boolean {
-        val (distanceSymbol, codeLength) = peekSymbol(distanceTree) ?: return false
+        val code = peekSymbol(distanceTree)
+        if (code == HuffmanTree.NO_SYMBOL) return false
+        val distanceSymbol = HuffmanTree.unpackSymbol(code)
+        val codeLength = HuffmanTree.unpackLength(code)
         if (distanceSymbol !in DeflateConstants.DIST_BASE.indices) {
             throw DataFormatException("Invalid distance symbol: $distanceSymbol")
         }
@@ -382,7 +384,10 @@ internal class InflaterImpl(
             if (pendingLength > 0) {
                 return inflatePendingMatch()
             }
-            val (symbol, codeLength) = peekSymbol(literalTree) ?: return false
+            val code = peekSymbol(literalTree)
+            if (code == HuffmanTree.NO_SYMBOL) return false
+            val symbol = HuffmanTree.unpackSymbol(code)
+            val codeLength = HuffmanTree.unpackLength(code)
             when (symbol) {
                 in 0 until DeflateConstants.SYM_EOF -> {
                     bitSource.skipBits(codeLength)
