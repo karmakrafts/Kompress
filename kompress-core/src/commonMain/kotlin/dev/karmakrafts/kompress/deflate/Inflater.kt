@@ -130,11 +130,13 @@ internal class InflaterImpl(
         private set
     override var inputSize: Int = 0
         private set
+
     override val remaining: Int
         get() {
             val consumed = (bytesRead - inputStart).toInt()
             return (inputSize - consumed).coerceIn(0, inputSize)
         }
+
     override val bytesRead: Long get() = bitSource.byte + if (bitSource.bit == 0) 0 else 1
     override var bytesWritten: Long = 0L
         private set
@@ -241,7 +243,7 @@ internal class InflaterImpl(
         state = State.DYNAMIC_HEADER
     }
 
-    private fun readBlockHeader(): Boolean {
+    private fun decodeBlockHeader(): Boolean {
         if (!needBits(1 + DeflateConstants.BTYPE_SIZE)) return false
         isFinalBlock = bitSource.readBit() != 0.toUByte()
         when (bitSource.readBitsLsb(DeflateConstants.BTYPE_SIZE)) {
@@ -258,7 +260,7 @@ internal class InflaterImpl(
         return true
     }
 
-    private fun readStoredHeader(): Boolean {
+    private fun decodeStoredHeader(): Boolean {
         val padding = (Byte.SIZE_BITS - bitSource.bit) and 7
         if (!needBits(padding)) return false
         if (padding > 0) {
@@ -287,7 +289,7 @@ internal class InflaterImpl(
         return true
     }
 
-    private fun readDynamicCodeLengths(): Boolean {
+    private fun decodeDynamicCodeLengths(): Boolean {
         while (dynamicCodeLengthIndex < dynamicCodeLengthCodesCount) {
             if (!needBits(DeflateConstants.CL_CODE_LENGTH_SIZE)) return false
             val index = DeflateConstants.CODE_LENGTH_ORDER[dynamicCodeLengthIndex++]
@@ -298,7 +300,7 @@ internal class InflaterImpl(
         return true
     }
 
-    private fun readDynamicTreeLengths(): Boolean {
+    private fun decodeDynamicTreeLengths(): Boolean {
         while (dynamicLengthIndex < dynamicLengths.size) {
             val (symbol, codeLength) = peekSymbol(dynamicLengthTree) ?: return false
             val extraBits = when (symbol) {
@@ -365,7 +367,7 @@ internal class InflaterImpl(
         return true
     }
 
-    private fun readDynamicHeader(): Boolean {
+    private fun decodeDynamicHeader(): Boolean {
         if (dynamicHeaderStage == 0) {
             if (!needBits(DeflateConstants.HLIT_SIZE + DeflateConstants.HDIST_SIZE + DeflateConstants.HCLEN_SIZE)) {
                 return false
@@ -379,8 +381,8 @@ internal class InflaterImpl(
             dynamicLengths = IntArray(dynamicLiteralCodesCount + dynamicDistanceCodesCount)
             dynamicHeaderStage = 1
         }
-        if (dynamicHeaderStage == 1 && !readDynamicCodeLengths()) return false
-        return dynamicHeaderStage != 2 || readDynamicTreeLengths()
+        if (dynamicHeaderStage == 1 && !decodeDynamicCodeLengths()) return false
+        return dynamicHeaderStage != 2 || decodeDynamicTreeLengths()
     }
 
     private fun inflatePendingMatch(): Boolean {
@@ -431,10 +433,10 @@ internal class InflaterImpl(
     }
 
     private fun inflate(targetSize: Long): Boolean = when (state) {
-        State.HEADER -> readBlockHeader()
-        State.STORED_HEADER -> readStoredHeader()
+        State.HEADER -> decodeBlockHeader()
+        State.STORED_HEADER -> decodeStoredHeader()
         State.STORED -> inflateStoredBlock(targetSize)
-        State.DYNAMIC_HEADER -> readDynamicHeader()
+        State.DYNAMIC_HEADER -> decodeDynamicHeader()
         State.COMPRESSED -> inflateCompressedBlock(targetSize)
     }
 
