@@ -29,6 +29,7 @@ import dev.karmakrafts.conventions.setProjectInfo
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.plugin.mpp.NativeBuildType
 import org.jetbrains.kotlin.gradle.targets.jvm.tasks.KotlinJvmTest
+import java.time.Duration
 
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
@@ -58,8 +59,21 @@ kotlin {
     withWeb {
         withBrowser {
             useEsModules()
+            testTask {
+                timeout = Duration.ofSeconds(30)
+                useKarma {
+                    useConfigDirectory(rootProject.projectDir.resolve("karma.config.d"))
+                }
+            }
         }
-        withNodeJs()
+        withNodeJs {
+            testTask {
+                timeout = Duration.ofSeconds(30)
+                useMocha {
+                    timeout = "30000"
+                }
+            }
+        }
     }
     applyDefaultHierarchyTemplate {
         common {
