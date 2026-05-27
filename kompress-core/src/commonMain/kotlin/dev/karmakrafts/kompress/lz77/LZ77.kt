@@ -16,6 +16,9 @@
 
 package dev.karmakrafts.kompress.lz77
 
+import dev.karmakrafts.kompress.exception.DataFormatException
+import kotlinx.io.Buffer
+
 /**
  * A simple LZ77 implementation which allows
  * overriding the level, match counts and window size.
@@ -67,6 +70,10 @@ internal class LZ77( // @formatter:off
         }
 
     private val head: IntArray = IntArray(HASH_SIZE) { DEFAULT_HEAD }
+    private val window: ByteArray = ByteArray(windowSize)
+
+    private var windowPosition: Int = 0
+    private var windowFilled: Int = 0
 
     /**
      * Encodes the given data into an LZ77 token stream.
@@ -145,5 +152,31 @@ internal class LZ77( // @formatter:off
                 Token.Literal(data[offset + pos++].toUByte())
             }
         }
+    }
+
+    fun decodeLiteral(output: Buffer, value: Int) {
+        val byte = value.toByte()
+        output.writeByte(byte)
+        window[windowPosition] = byte
+        windowPosition = (windowPosition + 1) % window.size
+        if (windowFilled < window.size) {
+            windowFilled++
+        }
+    }
+
+    fun decodeMatch(output: Buffer, length: Int, distance: Int) {
+        if (distance !in 1..windowFilled) {
+            throw DataFormatException("Invalid backwards distance: $distance")
+        }
+        repeat(length) {
+            val position = (windowPosition - distance + window.size) % window.size
+            decodeLiteral(output, window[position].toInt() and 0xFF)
+        }
+    }
+
+    fun resetDecoder() {
+        window.fill(0)
+        windowPosition = 0
+        windowFilled = 0
     }
 }

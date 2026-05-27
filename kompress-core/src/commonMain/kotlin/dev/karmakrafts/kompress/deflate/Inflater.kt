@@ -146,7 +146,7 @@ internal class InflaterImpl(
     private val inputBuffer: Buffer = Buffer()
     private val bitSource = inputBuffer.bitSource(isSourceOwned = false, bitOrder = BitOrder.LSB_FIRST)
     private val outputBuffer: Buffer = Buffer()
-    private val window: ByteArray = ByteArray(windowSize)
+    private val lz77: LZ77 = LZ77(windowSize = windowSize)
     private val codeLengthLengths: IntArray = IntArray(DeflateConstants.CODE_LENGTH_ALPHABET_SIZE)
 
     private var isClosed: Boolean = false
@@ -172,8 +172,6 @@ internal class InflaterImpl(
     private var dynamicLengthTree: HuffmanTree = HuffmanTree()
 
     private var pendingLength: Int = 0
-    private var windowPosition: Int = 0
-    private var windowFilled: Int = 0
 
     override fun setInput(data: ByteArray, offset: Int, size: Int) {
         input = data
@@ -198,26 +196,6 @@ internal class InflaterImpl(
             if (finishing) throw DataFormatException("Unexpected end of DEFLATE stream")
             isInputNeeded = true
             null
-        }
-    }
-
-    private fun writeLiteral(value: Int) {
-        val byte = value.toByte()
-        outputBuffer.writeByte(byte)
-        window[windowPosition] = byte
-        windowPosition = (windowPosition + 1) % window.size
-        if (windowFilled < window.size) {
-            windowFilled++
-        }
-    }
-
-    private fun copyFromWindow(length: Int, distance: Int) {
-        if (distance !in 1..windowFilled) {
-            throw DataFormatException("Invalid backwards distance: $distance")
-        }
-        repeat(length) {
-            val position = (windowPosition - distance + window.size) % window.size
-            writeLiteral(window[position].toInt() and 0xFF)
         }
     }
 
@@ -280,7 +258,7 @@ internal class InflaterImpl(
     private fun inflateStoredBlock(targetSize: Long): Boolean {
         while (storedRemaining > 0 && outputBuffer.size < targetSize) {
             if (!needBits(Byte.SIZE_BITS)) return false
-            writeLiteral(bitSource.readBitsLsb(Byte.SIZE_BITS).toInt())
+            lz77.decodeLiteral(outputBuffer, bitSource.readBitsLsb(Byte.SIZE_BITS).toInt())
             storedRemaining--
         }
         if (storedRemaining == 0) {
@@ -394,7 +372,7 @@ internal class InflaterImpl(
         if (!needBits(codeLength + extraBits)) return false
         bitSource.skipBits(codeLength)
         val distance = DeflateConstants.DIST_BASE[distanceSymbol] + bitSource.readBitsLsb(extraBits).toInt()
-        copyFromWindow(pendingLength, distance)
+        lz77.decodeMatch(outputBuffer, pendingLength, distance)
         pendingLength = 0
         return true
     }
@@ -408,7 +386,7 @@ internal class InflaterImpl(
             when (symbol) {
                 in 0 until DeflateConstants.SYM_EOF -> {
                     bitSource.skipBits(codeLength)
-                    writeLiteral(symbol)
+                    lz77.decodeLiteral(outputBuffer, symbol)
                 }
 
                 DeflateConstants.SYM_EOF -> {
@@ -484,9 +462,7 @@ internal class InflaterImpl(
         literalTree = FIXED_LITERAL_TREE
         distanceTree = FIXED_DISTANCE_TREE
         pendingLength = 0
-        window.fill(0)
-        windowPosition = 0
-        windowFilled = 0
+        lz77.resetDecoder()
         beginDynamicHeader()
         state = State.HEADER
     }
