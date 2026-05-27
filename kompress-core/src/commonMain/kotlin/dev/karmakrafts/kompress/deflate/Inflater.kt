@@ -251,6 +251,11 @@ internal class InflaterImpl(
         return position + 1
     }
 
+    /**
+     * Copies a length/distance pair from the sliding history window into the output.
+     *
+     * See [RFC1951](https://datatracker.ietf.org/doc/html/rfc1951) section 3.2.3.
+     */
     private fun writeMatch(output: ByteArray, position: Int, limit: Int, length: Int, distance: Int): Int {
         if (distance !in 1..windowFilled) {
             throw DataFormatException("Invalid backwards distance: $distance")
@@ -305,13 +310,21 @@ internal class InflaterImpl(
         state = State.DYNAMIC_HEADER
     }
 
+    /**
+     * Decodes the DEFLATE block header containing the final-block flag and block type.
+     *
+     * See [RFC1951](https://datatracker.ietf.org/doc/html/rfc1951) section 3.2.3.
+     */
     private fun decodeBlockHeader(): Boolean {
         if (!needBits(1 + DeflateConstants.BTYPE_SIZE)) return false
         val header = readBits(1 + DeflateConstants.BTYPE_SIZE)
+        // RFC1951 3.2.3: BFINAL marks the last block, followed by two BTYPE bits.
         isFinalBlock = (header and 1) != 0
         when (header ushr 1) {
             DeflateConstants.BTYPE_STORED.toInt() -> state = State.STORED_HEADER
             DeflateConstants.BTYPE_STATIC.toInt() -> {
+                // RFC1951 3.2.6: fixed Huffman blocks use the predefined literal/length and
+                // distance trees.
                 literalTree = FIXED_LITERAL_TREE
                 distanceTree = FIXED_DISTANCE_TREE
                 state = State.COMPRESSED
@@ -323,6 +336,11 @@ internal class InflaterImpl(
         return true
     }
 
+    /**
+     * Decodes a stored block header by aligning to the next byte and validating LEN/NLEN.
+     *
+     * See [RFC1951](https://datatracker.ietf.org/doc/html/rfc1951) section 3.2.4.
+     */
     private fun decodeStoredHeader(): Boolean {
         val padding = bitCount and 7
         if (!needBits(padding)) return false
@@ -332,6 +350,7 @@ internal class InflaterImpl(
         if (!needBits(Short.SIZE_BITS * 2)) return false
         val length = readBits(Short.SIZE_BITS)
         val inverseLength = readBits(Short.SIZE_BITS)
+        // RFC1951 3.2.4: NLEN is the one's-complement of LEN.
         if ((length xor 0xFFFF) != inverseLength) {
             throw DataFormatException("Invalid stored block length check")
         }
@@ -340,6 +359,11 @@ internal class InflaterImpl(
         return true
     }
 
+    /**
+     * Copies the uncompressed bytes from a stored block.
+     *
+     * See [RFC1951](https://datatracker.ietf.org/doc/html/rfc1951) section 3.2.4.
+     */
     private fun inflateStoredBlock(output: ByteArray, position: Int, limit: Int): Int {
         var outputPosition = position
         while (storedRemaining > 0 && outputPosition < limit) {
@@ -353,17 +377,30 @@ internal class InflaterImpl(
         return outputPosition
     }
 
+    /**
+     * Decodes the code-length alphabet for a dynamic Huffman block.
+     *
+     * See [RFC1951](https://datatracker.ietf.org/doc/html/rfc1951) section 3.2.7.
+     */
     private fun decodeDynamicCodeLengths(): Boolean {
         while (dynamicCodeLengthIndex < dynamicCodeLengthCodesCount) {
             if (!needBits(DeflateConstants.CL_CODE_LENGTH_SIZE)) return false
+            // RFC1951 3.2.7: code-length code lengths are serialized in CODE_LENGTH_ORDER.
             val index = DeflateConstants.CODE_LENGTH_ORDER[dynamicCodeLengthIndex++]
             codeLengthLengths[index] = readBits(DeflateConstants.CL_CODE_LENGTH_SIZE)
         }
+        // RFC1951 3.2.7: this tree decodes the literal/length and distance code lengths.
         dynamicLengthTree = HuffmanTree(codeLengthLengths, buildEncodeTable = false)
         dynamicHeaderStage = DynamicHeaderStage.TREE_LENGTHS
         return true
     }
 
+    /**
+     * Decodes the literal/length and distance Huffman tree lengths, including repeat symbols 16,
+     * 17 and 18.
+     *
+     * See [RFC1951](https://datatracker.ietf.org/doc/html/rfc1951) section 3.2.7.
+     */
     private fun decodeDynamicTreeLengths(): Boolean {
         while (dynamicLengthIndex < dynamicLengthsCount) {
             val code = peekSymbol(dynamicLengthTree)
@@ -389,6 +426,8 @@ internal class InflaterImpl(
                     if (dynamicLengthIndex == 0) {
                         throw DataFormatException("Cannot repeat previous code length before any length was read")
                     }
+                    // RFC1951 3.2.7: code 16 repeats the previous non-zero length 3-6 times using
+                    // 2 extra bits.
                     val repeatCount = DeflateConstants.SYM_REPEAT_PREVIOUS_MIN + readBits(extraBits)
                     if (dynamicLengthIndex + repeatCount > dynamicLengthsCount) {
                         throw DataFormatException("Code length repeat exceeds dynamic tree size")
@@ -400,6 +439,7 @@ internal class InflaterImpl(
                 }
 
                 DeflateConstants.SYM_REPEAT_ZERO_LENGTH -> {
+                    // RFC1951 3.2.7: code 17 repeats zero lengths 3-10 times using 3 extra bits.
                     val repeatCount = DeflateConstants.SYM_REPEAT_ZERO_LENGTH_MIN + readBits(extraBits)
                     if (dynamicLengthIndex + repeatCount > dynamicLengthsCount) {
                         throw DataFormatException("Code length repeat exceeds dynamic tree size")
@@ -412,6 +452,7 @@ internal class InflaterImpl(
                 }
 
                 DeflateConstants.SYM_LONG_ZERO_LENGTH_RUN -> {
+                    // RFC1951 3.2.7: code 18 repeats zero lengths 11-138 times using 7 extra bits.
                     val repeatCount = DeflateConstants.SYM_LONG_ZERO_LENGTH_RUN_MIN + readBits(extraBits)
                     if (dynamicLengthIndex + repeatCount > dynamicLengthsCount) {
                         throw DataFormatException("Code length repeat exceeds dynamic tree size")
@@ -424,6 +465,8 @@ internal class InflaterImpl(
                 }
             }
         }
+        // RFC1951 3.2.7: the first HLIT lengths build the literal/length tree; the following
+        // HDIST build distances.
         literalTree = HuffmanTree(dynamicLengths, size = dynamicLiteralCodesCount, buildEncodeTable = false)
         distanceTree = HuffmanTree(
             dynamicLengths, dynamicLiteralCodesCount, dynamicDistanceCodesCount, buildEncodeTable = false
@@ -432,11 +475,18 @@ internal class InflaterImpl(
         return true
     }
 
+    /**
+     * Decodes the dynamic Huffman block header fields (HLIT, HDIST, HCLEN) and trees.
+     *
+     * See [RFC1951](https://datatracker.ietf.org/doc/html/rfc1951) section 3.2.7.
+     */
     private fun decodeDynamicHeader(): Boolean {
         if (dynamicHeaderStage == DynamicHeaderStage.COUNTS) {
             if (!needBits(DeflateConstants.HLIT_SIZE + DeflateConstants.HDIST_SIZE + DeflateConstants.HCLEN_SIZE)) {
                 return false
             }
+            // RFC1951 3.2.7: HLIT, HDIST and HCLEN store count values minus their RFC-defined
+            // offsets.
             dynamicLiteralCodesCount = DeflateConstants.HLIT_OFFSET + readBits(DeflateConstants.HLIT_SIZE)
             dynamicDistanceCodesCount = DeflateConstants.HDIST_OFFSET + readBits(DeflateConstants.HDIST_SIZE)
             dynamicCodeLengthCodesCount = DeflateConstants.HCLEN_OFFSET + readBits(DeflateConstants.HCLEN_SIZE)
@@ -451,6 +501,11 @@ internal class InflaterImpl(
         return dynamicHeaderStage != DynamicHeaderStage.TREE_LENGTHS || decodeDynamicTreeLengths()
     }
 
+    /**
+     * Decodes the distance part of a length/distance pair and copies the referenced match.
+     *
+     * See [RFC1951](https://datatracker.ietf.org/doc/html/rfc1951) sections 3.2.3 and 3.2.5.
+     */
     private fun decodeMatch(output: ByteArray, position: Int, limit: Int): Int {
         val code = peekSymbol(distanceTree)
         if (code == HuffmanTree.NO_SYMBOL) return position
@@ -459,6 +514,8 @@ internal class InflaterImpl(
         if (distanceSymbol !in DeflateConstants.DIST_BASE.indices) {
             throw DataFormatException("Invalid distance symbol: $distanceSymbol")
         }
+        // RFC1951 3.2.5: distance symbols may be followed by extra bits added to the base
+        // distance.
         val extraBits = DeflateConstants.DIST_EXTRA_BITS[distanceSymbol]
         if (extraBits > 0 && !needBits(codeLength + extraBits)) return position
         skipBits(codeLength)
@@ -466,6 +523,11 @@ internal class InflaterImpl(
         return writeMatch(output, position, limit, pendingLength, distance)
     }
 
+    /**
+     * Decodes compressed block data using the current literal/length and distance Huffman trees.
+     *
+     * See [RFC1951](https://datatracker.ietf.org/doc/html/rfc1951) sections 3.2.3 and 3.2.5.
+     */
     private fun inflateCompressedBlock(output: ByteArray, position: Int, limit: Int): Int {
         var outputPosition = position
         while (outputPosition < limit) {
@@ -490,6 +552,7 @@ internal class InflaterImpl(
                 }
 
                 DeflateConstants.SYM_EOF -> {
+                    // RFC1951 3.2.3: literal/length symbol 256 marks the end of the block.
                     skipBits(codeLength)
                     finishBlock()
                     return outputPosition
@@ -497,6 +560,8 @@ internal class InflaterImpl(
 
                 in DeflateConstants.HLIT_OFFSET..285 -> {
                     val index = symbol - DeflateConstants.HLIT_OFFSET
+                    // RFC1951 3.2.5: length symbols may be followed by extra bits added to the
+                    // base length.
                     val extraBits = DeflateConstants.LENGTH_EXTRA_BITS[index]
                     if (extraBits > 0 && !needBits(codeLength + extraBits)) return outputPosition
                     skipBits(codeLength)
