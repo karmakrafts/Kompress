@@ -28,6 +28,47 @@ import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 
 class JvmInteropTest {
+    private fun deflateWithJvm(
+        data: ByteArray,
+        level: Int,
+        strategy: Int = java.util.zip.Deflater.DEFAULT_STRATEGY
+    ): ByteArray {
+        val jDeflater = java.util.zip.Deflater(level, true)
+        jDeflater.setStrategy(strategy)
+        jDeflater.setInput(data)
+        jDeflater.finish()
+        val output = java.io.ByteArrayOutputStream()
+        val buffer = ByteArray(1024)
+        while (!jDeflater.finished()) {
+            val written = jDeflater.deflate(buffer)
+            output.write(buffer, 0, written)
+        }
+        jDeflater.end()
+        return output.toByteArray()
+    }
+
+    private fun inflateKompressOneByteAtATime(compressedData: ByteArray): ByteArray {
+        val inflater = Inflater()
+        val output = Buffer()
+        val chunk = ByteArray(257)
+        var offset = 0
+        while (!inflater.finished) {
+            if (inflater.needsInput) {
+                if (offset < compressedData.size) {
+                    inflater.setInput(compressedData, offset++, 1)
+                }
+                else {
+                    inflater.finish()
+                }
+            }
+            val read = inflater.decompress(chunk)
+            if (read > 0) {
+                output.write(chunk, 0, read)
+            }
+        }
+        return output.readByteArray()
+    }
+
     private fun testKompressToJvm(data: ByteArray) {
         val compressedBuffer = Buffer()
         val deflater = Deflater()
@@ -169,5 +210,19 @@ class JvmInteropTest {
 
         assertEquals(compressedLength, Inflater.computeCompressedSize(combinedData))
         assertEquals(compressedLength.toLong(), Inflater.computeCompressedSize(source.peek()))
+    }
+
+    @Test
+    fun `jvm streams inflate with one byte inputs`() {
+        val dynamicData = ByteArray(16 * 1024) { index -> "dynamic-huffman-data"[index % 20].code.toByte() }
+        val storedData = Random(44).nextBytes(8 * 1024)
+
+        assertContentEquals(
+            dynamicData,
+            inflateKompressOneByteAtATime(deflateWithJvm(dynamicData, java.util.zip.Deflater.BEST_COMPRESSION))
+        )
+        assertContentEquals(
+            storedData, inflateKompressOneByteAtATime(deflateWithJvm(storedData, java.util.zip.Deflater.NO_COMPRESSION))
+        )
     }
 }

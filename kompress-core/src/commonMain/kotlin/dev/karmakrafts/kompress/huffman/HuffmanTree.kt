@@ -18,7 +18,6 @@ package dev.karmakrafts.kompress.huffman
 
 import dev.karmakrafts.karbide.BitSink
 import dev.karmakrafts.karbide.BitSource
-import dev.karmakrafts.karbide.readBit
 import dev.karmakrafts.kompress.exception.NoSuchCodeException
 import dev.karmakrafts.kompress.exception.NoSuchSymbolException
 
@@ -28,16 +27,16 @@ import dev.karmakrafts.kompress.exception.NoSuchSymbolException
  * See [RFC1951](https://datatracker.ietf.org/doc/html/rfc1951) 3.2.2.
  */
 internal class HuffmanTree(
-    lengths: IntArray = IntArray(0), offset: Int = 0, size: Int = lengths.size - offset
+    lengths: IntArray = IntArray(0),
+    offset: Int = 0,
+    size: Int = lengths.size - offset,
+    buildEncodeTable: Boolean = true
 ) {
-    private val encodeTable: ArrayList<HuffmanCode> = ArrayList()
+    private val encodeTable: LongArray? = if (buildEncodeTable) LongArray(size) else null
     private var maxBits: Int = 0
     private val decodeTable: IntArray
 
     init {
-        repeat(size) {
-            encodeTable.add(HuffmanCode())
-        }
         for (index in 0 until size) {
             maxBits = maxBits.coerceAtLeast(lengths[offset + index])
         }
@@ -65,7 +64,7 @@ internal class HuffmanTree(
             if (bitLength == 0) continue // Skip any 0-length symbols
             val canonical = nextCode[bitLength]++
             val code = HuffmanCode(canonical, bitLength)
-            encodeTable[symbol] = code
+            encodeTable?.set(symbol, code.value.toLong())
             val packed = packSymbol(symbol, bitLength)
             val suffixBits = maxBits - bitLength
             val endIndex = (canonical + 1) shl suffixBits
@@ -131,12 +130,18 @@ internal class HuffmanTree(
         }
     }
 
-    fun codeLengths(): IntArray = IntArray(encodeTable.size) { index ->
-        encodeTable[index].length
+    fun codeLengths(): IntArray {
+        val table = encodeTable ?: error("Encoding table was not built for this huffman tree")
+        return IntArray(table.size) { index ->
+            HuffmanCode(table[index].toULong()).length
+        }
     }
 
-    fun encodingOf(symbol: Int): HuffmanCode =
-        encodeTable.getOrNull(symbol) ?: throw NoSuchSymbolException("No symbol $symbol in huffman tree")
+    fun encodingOf(symbol: Int): HuffmanCode {
+        val table = encodeTable ?: error("Encoding table was not built for this huffman tree")
+        if (symbol !in table.indices) throw NoSuchSymbolException("No symbol $symbol in huffman tree")
+        return HuffmanCode(table[symbol].toULong())
+    }
 
     fun encodeSymbol(sink: BitSink, symbol: Int) {
         val code = encodingOf(symbol)
@@ -165,14 +170,16 @@ internal class HuffmanTree(
         throw NoSuchCodeException("No symbol in huffman tree")
     }
 
+    private fun readSymbolCode(source: BitSource): Int {
+        val code = peekSymbolCode(source)
+        if (code == NO_SYMBOL) return NO_SYMBOL
+        source.skipBits(unpackLength(code))
+        return code
+    }
+
     fun decodeSymbol(source: BitSource): Int {
-        if (maxBits == 0) throw NoSuchCodeException("No symbol in huffman tree")
-        var bits = 0
-        for (length in 1..maxBits) {
-            bits = (bits shl 1) or source.readBit().toInt()
-            val code = exactSymbolCode(bits, length)
-            if (code != NO_SYMBOL) return unpackSymbol(code)
-        }
-        throw NoSuchCodeException("No symbol for code 0b${bits.toString(2)}")
+        val code = readSymbolCode(source)
+        if (code != NO_SYMBOL) return unpackSymbol(code)
+        throw NoSuchCodeException("No symbol in huffman tree")
     }
 }

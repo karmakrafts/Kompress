@@ -156,10 +156,14 @@ internal class LZ77( // @formatter:off
 
     fun decodeLiteral(output: Buffer, value: Int) {
         val byte = value.toByte()
+        val decoderWindow = window
         output.writeByte(byte)
-        window[windowPosition] = byte
-        windowPosition = (windowPosition + 1) % window.size
-        if (windowFilled < window.size) {
+        decoderWindow[windowPosition] = byte
+        windowPosition++
+        if (windowPosition == decoderWindow.size) {
+            windowPosition = 0
+        }
+        if (windowFilled < decoderWindow.size) {
             windowFilled++
         }
     }
@@ -168,13 +172,46 @@ internal class LZ77( // @formatter:off
         if (distance !in 1..windowFilled) {
             throw DataFormatException("Invalid backwards distance: $distance")
         }
-        repeat(length) {
-            val position = (windowPosition - distance + window.size) % window.size
-            decodeLiteral(output, window[position].toInt() and 0xFF)
+        val decoderWindow = window
+        val windowSize = decoderWindow.size
+        var readPosition = windowPosition - distance
+        if (readPosition < 0) {
+            readPosition += windowSize
         }
+        var writePosition = windowPosition
+        if ( // @formatter:off
+            distance >= length &&
+            readPosition + length <= windowSize &&
+            writePosition + length <= windowSize
+        ) { // @formatter:on
+            output.write(decoderWindow, readPosition, readPosition + length)
+            decoderWindow.copyInto(decoderWindow, writePosition, readPosition, readPosition + length)
+            writePosition += length
+            if (writePosition == windowSize) {
+                writePosition = 0
+            }
+            windowPosition = writePosition
+            windowFilled = (windowFilled + length).coerceAtMost(windowSize)
+            return
+        }
+        repeat(length) {
+            val byte = decoderWindow[readPosition]
+            output.writeByte(byte)
+            decoderWindow[writePosition] = byte
+            readPosition++
+            if (readPosition == windowSize) {
+                readPosition = 0
+            }
+            writePosition++
+            if (writePosition == windowSize) {
+                writePosition = 0
+            }
+        }
+        windowPosition = writePosition
+        windowFilled = (windowFilled + length).coerceAtMost(windowSize)
     }
 
-    fun resetDecoder() {
+    fun reset() {
         window.fill(0)
         windowPosition = 0
         windowFilled = 0
