@@ -154,6 +154,16 @@ internal class HuffmanTree(
         return NO_SYMBOL
     }
 
+    private fun reverseBits(bits: Int, length: Int): Int {
+        var value = bits
+        var result = 0
+        repeat(length) {
+            result = (result shl 1) or (value and 1)
+            value = value ushr 1
+        }
+        return result
+    }
+
     fun peekSymbolCode(source: BitSource): Int {
         if (maxBits == 0) throw NoSuchCodeException("No symbol in huffman tree")
         if (source.requestBits(maxBits)) {
@@ -168,6 +178,20 @@ internal class HuffmanTree(
             if (code != NO_SYMBOL) return code
         }
         throw NoSuchCodeException("No symbol in huffman tree")
+    }
+
+    fun peekSymbolCode(bits: Int, count: Int): Int {
+        if (maxBits == 0) throw NoSuchCodeException("No symbol in huffman tree")
+        if (count >= maxBits) {
+            val code = decodeTable[reverseBits(bits and ((1 shl maxBits) - 1), maxBits)]
+            if (code != NO_SYMBOL) return code
+            throw NoSuchCodeException("No symbol in huffman tree")
+        }
+        for (length in 1..count) {
+            val code = exactSymbolCode(reverseBits(bits and ((1 shl length) - 1), length), length)
+            if (code != NO_SYMBOL) return code
+        }
+        return NO_SYMBOL
     }
 
     private fun readSymbolCode(source: BitSource): Int {

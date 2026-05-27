@@ -29,9 +29,7 @@ import kotlin.test.assertEquals
 
 class JvmInteropTest {
     private fun deflateWithJvm(
-        data: ByteArray,
-        level: Int,
-        strategy: Int = java.util.zip.Deflater.DEFAULT_STRATEGY
+        data: ByteArray, level: Int, strategy: Int = java.util.zip.Deflater.DEFAULT_STRATEGY
     ): ByteArray {
         val jDeflater = java.util.zip.Deflater(level, true)
         jDeflater.setStrategy(strategy)
@@ -197,6 +195,24 @@ class JvmInteropTest {
     @Test
     fun `compute compressed size of jvm deflater raw stream`() {
         val data = Random(42).nextBytes(1024 * 1024)
+        val trailer = Random(43).nextBytes(128)
+        val jDeflater = java.util.zip.Deflater(java.util.zip.Deflater.DEFAULT_COMPRESSION, true)
+        jDeflater.setInput(data)
+        jDeflater.finish()
+
+        val compressedData = ByteArray(data.size * 2)
+        val compressedLength = jDeflater.deflate(compressedData)
+        jDeflater.end()
+        val combinedData = compressedData.copyOf(compressedLength) + trailer
+        val source = Buffer().apply { write(combinedData) }
+
+        assertEquals(compressedLength, Inflater.computeCompressedSize(combinedData))
+        assertEquals(compressedLength.toLong(), Inflater.computeCompressedSize(source.peek()))
+    }
+
+    @Test
+    fun `compute compressed size of small jvm deflater raw stream`() {
+        val data = "World".encodeToByteArray()
         val trailer = Random(43).nextBytes(128)
         val jDeflater = java.util.zip.Deflater(java.util.zip.Deflater.DEFAULT_COMPRESSION, true)
         jDeflater.setInput(data)

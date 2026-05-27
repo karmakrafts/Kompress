@@ -16,9 +16,6 @@
 
 package dev.karmakrafts.kompress.deflate
 
-import dev.karmakrafts.karbide.BitOrder
-import dev.karmakrafts.karbide.bitSource
-import dev.karmakrafts.karbide.readBitsLsb
 import dev.karmakrafts.kompress.Decompressor
 import dev.karmakrafts.kompress.decompressingSink
 import dev.karmakrafts.kompress.decompressingSource
@@ -142,24 +139,28 @@ internal class InflaterImpl(
 
     override val remaining: Int
         get() {
-            val consumed = (bytesRead - inputStart).toInt()
+            val consumed = (bytesRead - inputStart).toInt() - if (ended) bitCount / Byte.SIZE_BITS else 0
             return (inputSize - consumed).coerceIn(0, inputSize)
         }
 
-    override val bytesRead: Long get() = bitSource.byte + if (bitSource.bit == 0) 0 else 1
+    override val bytesRead: Long get() = totalBytesRead
     override var bytesWritten: Long = 0L
         private set
-    override val needsInput: Boolean get() = !finished && outputBuffer.size == 0L && isInputNeeded
-    override val finished: Boolean get() = ended && outputBuffer.size == 0L
+    override val needsInput: Boolean get() = !finished && isInputNeeded
+    override val finished: Boolean get() = ended
 
-    private val inputBuffer: Buffer = Buffer()
-    private val bitSource = inputBuffer.bitSource(isSourceOwned = false, bitOrder = BitOrder.LSB_FIRST)
-    private val outputBuffer: Buffer = Buffer()
-    private val lz77: LZ77 = LZ77(windowSize = windowSize)
+    private val window: ByteArray = ByteArray(windowSize)
     private val codeLengthLengths: IntArray = IntArray(DeflateConstants.CODE_LENGTH_ALPHABET_SIZE)
 
     private var isClosed: Boolean = false
     private var inputStart: Long = 0L
+    private var inputPosition: Int = 0
+    private var inputEnd: Int = 0
+    private var totalBytesRead: Long = 0L
+    private var bitBuffer: Int = 0
+    private var bitCount: Int = 0
+    private var windowPosition: Int = 0
+    private var windowFilled: Int = 0
     private var finishing: Boolean = false
     private var ended: Boolean = false
     private var isInputNeeded: Boolean = true
@@ -184,36 +185,110 @@ internal class InflaterImpl(
     private var dynamicLengthTree: HuffmanTree = HuffmanTree(buildEncodeTable = false)
 
     private var pendingLength: Int = 0
+    private var pendingDistance: Int = 0
 
     override fun setInput(data: ByteArray, offset: Int, size: Int) {
         input = data
         inputOffset = offset
         inputSize = size
         inputStart = bytesRead
+        inputPosition = offset
+        inputEnd = offset + size
         if (size > 0) {
-            inputBuffer.write(data, offset, offset + size)
             isInputNeeded = false
         }
     }
 
+    private fun fillBits(count: Int): Boolean {
+        while (bitCount < count) {
+            if (inputPosition >= inputEnd) return false
+            bitBuffer = bitBuffer or ((input[inputPosition++].toInt() and 0xFF) shl bitCount)
+            totalBytesRead++
+            bitCount += Byte.SIZE_BITS
+        }
+        return true
+    }
+
     private fun needBits(count: Int): Boolean {
-        if (bitSource.requestBits(count)) return true
+        if (fillBits(count)) return true
         if (finishing) throw DataFormatException("Unexpected end of DEFLATE stream")
         isInputNeeded = true
         return false
     }
 
+    private fun readBits(count: Int): Int {
+        if (count == 0) return 0
+        val bits = bitBuffer and ((1 shl count) - 1)
+        skipBits(count)
+        return bits
+    }
+
+    private fun skipBits(count: Int) {
+        bitBuffer = bitBuffer ushr count
+        bitCount -= count
+    }
+
     private fun peekSymbol(tree: HuffmanTree): Int {
-        val code = tree.peekSymbolCode(bitSource)
+        fillBits(DeflateConstants.MAX_CODE_LENGTH)
+        val code = tree.peekSymbolCode(bitBuffer, bitCount)
         if (code != HuffmanTree.NO_SYMBOL) return code
         if (finishing) throw DataFormatException("Unexpected end of DEFLATE stream")
         isInputNeeded = true
         return HuffmanTree.NO_SYMBOL
     }
 
+    private fun writeLiteral(output: ByteArray, position: Int, value: Int): Int {
+        val byte = value.toByte()
+        output[position] = byte
+        window[windowPosition] = byte
+        windowPosition++
+        if (windowPosition == window.size) {
+            windowPosition = 0
+        }
+        if (windowFilled < window.size) {
+            windowFilled++
+        }
+        return position + 1
+    }
+
+    private fun writeMatch(output: ByteArray, position: Int, limit: Int, length: Int, distance: Int): Int {
+        if (distance !in 1..windowFilled) {
+            throw DataFormatException("Invalid backwards distance: $distance")
+        }
+        pendingLength = length
+        pendingDistance = distance
+        var outputPosition = position
+        var readPosition = windowPosition - distance
+        if (readPosition < 0) {
+            readPosition += window.size
+        }
+        while (pendingLength > 0 && outputPosition < limit) {
+            val byte = window[readPosition]
+            output[outputPosition++] = byte
+            window[windowPosition] = byte
+            readPosition++
+            if (readPosition == window.size) {
+                readPosition = 0
+            }
+            windowPosition++
+            if (windowPosition == window.size) {
+                windowPosition = 0
+            }
+            if (windowFilled < window.size) {
+                windowFilled++
+            }
+            pendingLength--
+        }
+        if (pendingLength == 0) {
+            pendingDistance = 0
+        }
+        return outputPosition
+    }
+
     private fun finishBlock() {
         state = State.HEADER
         pendingLength = 0
+        pendingDistance = 0
         if (isFinalBlock) ended = true
     }
 
@@ -232,31 +307,31 @@ internal class InflaterImpl(
 
     private fun decodeBlockHeader(): Boolean {
         if (!needBits(1 + DeflateConstants.BTYPE_SIZE)) return false
-        val header = bitSource.readBitsLsb(1 + DeflateConstants.BTYPE_SIZE)
-        isFinalBlock = (header and 1UL) != 0UL
-        when (header shr 1) {
-            DeflateConstants.BTYPE_STORED -> state = State.STORED_HEADER
-            DeflateConstants.BTYPE_STATIC -> {
+        val header = readBits(1 + DeflateConstants.BTYPE_SIZE)
+        isFinalBlock = (header and 1) != 0
+        when (header ushr 1) {
+            DeflateConstants.BTYPE_STORED.toInt() -> state = State.STORED_HEADER
+            DeflateConstants.BTYPE_STATIC.toInt() -> {
                 literalTree = FIXED_LITERAL_TREE
                 distanceTree = FIXED_DISTANCE_TREE
                 state = State.COMPRESSED
             }
 
-            DeflateConstants.BTYPE_DYNAMIC -> beginDynamicHeader()
+            DeflateConstants.BTYPE_DYNAMIC.toInt() -> beginDynamicHeader()
             else -> throw DataFormatException("Invalid DEFLATE block type")
         }
         return true
     }
 
     private fun decodeStoredHeader(): Boolean {
-        val padding = (Byte.SIZE_BITS - bitSource.bit) and 7
+        val padding = bitCount and 7
         if (!needBits(padding)) return false
         if (padding > 0) {
-            bitSource.skipBits(padding)
+            skipBits(padding)
         }
         if (!needBits(Short.SIZE_BITS * 2)) return false
-        val length = bitSource.readBitsLsb(Short.SIZE_BITS).toInt()
-        val inverseLength = bitSource.readBitsLsb(Short.SIZE_BITS).toInt()
+        val length = readBits(Short.SIZE_BITS)
+        val inverseLength = readBits(Short.SIZE_BITS)
         if ((length xor 0xFFFF) != inverseLength) {
             throw DataFormatException("Invalid stored block length check")
         }
@@ -265,23 +340,24 @@ internal class InflaterImpl(
         return true
     }
 
-    private fun inflateStoredBlock(targetSize: Long): Boolean {
-        while (storedRemaining > 0 && outputBuffer.size < targetSize) {
-            if (!needBits(Byte.SIZE_BITS)) return false
-            lz77.decodeLiteral(outputBuffer, bitSource.readBitsLsb(Byte.SIZE_BITS).toInt())
+    private fun inflateStoredBlock(output: ByteArray, position: Int, limit: Int): Int {
+        var outputPosition = position
+        while (storedRemaining > 0 && outputPosition < limit) {
+            if (!needBits(Byte.SIZE_BITS)) return outputPosition
+            outputPosition = writeLiteral(output, outputPosition, readBits(Byte.SIZE_BITS))
             storedRemaining--
         }
         if (storedRemaining == 0) {
             finishBlock()
         }
-        return true
+        return outputPosition
     }
 
     private fun decodeDynamicCodeLengths(): Boolean {
         while (dynamicCodeLengthIndex < dynamicCodeLengthCodesCount) {
             if (!needBits(DeflateConstants.CL_CODE_LENGTH_SIZE)) return false
             val index = DeflateConstants.CODE_LENGTH_ORDER[dynamicCodeLengthIndex++]
-            codeLengthLengths[index] = bitSource.readBitsLsb(DeflateConstants.CL_CODE_LENGTH_SIZE).toInt()
+            codeLengthLengths[index] = readBits(DeflateConstants.CL_CODE_LENGTH_SIZE)
         }
         dynamicLengthTree = HuffmanTree(codeLengthLengths, buildEncodeTable = false)
         dynamicHeaderStage = DynamicHeaderStage.TREE_LENGTHS
@@ -302,7 +378,7 @@ internal class InflaterImpl(
                 else -> throw DataFormatException("Invalid code length symbol: $symbol")
             }
             if (extraBits > 0 && !needBits(codeLength + extraBits)) return false
-            bitSource.skipBits(codeLength)
+            skipBits(codeLength)
             when (symbol) {
                 in 0..DeflateConstants.MAX_CODE_LENGTH -> {
                     dynamicLengths[dynamicLengthIndex++] = symbol
@@ -313,8 +389,7 @@ internal class InflaterImpl(
                     if (dynamicLengthIndex == 0) {
                         throw DataFormatException("Cannot repeat previous code length before any length was read")
                     }
-                    val repeatCount =
-                        DeflateConstants.SYM_REPEAT_PREVIOUS_MIN + bitSource.readBitsLsb(extraBits).toInt()
+                    val repeatCount = DeflateConstants.SYM_REPEAT_PREVIOUS_MIN + readBits(extraBits)
                     if (dynamicLengthIndex + repeatCount > dynamicLengthsCount) {
                         throw DataFormatException("Code length repeat exceeds dynamic tree size")
                     }
@@ -325,8 +400,7 @@ internal class InflaterImpl(
                 }
 
                 DeflateConstants.SYM_REPEAT_ZERO_LENGTH -> {
-                    val repeatCount =
-                        DeflateConstants.SYM_REPEAT_ZERO_LENGTH_MIN + bitSource.readBitsLsb(extraBits).toInt()
+                    val repeatCount = DeflateConstants.SYM_REPEAT_ZERO_LENGTH_MIN + readBits(extraBits)
                     if (dynamicLengthIndex + repeatCount > dynamicLengthsCount) {
                         throw DataFormatException("Code length repeat exceeds dynamic tree size")
                     }
@@ -338,8 +412,7 @@ internal class InflaterImpl(
                 }
 
                 DeflateConstants.SYM_LONG_ZERO_LENGTH_RUN -> {
-                    val repeatCount =
-                        DeflateConstants.SYM_LONG_ZERO_LENGTH_RUN_MIN + bitSource.readBitsLsb(extraBits).toInt()
+                    val repeatCount = DeflateConstants.SYM_LONG_ZERO_LENGTH_RUN_MIN + readBits(extraBits)
                     if (dynamicLengthIndex + repeatCount > dynamicLengthsCount) {
                         throw DataFormatException("Code length repeat exceeds dynamic tree size")
                     }
@@ -364,12 +437,9 @@ internal class InflaterImpl(
             if (!needBits(DeflateConstants.HLIT_SIZE + DeflateConstants.HDIST_SIZE + DeflateConstants.HCLEN_SIZE)) {
                 return false
             }
-            dynamicLiteralCodesCount =
-                DeflateConstants.HLIT_OFFSET + bitSource.readBitsLsb(DeflateConstants.HLIT_SIZE).toInt()
-            dynamicDistanceCodesCount =
-                DeflateConstants.HDIST_OFFSET + bitSource.readBitsLsb(DeflateConstants.HDIST_SIZE).toInt()
-            dynamicCodeLengthCodesCount =
-                DeflateConstants.HCLEN_OFFSET + bitSource.readBitsLsb(DeflateConstants.HCLEN_SIZE).toInt()
+            dynamicLiteralCodesCount = DeflateConstants.HLIT_OFFSET + readBits(DeflateConstants.HLIT_SIZE)
+            dynamicDistanceCodesCount = DeflateConstants.HDIST_OFFSET + readBits(DeflateConstants.HDIST_SIZE)
+            dynamicCodeLengthCodesCount = DeflateConstants.HCLEN_OFFSET + readBits(DeflateConstants.HCLEN_SIZE)
             dynamicLengthsCount = dynamicLiteralCodesCount + dynamicDistanceCodesCount
             if (dynamicLengthsCount > dynamicLengths.size) {
                 throw DataFormatException("Dynamic tree size exceeds maximum")
@@ -381,65 +451,72 @@ internal class InflaterImpl(
         return dynamicHeaderStage != DynamicHeaderStage.TREE_LENGTHS || decodeDynamicTreeLengths()
     }
 
-    private fun inflatePendingMatch(): Boolean {
+    private fun decodeMatch(output: ByteArray, position: Int, limit: Int): Int {
         val code = peekSymbol(distanceTree)
-        if (code == HuffmanTree.NO_SYMBOL) return false
+        if (code == HuffmanTree.NO_SYMBOL) return position
         val distanceSymbol = HuffmanTree.unpackSymbol(code)
         val codeLength = HuffmanTree.unpackLength(code)
         if (distanceSymbol !in DeflateConstants.DIST_BASE.indices) {
             throw DataFormatException("Invalid distance symbol: $distanceSymbol")
         }
         val extraBits = DeflateConstants.DIST_EXTRA_BITS[distanceSymbol]
-        if (extraBits > 0 && !needBits(codeLength + extraBits)) return false
-        bitSource.skipBits(codeLength)
-        val distance = DeflateConstants.DIST_BASE[distanceSymbol] + bitSource.readBitsLsb(extraBits).toInt()
-        lz77.decodeMatch(outputBuffer, pendingLength, distance)
-        pendingLength = 0
-        return true
+        if (extraBits > 0 && !needBits(codeLength + extraBits)) return position
+        skipBits(codeLength)
+        val distance = DeflateConstants.DIST_BASE[distanceSymbol] + readBits(extraBits)
+        return writeMatch(output, position, limit, pendingLength, distance)
     }
 
-    private fun inflateCompressedBlock(targetSize: Long): Boolean {
-        while (outputBuffer.size < targetSize) {
+    private fun inflateCompressedBlock(output: ByteArray, position: Int, limit: Int): Int {
+        var outputPosition = position
+        while (outputPosition < limit) {
             if (pendingLength > 0) {
-                return inflatePendingMatch()
+                outputPosition = if (pendingDistance == 0) {
+                    decodeMatch(output, outputPosition, limit)
+                }
+                else {
+                    writeMatch(output, outputPosition, limit, pendingLength, pendingDistance)
+                }
+                if (pendingLength > 0) return outputPosition
+                continue
             }
             val code = peekSymbol(literalTree)
-            if (code == HuffmanTree.NO_SYMBOL) return false
+            if (code == HuffmanTree.NO_SYMBOL) return outputPosition
             val symbol = HuffmanTree.unpackSymbol(code)
             val codeLength = HuffmanTree.unpackLength(code)
             when (symbol) {
                 in 0 until DeflateConstants.SYM_EOF -> {
-                    bitSource.skipBits(codeLength)
-                    lz77.decodeLiteral(outputBuffer, symbol)
+                    skipBits(codeLength)
+                    outputPosition = writeLiteral(output, outputPosition, symbol)
                 }
 
                 DeflateConstants.SYM_EOF -> {
-                    bitSource.skipBits(codeLength)
+                    skipBits(codeLength)
                     finishBlock()
-                    return true
+                    return outputPosition
                 }
 
                 in DeflateConstants.HLIT_OFFSET..285 -> {
                     val index = symbol - DeflateConstants.HLIT_OFFSET
                     val extraBits = DeflateConstants.LENGTH_EXTRA_BITS[index]
-                    if (extraBits > 0 && !needBits(codeLength + extraBits)) return false
-                    bitSource.skipBits(codeLength)
-                    pendingLength = DeflateConstants.LENGTH_BASE[index] + bitSource.readBitsLsb(extraBits).toInt()
-                    if (!inflatePendingMatch()) return false
+                    if (extraBits > 0 && !needBits(codeLength + extraBits)) return outputPosition
+                    skipBits(codeLength)
+                    pendingLength = DeflateConstants.LENGTH_BASE[index] + readBits(extraBits)
+                    outputPosition = decodeMatch(output, outputPosition, limit)
+                    if (pendingLength > 0) return outputPosition
                 }
 
                 else -> throw DataFormatException("Invalid literal/length symbol: $symbol")
             }
         }
-        return true
+        return outputPosition
     }
 
-    private fun inflate(targetSize: Long): Boolean = when (state) {
-        State.HEADER -> decodeBlockHeader()
-        State.STORED_HEADER -> decodeStoredHeader()
-        State.STORED -> inflateStoredBlock(targetSize)
-        State.DYNAMIC_HEADER -> decodeDynamicHeader()
-        State.COMPRESSED -> inflateCompressedBlock(targetSize)
+    private fun inflate(output: ByteArray, position: Int, limit: Int): Int = when (state) {
+        State.HEADER -> if (decodeBlockHeader()) position else position
+        State.STORED_HEADER -> if (decodeStoredHeader()) position else position
+        State.STORED -> inflateStoredBlock(output, position, limit)
+        State.DYNAMIC_HEADER -> if (decodeDynamicHeader()) position else position
+        State.COMPRESSED -> inflateCompressedBlock(output, position, limit)
     }
 
     override fun decompress( // @formatter:off
@@ -449,17 +526,15 @@ internal class InflaterImpl(
         flush: Boolean
     ): Int { // @formatter:on
         if (size <= 0) return 0
-        var flushed = outputBuffer.readAtMostTo(output, offset, offset + size).coerceAtLeast(0)
-        if (flushed > 0) {
-            bytesWritten += flushed
-            return flushed
-        }
         if (finished) return 0
-        val targetSize = size.toLong()
-        while (outputBuffer.size < targetSize && !ended) {
-            if (!inflate(targetSize)) break
+        val limit = offset + size
+        var outputPosition = offset
+        while (outputPosition < limit && !ended) {
+            val previousPosition = outputPosition
+            outputPosition = inflate(output, outputPosition, limit)
+            if (outputPosition == previousPosition && isInputNeeded) break
         }
-        flushed = outputBuffer.readAtMostTo(output, offset, offset + size).coerceAtLeast(0)
+        val flushed = outputPosition - offset
         bytesWritten += flushed
         return flushed
     }
@@ -469,13 +544,18 @@ internal class InflaterImpl(
     }
 
     override fun reset() {
-        inputBuffer.clear()
-        bitSource.reset()
-        outputBuffer.clear()
         input = ByteArray(0)
         inputOffset = 0
         inputSize = 0
+        inputPosition = 0
+        inputEnd = 0
         inputStart = 0L
+        totalBytesRead = 0L
+        bitBuffer = 0
+        bitCount = 0
+        window.fill(0)
+        windowPosition = 0
+        windowFilled = 0
         bytesWritten = 0L
         finishing = false
         ended = false
@@ -486,14 +566,13 @@ internal class InflaterImpl(
         literalTree = FIXED_LITERAL_TREE
         distanceTree = FIXED_DISTANCE_TREE
         pendingLength = 0
-        lz77.reset()
+        pendingDistance = 0
         beginDynamicHeader()
         state = State.HEADER
     }
 
     override fun close() {
         if (isClosed) return
-        bitSource.close()
         isClosed = true
     }
 }
