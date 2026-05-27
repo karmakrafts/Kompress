@@ -28,6 +28,13 @@ Compression and archiver APIs for Kotlin Multiplatform.
 - **kompress-zip**: Support for the ZIP archive container format **(WIP)**
 - **kompress-benchmarks**: Various benchmarks comparing Kompress implementations against platform references
 
+### Performance
+
+The following graph compares Kompress DEFLATE RAW performance against the standard JVM  
+implementation provided by `java.util.zip`:
+
+![Benchmark Graph](docs/kompress_vs_jvm.png)
+
 ### How to use it
 
 First, add the official Maven Central repository to your settings.gradle.kts:

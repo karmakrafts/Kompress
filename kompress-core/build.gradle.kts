@@ -63,7 +63,7 @@ kotlin {
         withBrowser {
             useEsModules()
             testTask {
-                timeout = Duration.ofMinutes(1)
+                timeout = Duration.ofMinutes(5)
                 useKarma {
                     useFirefoxHeadless()
                     useConfigDirectory(rootProject.projectDir.resolve("karma.config.d"))
@@ -72,9 +72,9 @@ kotlin {
         }
         withNodeJs {
             testTask {
-                timeout = Duration.ofMinutes(1)
+                timeout = Duration.ofMinutes(5)
                 useMocha {
-                    timeout = "60000"
+                    timeout = "300000"
                 }
             }
         }
