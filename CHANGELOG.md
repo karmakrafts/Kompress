@@ -2,18 +2,17 @@
 
 ### Added
 
-- Added `Archiver<E, D>` interface for modeling streaming archivers
-- Added `Unarchiver<E, D>` interface for modeling streaming unarchivers
-- Added `Unarchiver<E, D>.extract` extension function
-- Added `Compressor` interface for modeling streaming compressors
-- Added `Decompressor` interface for modeling streaming decompressors
-- Added `RawSource.compressingSource` and `RawSink.compressingSink` extension functions
-- Added `RawSource.decompressingSource` and `RawSink.decompressingSink` extension functions
-- Added `Source.crc32` extension function
-- Added `RawSink.crc32Sink` and `RawSource.crc32Source` extension functions
-- Added `crc32(ByteArray)` function
-- Added `kompress-gzip` module for GZip archive support via `RawSink.gzip` and `Source.ungzip` extensions
-- Added `kompress-zip` module for Zip archive support via `RawSink.zip` and `Source.unzip` extensions
+- `Archiver<E, D>` interface for modeling streaming archivers
+- `Unarchiver<E, D>` interface for modeling streaming unarchivers
+- `Unarchiver<E, D>.extract` extension function
+- `Compressor` interface for modeling streaming compressors
+- `Decompressor` interface for modeling streaming decompressors
+- `RawSource.compressingSource` and `RawSink.compressingSink` extension functions
+- `RawSource.decompressingSource` and `RawSink.decompressingSink` extension functions
+- `CRC32` for customizable and optimized checksum calculation
+- `RawSink.crc32Sink` and `RawSource.crc32Source` extension functions
+- `kompress-gzip` module for GZip archive support via `RawSink.gzip` and `Source.ungzip` extensions
+- `kompress-zip` module for Zip archive support via `RawSink.zip` and `Source.unzip` extensions
 
 ### Changed
 
