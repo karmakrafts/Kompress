@@ -68,7 +68,7 @@ Or, if you are only using Kotlin/JVM, add it to your top-level dependencies bloc
 
 #### Bulk compression
 
-If you just want to (de)compress one large blob of data, the `Deflater.deflate` and `Inflater.inflate` functions
+If you just want to (de)compress one large blob of data, the `Deflater.compress` and `Inflater.decompress` functions
 are what you're probably looking for:
 
 ```kotlin
@@ -119,7 +119,7 @@ fun main() {
 }
 ```
 
-Or you can use the recommended way of `kotlinx.io` wrappers:
+Or you can use the recommended way of using `kotlinx.io` wrappers:
 
 ```kotlin
 fun main() {

@@ -30,18 +30,10 @@ import org.jetbrains.kotlin.gradle.plugin.mpp.NativeBuildType
 
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
-    alias(libs.plugins.dokka)
     alias(libs.plugins.kotlinx.benchmark)
-    signing
-    `maven-publish`
 }
 
 configureJava(libs.versions.java)
-
-configureDokka {
-    withKotlin()
-    withKotlinxIo()
-}
 
 kotlin {
     defaultCompilerOptions()
