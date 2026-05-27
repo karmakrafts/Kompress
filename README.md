@@ -8,7 +8,7 @@
 [![](https://img.shields.io/badge/2.3.21-blue?logo=kotlin&label=kotlin)](https://kotlinlang.org/)
 [![](https://img.shields.io/badge/documentation-black?logo=kotlin)](https://docs.karmakrafts.dev/kompress-core)
 
-Compression and decompression APIs for Kotlin Multiplatform.
+Compression and archiver APIs for Kotlin Multiplatform.
 
 ### Features
 
