@@ -25,6 +25,7 @@ import kotlinx.io.readByteArray
 import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
+import kotlin.test.assertEquals
 
 class JvmInteropTest {
     private fun testKompressToJvm(data: ByteArray) {
@@ -150,5 +151,23 @@ class JvmInteropTest {
     fun `large data jvm deflater to kompress decompressing sink raw`() {
         val data = Random(42).nextBytes(1024 * 1024)
         testJvmToKompressSink(data)
+    }
+
+    @Test
+    fun `compute compressed size of jvm deflater raw stream`() {
+        val data = Random(42).nextBytes(1024 * 1024)
+        val trailer = Random(43).nextBytes(128)
+        val jDeflater = java.util.zip.Deflater(java.util.zip.Deflater.DEFAULT_COMPRESSION, true)
+        jDeflater.setInput(data)
+        jDeflater.finish()
+
+        val compressedData = ByteArray(data.size * 2)
+        val compressedLength = jDeflater.deflate(compressedData)
+        jDeflater.end()
+        val combinedData = compressedData.copyOf(compressedLength) + trailer
+        val source = Buffer().apply { write(combinedData) }
+
+        assertEquals(compressedLength, Inflater.computeCompressedSize(combinedData))
+        assertEquals(compressedLength.toLong(), Inflater.computeCompressedSize(source.peek()))
     }
 }

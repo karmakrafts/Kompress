@@ -101,7 +101,7 @@ interface Inflater : Decompressor {
                         inflater.setInput(buffer.readByteArray())
                     }
                 }
-                if (inflater.decompress(outputBuffer) == 0) break
+                if (inflater.decompress(outputBuffer) == 0 && !inflater.needsInput) break
             }
             totalRead - inflater.remaining
         }
