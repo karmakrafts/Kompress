@@ -53,6 +53,10 @@ internal object DeflateConstants {
     const val HCLEN_OFFSET: Int = 4
     const val HCLEN_SIZE: Int = 4
 
+    private const val MIN_MATCH_LENGTH: Int = 3
+    private const val MAX_MATCH_LENGTH: Int = 258
+    private const val MAX_DISTANCE: Int = 32 * 1024
+
     @JvmField
     val FIXED_LIT_TREE_LENGTHS: IntArray = IntArray(288) { i ->
         when (i) {
@@ -123,11 +127,23 @@ internal object DeflateConstants {
         13, 13
     ) // @formatter:on
 
+    @JvmField
+    val LENGTH_SYMBOLS: IntArray = IntArray(MAX_MATCH_LENGTH + 1) { length ->
+        if (length < MIN_MATCH_LENGTH) 0 else computeLengthSymbolSlow(length)
+    }
+
+    @JvmField
+    val DIST_SYMBOLS: IntArray = IntArray(MAX_DISTANCE + 1) { distance ->
+        if (distance == 0) 0 else computeDistanceSymbolSlow(distance)
+    }
+
     /**
      * See [RFC1951](https://datatracker.ietf.org/doc/html/rfc1951) 3.2.5.
      */
     @JvmStatic
-    fun computeLengthSymbol(length: Int): Int {
+    fun computeLengthSymbol(length: Int): Int = LENGTH_SYMBOLS[length]
+
+    private fun computeLengthSymbolSlow(length: Int): Int {
         if (length == 258) return 285
         var low = 0
         var high = LENGTH_BASE.size - 1
@@ -147,7 +163,9 @@ internal object DeflateConstants {
      * See [RFC1951](https://datatracker.ietf.org/doc/html/rfc1951) 3.2.5.
      */
     @JvmStatic
-    fun computeDistanceSymbol(distance: Int): Int {
+    fun computeDistanceSymbol(distance: Int): Int = DIST_SYMBOLS[distance]
+
+    private fun computeDistanceSymbolSlow(distance: Int): Int {
         var low = 0
         var high = DIST_BASE.size - 1
         while (low <= high) {

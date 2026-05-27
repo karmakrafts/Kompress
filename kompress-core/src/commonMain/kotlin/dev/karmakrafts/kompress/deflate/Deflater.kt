@@ -74,6 +74,13 @@ internal class DeflaterImpl( // @formatter:off
     level: Int,
     windowSize: Int = LZ77.DEFAULT_WINDOW_SIZE
 ) : Deflater { // @formatter:on
+    private companion object {
+        const val FIXED_BLOCK_TOKEN_THRESHOLD: Int = 512
+
+        val FIXED_LITERAL_TREE: HuffmanTree = HuffmanTree(DeflateConstants.FIXED_LIT_TREE_LENGTHS)
+        val FIXED_DISTANCE_TREE: HuffmanTree = HuffmanTree(DeflateConstants.FIXED_DIST_TREE_LENGTHS)
+    }
+
     private val lz77: LZ77 = LZ77(level = level, windowSize = windowSize)
     private var isClosed: Boolean = false
 
@@ -240,7 +247,11 @@ internal class DeflaterImpl( // @formatter:off
             bitSink.writeBitsLsb(DeflateConstants.CL_CODE_LENGTH_SIZE, lengthTreeLengths[symbol].toULong())
         }
         // RFC1951 3.2.7: write literal/length and distance code lengths through the code-length tree.
-        for ((symbol, extraBits) in symbolBuffer) {
+        var index = 0
+        while (index < symbolBuffer.size) {
+            val encodedSymbol = symbolBuffer[index]
+            val symbol = encodedSymbol.symbol
+            val extraBits = encodedSymbol.extraBits
             val (bits, length) = lengthTree.encodingOf(symbol)
             bitSink.writeBits(length, bits.toULong())
             when (symbol) {
@@ -256,6 +267,7 @@ internal class DeflaterImpl( // @formatter:off
                     DeflateConstants.SYM_LONG_ZERO_LENGTH_RUN_SIZE, extraBits.toULong()
                 )
             }
+            index++
         }
     }
 
@@ -292,26 +304,43 @@ internal class DeflaterImpl( // @formatter:off
      * See [RFC1951](https://datatracker.ietf.org/doc/html/rfc1951) sections 3.2.3 and 3.2.5.
      */
     private fun encodeTokens(tokens: List<Token>, literalTree: HuffmanTree, distanceTree: HuffmanTree) {
-        for (token in tokens) when (token) {
-            is Token.Literal -> {
-                val code = literalTree.encodingOf(token.value.toInt() and 0xFF)
-                bitSink.writeBits(code.length, code.bits.toULong())
+        var index = 0
+        while (index < tokens.size) {
+            when (val token = tokens[index]) {
+                is Token.Literal -> {
+                    val code = literalTree.encodingOf(token.value.toInt() and 0xFF)
+                    bitSink.writeBits(code.length, code.bits.toULong())
+                }
+
+                is Token.Match -> {
+                    val length = token.length
+                    val distance = token.distance
+
+                    val lengthSymbol = DeflateConstants.computeLengthSymbol(length)
+                    val lengthCode = literalTree.encodingOf(lengthSymbol)
+                    bitSink.writeBits(lengthCode.length, lengthCode.bits.toULong())
+                    encodeLengthExtra(length, lengthSymbol)
+
+                    val distanceSymbol = DeflateConstants.computeDistanceSymbol(distance)
+                    val distanceCode = distanceTree.encodingOf(distanceSymbol)
+                    bitSink.writeBits(distanceCode.length, distanceCode.bits.toULong())
+                    encodeDistanceExtra(distance, distanceSymbol)
+                }
             }
-
-            is Token.Match -> {
-                val (length, distance) = token
-
-                val lengthSymbol = DeflateConstants.computeLengthSymbol(length)
-                val lengthCode = literalTree.encodingOf(lengthSymbol)
-                bitSink.writeBits(lengthCode.length, lengthCode.bits.toULong())
-                encodeLengthExtra(length, lengthSymbol)
-
-                val distanceSymbol = DeflateConstants.computeDistanceSymbol(distance)
-                val distanceCode = distanceTree.encodingOf(distanceSymbol)
-                bitSink.writeBits(distanceCode.length, distanceCode.bits.toULong())
-                encodeDistanceExtra(distance, distanceSymbol)
-            }
+            index++
         }
+    }
+
+    /**
+     * Encodes a block of tokens using the RFC-defined fixed Huffman trees.
+     * This avoids rebuilding dynamic trees for small or fastest-level blocks where header cost dominates.
+     */
+    private fun encodeFixedBlock(tokens: List<Token>) {
+        bitSink.writeBit(if (finishing) 1U else 0U) // BFINAL
+        bitSink.writeBitsLsb(DeflateConstants.BTYPE_SIZE, DeflateConstants.BTYPE_STATIC) // BTYPE = 01
+        encodeTokens(tokens, FIXED_LITERAL_TREE, FIXED_DISTANCE_TREE)
+        val eofCode = FIXED_LITERAL_TREE.encodingOf(DeflateConstants.SYM_EOF)
+        bitSink.writeBits(eofCode.length, eofCode.bits.toULong())
     }
 
     /**
@@ -326,14 +355,18 @@ internal class DeflaterImpl( // @formatter:off
         // RFC1951 3.2.7: frequencies determine the dynamic literal/length and distance trees.
         literalFrequencies.fill(0)
         distanceFrequencies.fill(0)
-        for (token in tokens) when (token) {
-            is Token.Literal -> literalFrequencies[token.value.toInt() and 0xFF]++
-            is Token.Match -> {
-                val lengthSymbol = DeflateConstants.computeLengthSymbol(token.length)
-                literalFrequencies[lengthSymbol]++
-                val distanceSymbol = DeflateConstants.computeDistanceSymbol(token.distance)
-                distanceFrequencies[distanceSymbol]++
+        var index = 0
+        while (index < tokens.size) {
+            when (val token = tokens[index]) {
+                is Token.Literal -> literalFrequencies[token.value.toInt() and 0xFF]++
+                is Token.Match -> {
+                    val lengthSymbol = DeflateConstants.computeLengthSymbol(token.length)
+                    literalFrequencies[lengthSymbol]++
+                    val distanceSymbol = DeflateConstants.computeDistanceSymbol(token.distance)
+                    distanceFrequencies[distanceSymbol]++
+                }
             }
+            index++
         }
         literalFrequencies[DeflateConstants.SYM_EOF]++ // RFC1951 3.2.3: end-of-block symbol 256 occurs once.
         // RFC1951 3.2.7: construct and emit the dynamic Huffman trees before compressed data.
@@ -364,7 +397,7 @@ internal class DeflaterImpl( // @formatter:off
             // If we are just finishing up, make sure to flush the last pending byte and return
             if (finishing && !finished) {
                 if (!wroteFinalBlock) {
-                    encodeDynamicBlock(emptyList())
+                    encodeFixedBlock(emptyList())
                     wroteFinalBlock = true
                 }
                 bitSink.flush()
@@ -384,7 +417,12 @@ internal class DeflaterImpl( // @formatter:off
         if (finishing) {
             wroteFinalBlock = true
         }
-        encodeDynamicBlock(tokenBuffer)
+        if (level == Deflater.MIN_LEVEL || tokenBuffer.size <= FIXED_BLOCK_TOKEN_THRESHOLD) {
+            encodeFixedBlock(tokenBuffer)
+        }
+        else {
+            encodeDynamicBlock(tokenBuffer)
+        }
         remaining = 0
         // Flush out any pending data before returning
         flushed = buffer.readAtMostTo(output, offset, offset + size).coerceAtLeast(0)

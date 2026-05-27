@@ -120,7 +120,7 @@ private class CRC32Impl( // @formatter:off
     companion object {
         private const val TABLE_SIZE: Int = 256
         private const val TABLE_SHIFT: Int = 8
-        private const val SLICING_FACTOR: Int = 8
+        private const val SLICING_FACTOR: Int = 16
     }
 
     private var value: Int = initialValue.toInt()
@@ -166,6 +166,22 @@ private class CRC32Impl( // @formatter:off
         value = (value ushr 8) xor baseTable[tableIndex]
     }
 
+    private fun roundSlice4(data: ByteArray, offset: Int) {
+        val b0 = data[offset + 0].toInt() and 0xFF
+        val b1 = data[offset + 1].toInt() and 0xFF
+        val b2 = data[offset + 2].toInt() and 0xFF
+        val b3 = data[offset + 3].toInt() and 0xFF
+        // XOR first 4 bytes into CRC
+        val base = value xor (b0 or (b1 shl 8) or (b2 shl 16) or (b3 shl 24))
+        // Fold 8 bytes using the parallel table
+        // @formatter:off
+        value = parallelTable[(7 shl TABLE_SHIFT) or (base and 0xFF)] xor
+            parallelTable[(6 shl TABLE_SHIFT) or ((base ushr 8) and 0xFF)] xor
+            parallelTable[(5 shl TABLE_SHIFT) or ((base ushr 16) and 0xFF)] xor
+            parallelTable[(4 shl TABLE_SHIFT) or ((base ushr 24) and 0xFF)]
+        // @formatter:on
+    }
+
     private fun roundSlice8(data: ByteArray, offset: Int) {
         val b0 = data[offset + 0].toInt() and 0xFF
         val b1 = data[offset + 1].toInt() and 0xFF
@@ -190,16 +206,68 @@ private class CRC32Impl( // @formatter:off
         // @formatter:on
     }
 
+    private fun roundSlice16(data: ByteArray, offset: Int) {
+        val b0 = data[offset + 0].toInt() and 0xFF
+        val b1 = data[offset + 1].toInt() and 0xFF
+        val b2 = data[offset + 2].toInt() and 0xFF
+        val b3 = data[offset + 3].toInt() and 0xFF
+        val b4 = data[offset + 4].toInt() and 0xFF
+        val b5 = data[offset + 5].toInt() and 0xFF
+        val b6 = data[offset + 6].toInt() and 0xFF
+        val b7 = data[offset + 7].toInt() and 0xFF
+        val b8 = data[offset + 8].toInt() and 0xFF
+        val b9 = data[offset + 9].toInt() and 0xFF
+        val b10 = data[offset + 10].toInt() and 0xFF
+        val b11 = data[offset + 11].toInt() and 0xFF
+        val b12 = data[offset + 12].toInt() and 0xFF
+        val b13 = data[offset + 13].toInt() and 0xFF
+        val b14 = data[offset + 14].toInt() and 0xFF
+        val b15 = data[offset + 15].toInt() and 0xFF
+        // XOR first 4 bytes into CRC
+        val base = value xor (b0 or (b1 shl 8) or (b2 shl 16) or (b3 shl 24))
+        // Fold 8 bytes using the parallel table
+        // @formatter:off
+        value = parallelTable[(15 shl TABLE_SHIFT) or (base and 0xFF)] xor
+            parallelTable[(14 shl TABLE_SHIFT) or ((base ushr 8) and 0xFF)] xor
+            parallelTable[(13 shl TABLE_SHIFT) or ((base ushr 16) and 0xFF)] xor
+            parallelTable[(12 shl TABLE_SHIFT) or ((base ushr 24) and 0xFF)] xor
+            parallelTable[(11 shl TABLE_SHIFT) or b4] xor
+            parallelTable[(10 shl TABLE_SHIFT) or b5] xor
+            parallelTable[(9 shl TABLE_SHIFT) or b6] xor
+            parallelTable[(8 shl TABLE_SHIFT) or b7] xor
+            parallelTable[(7 shl TABLE_SHIFT) or b8] xor
+            parallelTable[(6 shl TABLE_SHIFT) or b9] xor
+            parallelTable[(5 shl TABLE_SHIFT) or b10] xor
+            parallelTable[(4 shl TABLE_SHIFT) or b11] xor
+            parallelTable[(3 shl TABLE_SHIFT) or b12] xor
+            parallelTable[(2 shl TABLE_SHIFT) or b13] xor
+            parallelTable[(1 shl TABLE_SHIFT) or b14] xor
+            parallelTable[b15]
+        // @formatter:on
+    }
+
     override fun round(data: ByteArray, offset: Int, size: Int) {
         if (data.isEmpty()) return
         // Compute round for bulk data using slicing
         var remaining = size
         var index = 0
         while (remaining > 0) when {
+            remaining >= 16 -> {
+                roundSlice16(data, offset + index)
+                index += 16
+                remaining -= 16
+            }
+
             remaining >= 8 -> {
                 roundSlice8(data, offset + index)
                 index += 8
                 remaining -= 8
+            }
+
+            remaining >= 4 -> {
+                roundSlice4(data, offset + index)
+                index += 4
+                remaining -= 4
             }
 
             else -> { // Single bytes
