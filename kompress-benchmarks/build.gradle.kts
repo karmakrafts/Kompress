@@ -72,6 +72,8 @@ benchmark {
         register("linuxX64")
         register("linuxArm64")
         register("mingwX64")
+        register("js")
+        register("wasmJs")
     }
     configurations {
         named("main") {

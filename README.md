@@ -30,10 +30,12 @@ Compression and archiver APIs for Kotlin Multiplatform.
 
 ### Performance
 
-The following graph compares Kompress DEFLATE RAW performance against the standard JVM  
-implementation provided by `java.util.zip`:
+The following graphs give a rough illustration of the performance of this library compared to other
+solutions, and how compression level affects performance:
 
-![Benchmark Graph](docs/kompress_vs_jvm.png)
+![Platform Benchmark Graph](docs/kompress_vs_platforms.png)
+![JVM Benchmark Graph](docs/kompress_vs_jvm.png)
+![Native Benchmark Graph](docs/kompress_vs_zlib.png)
 
 ### How to use it
 

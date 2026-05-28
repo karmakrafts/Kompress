@@ -25,14 +25,21 @@ import kotlin.random.Random
 import kotlin.time.Clock
 
 abstract class AbstractJvmDeflaterBenchmark(private val level: Int) {
+    companion object {
+        private const val DATA_SIZE: Int = 128
+        private const val DATA_COUNT: Int = 100
+    }
+
     protected val deflater: Deflater = Deflater(level, true)
     protected val random: Random = Random(Clock.System.now().epochSeconds)
+    protected var dataIndex: Int = 0
+    protected val data: Array<ByteArray> = Array(DATA_COUNT) { random.nextBytes(DATA_SIZE) }
 
     @JvmName("run")
     @Benchmark
     fun run(): ByteArray {
         // Same code as in compressBulk()
-        deflater.setInput(random.nextBytes(128))
+        deflater.setInput(data[dataIndex++ % DATA_COUNT])
         deflater.finish()
         val buffer = Buffer()
         val chunkBuffer = ByteArray(4096)
@@ -46,6 +53,6 @@ abstract class AbstractJvmDeflaterBenchmark(private val level: Int) {
 
     @TearDown
     fun tearDown() {
-
+        deflater.end()
     }
 }

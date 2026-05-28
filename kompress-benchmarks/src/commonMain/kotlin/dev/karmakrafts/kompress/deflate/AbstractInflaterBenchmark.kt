@@ -23,14 +23,22 @@ import kotlin.random.Random
 import kotlin.time.Clock
 
 abstract class AbstractInflaterBenchmark(level: Int) {
+    companion object {
+        private const val DATA_SIZE: Int = 128
+        private const val DATA_COUNT: Int = 100
+    }
+
     protected val inflater: Inflater = Inflater()
     protected val random: Random = Random(Clock.System.now().epochSeconds)
-    protected val data: ByteArray = Deflater.compress(random.nextBytes(128), level = level)
+    protected var dataIndex: Int = 0
+    protected val data: Array<ByteArray> = Array(DATA_COUNT) {
+        Deflater.compress(random.nextBytes(DATA_SIZE), level = level)
+    }
 
     @JvmName("run")
     @Benchmark
     fun run(): ByteArray {
-        return inflater.decompressBulk(data)
+        return inflater.decompressBulk(data[dataIndex++ % DATA_COUNT])
     }
 
     @TearDown
