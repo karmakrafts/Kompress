@@ -69,8 +69,6 @@ private class ZipArchiver(
         if (languageEncoding) value.encodeToByteArray()
         else value.encodeToCP437()
 
-    private fun writeString(value: ByteArray) = buffer.write(value)
-
     private fun effectiveGPBF(entry: ZipEntry): UShort = entry.gpbf.value or ZipGPBF.OMIT_CHECKSUM_AND_SIZES
 
     private fun versionNeeded(entry: ZipEntry): UShort = when {
@@ -126,7 +124,7 @@ private class ZipArchiver(
         )
         buffer.writeUShortLeFast(name.size.toUShort())
         buffer.writeUShortLeFast(entry.extraFields.byteSize.toUShort())
-        writeString(name)
+        buffer.write(name)
         entry.extraFields.encode(buffer)
         flushBuffer()
     }
@@ -168,9 +166,9 @@ private class ZipArchiver(
         buffer.writeUShortLeFast(ZipConstants.NO_INTERNAL_FILE_ATTRIBUTES)
         buffer.writeUIntLeFast(ZipConstants.NO_EXTERNAL_FILE_ATTRIBUTES)
         buffer.writeUIntLeFast(UInt.fromSize(localHeaderOffset, isZip64))
-        writeString(name)
+        buffer.write(name)
         entry.extraFields.encode(buffer)
-        writeString(comment)
+        buffer.write(comment)
         flushBuffer()
     }
 
