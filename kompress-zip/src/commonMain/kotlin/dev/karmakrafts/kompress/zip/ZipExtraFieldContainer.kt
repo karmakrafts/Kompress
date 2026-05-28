@@ -32,6 +32,6 @@ value class ZipExtraFieldContainer(
     inline val byteSize: Long get() = sumOf(ZipExtraFieldEntry::size)
 
     fun encode(sink: Sink) {
-        // TODO: implement this
+        forEach { entry -> entry.encode(sink) }
     }
 }

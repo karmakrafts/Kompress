@@ -26,11 +26,11 @@ import kotlin.jvm.JvmInline
 @JvmInline
 value class ZipGPBF(val value: UShort) {
     companion object {
-        const val OMIT_CHECKSUM_AND_SIZES: UShort = 0b00000000_00000100U
+        const val OMIT_CHECKSUM_AND_SIZES: UShort = 0b00000000_00001000U
         const val PATCHED_DATA: UShort = 0b00000000_00010000U
-        const val STRONG_ENCRYPTION: UShort = 0b00000000_00100000U
-        const val LANGUAGE_ENCODING: UShort = 0b00000100_00000000U
-        const val MASKED_HEADER_VALUES: UShort = 0b00010000_00000000U
+        const val STRONG_ENCRYPTION: UShort = 0b00000000_01000000U
+        const val LANGUAGE_ENCODING: UShort = 0b00001000_00000000U
+        const val MASKED_HEADER_VALUES: UShort = 0b00100000_00000000U
     }
 
     constructor(

@@ -25,19 +25,17 @@ import dev.karmakrafts.kompress.InternalCompressionApi
 import dev.karmakrafts.kompress.archive.Archiver
 import dev.karmakrafts.kompress.compressingSink
 import dev.karmakrafts.kompress.crc.CRC32
-import dev.karmakrafts.kompress.crc.round
 import dev.karmakrafts.kompress.deflate.Deflater
 import dev.karmakrafts.kompress.exception.UnsupportedCompressionMethodException
+import dev.karmakrafts.kompress.util.encodeToCP437
 import dev.karmakrafts.kompress.util.packDateWord
 import dev.karmakrafts.kompress.util.packTimeWord
-import dev.karmakrafts.kompress.util.writeCP437String
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import kotlinx.io.Buffer
 import kotlinx.io.RawSink
 import kotlinx.io.Sink
-import kotlinx.io.writeString
-import kotlinx.io.writeUIntLe
+import kotlinx.io.readByteArray
 import kotlin.time.Instant
 
 @OptIn(InternalCompressionApi::class, ExperimentalCompressionApi::class)
@@ -51,26 +49,43 @@ private class ZipArchiver(
         val entry: ZipEntry,
         val checksum: UInt,
         val uncompressedSize: Long,
-        val compressedSize: Long
+        val compressedSize: Long,
+        val localHeaderOffset: Long
     ) // @formatter:on
 
     private val buffer: Buffer = Buffer()
     private var isClosed: Boolean = false
     private val entries: ArrayDeque<QueuedEntry> = ArrayDeque()
     private val crc32: CRC32 = CRC32()
+    private var bytesWritten: Long = 0L
 
     private fun flushBuffer() {
-        sink.write(buffer, buffer.size)
+        val byteCount = buffer.size
+        sink.write(buffer, byteCount)
+        bytesWritten += byteCount
     }
 
-    private fun writeString(languageEncoding: Boolean, value: String) {
-        if (languageEncoding) {
-            // We need to encode as UTF-8 directly
-            buffer.writeString(value)
-            return
-        }
-        buffer.writeCP437String(value)
+    private fun encodeString(languageEncoding: Boolean, value: String): ByteArray =
+        if (languageEncoding) value.encodeToByteArray()
+        else value.encodeToCP437()
+
+    private fun writeString(value: ByteArray) = buffer.write(value)
+
+    private fun effectiveGPBF(entry: ZipEntry): UShort = entry.gpbf.value or ZipGPBF.OMIT_CHECKSUM_AND_SIZES
+
+    private fun versionNeeded(entry: ZipEntry): UShort = when {
+        entry.isZip64 -> ZipConstants.ZIP64_ZIP_VERSION
+        entry.compressionMethod == ZipCompressionMethod.DEFLATE -> ZipConstants.DEFLATE_ZIP_VERSION
+        else -> ZipConstants.STORED_ZIP_VERSION
     }
+
+    private fun isZip64Required(
+        entry: ZipEntry, uncompressedSize: Long, compressedSize: Long, localHeaderOffset: Long
+    ): Boolean =
+        entry.isZip64 || uncompressedSize > ZipConstants.STANDARD_FIELD_MAX_VALUE || compressedSize > ZipConstants.STANDARD_FIELD_MAX_VALUE || localHeaderOffset > ZipConstants.STANDARD_FIELD_MAX_VALUE
+
+    private fun UInt.Companion.fromSize(size: Long, isZip64: Boolean): UInt =
+        if (isZip64) ZipConstants.ZIP64_EXTENDED_FIELD_MARKER else size.toUInt()
 
     /**
      * See [PKWARE APPNOTE](https://pkware.cachefly.net/webdocs/casestudies/APPNOTE.TXT) 4.4.6.
@@ -84,8 +99,8 @@ private class ZipArchiver(
     /**
      * See [PKWARE APPNOTE](https://pkware.cachefly.net/webdocs/casestudies/APPNOTE.TXT) 4.3.9.
      */
-    private fun writeDataDescriptor(isZip64: Boolean, checksum: UInt, uncompressedSize: Long, compressedSize: Long) {
-        buffer.writeUIntLe(checksum)
+    private fun writeChecksumAndSizes(isZip64: Boolean, checksum: UInt, uncompressedSize: Long, compressedSize: Long) {
+        buffer.writeUIntLeFast(checksum)
         // When dealing with ZIP64, size fields are 8 bytes instead of 4
         if (isZip64) {
             buffer.writeULongLeFast(compressedSize.toULong())
@@ -100,25 +115,27 @@ private class ZipArchiver(
      * See [PKWARE APPNOTE](https://pkware.cachefly.net/webdocs/casestudies/APPNOTE.TXT) 4.3.7.
      */
     private fun appendLocalFileHeader(entry: ZipEntry) {
+        val name = encodeString(entry.gpbf.languageEncoding, entry.name)
         buffer.writeUIntLeFast(ZipConstants.LOCAL_FILE_HEADER_MAGIC)
-        buffer.writeUShortLeFast(ZipConstants.LATEST_ZIP_VERSION) // TODO: determine this based on features?
-        buffer.writeUShortLeFast(entry.gpbf.value)
+        buffer.writeUShortLeFast(versionNeeded(entry))
+        buffer.writeUShortLeFast(effectiveGPBF(entry))
         buffer.writeUShortLeFast(entry.compressionMethod.encodedValue)
         writeTimestamp(entry.modificationTime)
-        if (entry.gpbf.omitChecksumAndSizes) writeDataDescriptor(entry.isZip64, 0U, 0L, 0L)
-        else writeDataDescriptor(entry.isZip64, 0U, 0L, 0L) // TODO: implement support for these
-        buffer.writeUShortLeFast(entry.name.length.toUShort())
+        writeChecksumAndSizes(
+            entry.isZip64, ZipConstants.DEFERRED_CHECKSUM, ZipConstants.DEFERRED_SIZE, ZipConstants.DEFERRED_SIZE
+        )
+        buffer.writeUShortLeFast(name.size.toUShort())
         buffer.writeUShortLeFast(entry.extraFields.byteSize.toUShort())
-        writeString(entry.gpbf.languageEncoding, entry.name)
+        writeString(name)
         entry.extraFields.encode(buffer)
         flushBuffer()
     }
 
     /**
-     * @see writeDataDescriptor
+     * @see writeChecksumAndSizes
      */
     private fun appendDataDescriptor(isZip64: Boolean, checksum: UInt, uncompressedSize: Long, compressedSize: Long) {
-        writeDataDescriptor(isZip64, checksum, uncompressedSize, compressedSize)
+        writeChecksumAndSizes(isZip64, checksum, uncompressedSize, compressedSize)
         flushBuffer()
     }
 
@@ -129,37 +146,37 @@ private class ZipArchiver(
         entry: ZipEntry,
         checksum: UInt,
         uncompressedSize: Long,
-        compressedSize: Long
+        compressedSize: Long,
+        localHeaderOffset: Long
     ) { // @formatter:on
+        val name = encodeString(entry.gpbf.languageEncoding, entry.name)
+        val comment = entry.comment?.let { value -> encodeString(entry.gpbf.languageEncoding, value) } ?: ByteArray(0)
+        val isZip64 = isZip64Required(entry, uncompressedSize, compressedSize, localHeaderOffset)
         buffer.writeUIntLeFast(ZipConstants.CENTRAL_FILE_HEADER_MAGIC)
-        buffer.writeUShortLeFast(ZipConstants.LATEST_ZIP_VERSION) // TODO: determine this based on features?
-        buffer.writeUShortLeFast(ZipConstants.LATEST_ZIP_VERSION) // TODO: set a sensible default for our own version
-        buffer.writeUShortLeFast(entry.gpbf.value)
+        buffer.writeUShortLeFast(ZipConstants.LATEST_ZIP_VERSION)
+        buffer.writeUShortLeFast(if (isZip64) ZipConstants.ZIP64_ZIP_VERSION else versionNeeded(entry))
+        buffer.writeUShortLeFast(effectiveGPBF(entry))
         buffer.writeUShortLeFast(entry.compressionMethod.encodedValue)
         writeTimestamp(entry.modificationTime)
-        writeDataDescriptor(entry.isZip64, checksum, uncompressedSize, compressedSize)
-        buffer.writeUShortLeFast(0U) // TODO: file name length
-        buffer.writeUShortLeFast(0U) // TODO: extra field length
-        buffer.writeUShortLeFast(0U) // TODO: file comment length
-        buffer.writeUShortLeFast(0U) // TODO: disk number start
-        buffer.writeUShortLeFast(0U) // TODO: internal file attribs
-        buffer.writeUIntLeFast(0U) // TODO: external file attribs
-        buffer.writeUIntLeFast(0U) // TODO: relative offset of local header
-        // TODO: file name
-        // TODO: extra field
-        // TODO: file comment
+        buffer.writeUIntLeFast(checksum)
+        buffer.writeUIntLeFast(UInt.fromSize(compressedSize, isZip64))
+        buffer.writeUIntLeFast(UInt.fromSize(uncompressedSize, isZip64))
+        buffer.writeUShortLeFast(name.size.toUShort())
+        buffer.writeUShortLeFast(entry.extraFields.byteSize.toUShort())
+        buffer.writeUShortLeFast(comment.size.toUShort())
+        buffer.writeUShortLeFast(ZipConstants.FIRST_DISK_NUMBER)
+        buffer.writeUShortLeFast(ZipConstants.NO_INTERNAL_FILE_ATTRIBUTES)
+        buffer.writeUIntLeFast(ZipConstants.NO_EXTERNAL_FILE_ATTRIBUTES)
+        buffer.writeUIntLeFast(UInt.fromSize(localHeaderOffset, isZip64))
+        writeString(name)
+        entry.extraFields.encode(buffer)
+        writeString(comment)
         flushBuffer()
     }
 
-    /**
-     * See [PKWARE APPNOTE](https://pkware.cachefly.net/webdocs/casestudies/APPNOTE.TXT) 4.3.13.
-     */
-    private fun appendDigitalSignature() {
-        // TODO: implement this
-    }
-
-    private inline fun appendData(compressor: Compressor, callback: (Sink) -> Boolean): UInt {
+    private inline fun appendData(compressor: Compressor, callback: (Sink) -> Boolean): Pair<UInt, Long> {
         crc32.reset()
+        var uncompressedSize = 0L
         sink.compressingSink( // @formatter:off
             compressor = compressor,
             isSinkOwned = false,
@@ -169,38 +186,107 @@ private class ZipArchiver(
             while (hasMore) {
                 hasMore = callback(buffer)
                 if (buffer.size > 0L) {
-                    crc32.round(buffer.peek(), buffer.size)
                     val chunkSize = buffer.size
+                    val chunk = buffer.readByteArray()
+                    for (byte in chunk) crc32.round(byte)
+                    buffer.write(chunk)
                     compressingSink.write(buffer, chunkSize)
+                    uncompressedSize += chunkSize
                 }
             }
         }
-        return crc32.finalize()
+        bytesWritten += compressor.bytesWritten
+        return crc32.finalize() to uncompressedSize
     }
 
     override fun appendEntry(entry: ZipEntry, callback: (Sink) -> Boolean) {
+        val localHeaderOffset = bytesWritten
         appendLocalFileHeader(entry)
         val method = entry.compressionMethod
         val compressor = compressors[method]
             ?: throw UnsupportedCompressionMethodException("No compressor specified for ZIP compression method $method")
         compressor.reset()
-        val checksum = appendData(compressor, callback)
-        val uncompressedSize = compressor.bytesRead
+        val (checksum, uncompressedSize) = appendData(compressor, callback)
         val compressedSize = compressor.bytesWritten
-        if (entry.gpbf.omitChecksumAndSizes) {
-            appendDataDescriptor(entry.isZip64, checksum, uncompressedSize, compressedSize)
-        }
-        entries += QueuedEntry(entry, checksum, uncompressedSize, compressedSize) // Queue entry so we can generate CDHs
+        appendDataDescriptor(
+            isZip64Required(entry, uncompressedSize, compressedSize, localHeaderOffset),
+            checksum,
+            uncompressedSize,
+            compressedSize
+        )
+        entries += QueuedEntry(
+            entry, checksum, uncompressedSize, compressedSize, localHeaderOffset
+        ) // Queue entry so we can generate CDHs
+    }
+
+    /**
+     * See [PKWARE APPNOTE](https://pkware.cachefly.net/webdocs/casestudies/APPNOTE.TXT) 4.3.14.
+     */
+    private fun appendZip64EndOfCentralDirectory(
+        entryCount: Long, centralDirectorySize: Long, centralDirectoryOffset: Long
+    ) {
+        buffer.writeUIntLeFast(ZipConstants.ZIP64_END_OF_CENTRAL_DIRECTORY_MAGIC)
+        buffer.writeULongLeFast(ZipConstants.ZIP64_END_OF_CENTRAL_DIRECTORY_RECORD_SIZE)
+        buffer.writeUShortLeFast(ZipConstants.LATEST_ZIP_VERSION)
+        buffer.writeUShortLeFast(ZipConstants.ZIP64_ZIP_VERSION)
+        buffer.writeUIntLeFast(ZipConstants.ZIP64_FIRST_DISK_NUMBER)
+        buffer.writeUIntLeFast(ZipConstants.ZIP64_FIRST_DISK_NUMBER)
+        buffer.writeULongLeFast(entryCount.toULong())
+        buffer.writeULongLeFast(entryCount.toULong())
+        buffer.writeULongLeFast(centralDirectorySize.toULong())
+        buffer.writeULongLeFast(centralDirectoryOffset.toULong())
+        flushBuffer()
+    }
+
+    /**
+     * See [PKWARE APPNOTE](https://pkware.cachefly.net/webdocs/casestudies/APPNOTE.TXT) 4.3.15.
+     */
+    private fun appendZip64EndOfCentralDirectoryLocator(zip64EndOfCentralDirectoryOffset: Long) {
+        buffer.writeUIntLeFast(ZipConstants.ZIP64_END_OF_CENTRAL_DIRECTORY_LOCATOR_MAGIC)
+        buffer.writeUIntLeFast(ZipConstants.ZIP64_FIRST_DISK_NUMBER)
+        buffer.writeULongLeFast(zip64EndOfCentralDirectoryOffset.toULong())
+        buffer.writeUIntLeFast(ZipConstants.ZIP64_DISK_COUNT)
+        flushBuffer()
+    }
+
+    /**
+     * See [PKWARE APPNOTE](https://pkware.cachefly.net/webdocs/casestudies/APPNOTE.TXT) 4.3.16.
+     */
+    private fun appendEndOfCentralDirectory(
+        entryCount: Long, centralDirectorySize: Long, centralDirectoryOffset: Long, isZip64: Boolean
+    ) {
+        buffer.writeUIntLeFast(ZipConstants.END_OF_CENTRAL_DIRECTORY_MAGIC)
+        buffer.writeUShortLeFast(ZipConstants.FIRST_DISK_NUMBER)
+        buffer.writeUShortLeFast(ZipConstants.FIRST_DISK_NUMBER)
+        buffer.writeUShortLeFast(if (isZip64) ZipConstants.ZIP64_ENTRY_COUNT_MARKER else entryCount.toUShort())
+        buffer.writeUShortLeFast(if (isZip64) ZipConstants.ZIP64_ENTRY_COUNT_MARKER else entryCount.toUShort())
+        buffer.writeUIntLeFast(if (isZip64) ZipConstants.ZIP64_EXTENDED_FIELD_MARKER else centralDirectorySize.toUInt())
+        buffer.writeUIntLeFast(if (isZip64) ZipConstants.ZIP64_EXTENDED_FIELD_MARKER else centralDirectoryOffset.toUInt())
+        buffer.writeUShortLeFast(ZipConstants.NO_ARCHIVE_COMMENT_LENGTH)
+        flushBuffer()
     }
 
     private fun finalizeArchive() {
         // TODO: we don't support ADH and AEDR right now, so just omit it
         // Generate central directory headers for all queued ZIP entries
+        val entryCount = entries.size.toLong()
+        val centralDirectoryOffset = bytesWritten
+        var needsZip64 =
+            entryCount > ZipConstants.STANDARD_ENTRY_COUNT_MAX_VALUE || centralDirectoryOffset > ZipConstants.STANDARD_FIELD_MAX_VALUE
         while (entries.isNotEmpty()) {
-            val (entry, checksum, uncompressedSize, compressedSize) = entries.removeFirst()
-            appendCentralDirectoryHeader(entry, checksum, uncompressedSize, compressedSize)
+            val (entry, checksum, uncompressedSize, compressedSize, localHeaderOffset) = entries.removeFirst()
+            needsZip64 = needsZip64 || isZip64Required(entry, uncompressedSize, compressedSize, localHeaderOffset)
+            appendCentralDirectoryHeader(entry, checksum, uncompressedSize, compressedSize, localHeaderOffset)
         }
-        appendDigitalSignature()
+        val centralDirectorySize = bytesWritten - centralDirectoryOffset
+        needsZip64 = needsZip64 || centralDirectorySize > ZipConstants.STANDARD_FIELD_MAX_VALUE
+        // Digital signature would go here
+        if (needsZip64) {
+            val zip64EndOfCentralDirectoryOffset = bytesWritten
+            appendZip64EndOfCentralDirectory(entryCount, centralDirectorySize, centralDirectoryOffset)
+            appendZip64EndOfCentralDirectoryLocator(zip64EndOfCentralDirectoryOffset)
+        }
+        appendEndOfCentralDirectory(entryCount, centralDirectorySize, centralDirectoryOffset, needsZip64)
     }
 
     override fun close() {
