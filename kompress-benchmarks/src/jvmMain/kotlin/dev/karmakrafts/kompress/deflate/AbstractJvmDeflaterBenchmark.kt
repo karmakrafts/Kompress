@@ -21,31 +21,26 @@ import kotlinx.benchmark.TearDown
 import kotlinx.io.Buffer
 import kotlinx.io.readByteArray
 import java.util.zip.Deflater
-import kotlin.random.Random
-import kotlin.time.Clock
 
-abstract class AbstractJvmDeflaterBenchmark(private val level: Int) {
+abstract class AbstractJvmDeflaterBenchmark(level: Int) {
     companion object {
-        private const val DATA_SIZE: Int = 128
-        private const val DATA_COUNT: Int = 100
+        private const val DATA_SIZE: Int = 1024 * 1024 // 1MiB
     }
 
     protected val deflater: Deflater = Deflater(level, true)
-    protected val random: Random = Random(Clock.System.now().epochSeconds)
-    protected var dataIndex: Int = 0
-    protected val data: Array<ByteArray> = Array(DATA_COUNT) { random.nextBytes(DATA_SIZE) }
+    protected val data: ByteArray = ByteArray(DATA_SIZE) { 1 }
+    protected val buffer: Buffer = Buffer()
+    protected val chunkBuffer: ByteArray = ByteArray(4096)
 
     @JvmName("run")
     @Benchmark
     fun run(): ByteArray {
-        // Same code as in compressBulk()
-        deflater.setInput(data[dataIndex++ % DATA_COUNT])
+        deflater.reset()
+        deflater.setInput(data)
         deflater.finish()
-        val buffer = Buffer()
-        val chunkBuffer = ByteArray(4096)
         while (true) {
             val bytesCompressed = deflater.deflate(chunkBuffer)
-            if (bytesCompressed == 0) break
+            if (bytesCompressed == 0 || deflater.needsInput()) break
             buffer.write(chunkBuffer, 0, bytesCompressed)
         }
         return buffer.readByteArray()

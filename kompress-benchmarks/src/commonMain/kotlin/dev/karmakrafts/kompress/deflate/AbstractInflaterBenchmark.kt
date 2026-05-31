@@ -18,27 +18,32 @@ package dev.karmakrafts.kompress.deflate
 
 import kotlinx.benchmark.Benchmark
 import kotlinx.benchmark.TearDown
+import kotlinx.io.Buffer
+import kotlinx.io.readByteArray
 import kotlin.jvm.JvmName
-import kotlin.random.Random
-import kotlin.time.Clock
 
 abstract class AbstractInflaterBenchmark(level: Int) {
     companion object {
-        private const val DATA_SIZE: Int = 128
-        private const val DATA_COUNT: Int = 100
+        private const val DATA_SIZE: Int = 1024 * 1024 // 1MiB
     }
 
     protected val inflater: Inflater = Inflater()
-    protected val random: Random = Random(Clock.System.now().epochSeconds)
-    protected var dataIndex: Int = 0
-    protected val data: Array<ByteArray> = Array(DATA_COUNT) {
-        Deflater.compress(random.nextBytes(DATA_SIZE), level = level)
-    }
+    protected val data: ByteArray = Deflater.compress(ByteArray(DATA_SIZE) { 1 }, level = level)
+    protected val buffer: Buffer = Buffer()
+    protected val chunkBuffer: ByteArray = ByteArray(4096)
 
     @JvmName("run")
     @Benchmark
     fun run(): ByteArray {
-        return inflater.decompressBulk(data[dataIndex++ % DATA_COUNT])
+        inflater.reset()
+        inflater.setInput(data)
+        inflater.finish()
+        while (true) {
+            val bytesDecompressed = inflater.decompress(chunkBuffer)
+            if (bytesDecompressed == 0 || inflater.needsInput) break
+            buffer.write(chunkBuffer, 0, bytesDecompressed)
+        }
+        return buffer.readByteArray()
     }
 
     @TearDown

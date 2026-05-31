@@ -113,7 +113,7 @@ fun CRC32.once(source: Source, size: Long): UInt {
     return finalize()
 }
 
-private class CRC32Impl( // @formatter:off
+internal class CRC32Impl( // @formatter:off
     override val polynomial: UInt,
     override val initialValue: UInt
 ) : CRC32 { // @formatter:on
@@ -164,22 +164,6 @@ private class CRC32Impl( // @formatter:off
     override fun round(byte: Byte) {
         val tableIndex = (value xor (byte.toInt() and 0xFF)) and 0xFF
         value = (value ushr 8) xor baseTable[tableIndex]
-    }
-
-    private fun roundSlice4(data: ByteArray, offset: Int) {
-        val b0 = data[offset + 0].toInt() and 0xFF
-        val b1 = data[offset + 1].toInt() and 0xFF
-        val b2 = data[offset + 2].toInt() and 0xFF
-        val b3 = data[offset + 3].toInt() and 0xFF
-        // XOR first 4 bytes into CRC
-        val base = value xor (b0 or (b1 shl 8) or (b2 shl 16) or (b3 shl 24))
-        // Fold 8 bytes using the parallel table
-        // @formatter:off
-        value = parallelTable[(7 shl TABLE_SHIFT) or (base and 0xFF)] xor
-            parallelTable[(6 shl TABLE_SHIFT) or ((base ushr 8) and 0xFF)] xor
-            parallelTable[(5 shl TABLE_SHIFT) or ((base ushr 16) and 0xFF)] xor
-            parallelTable[(4 shl TABLE_SHIFT) or ((base ushr 24) and 0xFF)]
-        // @formatter:on
     }
 
     private fun roundSlice8(data: ByteArray, offset: Int) {
@@ -264,12 +248,6 @@ private class CRC32Impl( // @formatter:off
                 remaining -= 8
             }
 
-            remaining >= 4 -> {
-                roundSlice4(data, offset + index)
-                index += 4
-                remaining -= 4
-            }
-
             else -> { // Single bytes
                 round(data[offset + index++])
                 remaining--
@@ -287,7 +265,7 @@ private class CRC32Impl( // @formatter:off
  * @param initialValue The initial value to use for the CRC32 calculation.
  * @return A new [CRC32] instance.
  */
-fun CRC32( // @formatter:off
+expect fun CRC32( // @formatter:off
     polynomial: UInt = CRC32.DEFAULT_POLYNOMIAL,
     initialValue: UInt = CRC32.DEFAULT_INITIAL_VALUE
-): CRC32 = CRC32Impl(polynomial, initialValue) // @formatter:on
+): CRC32

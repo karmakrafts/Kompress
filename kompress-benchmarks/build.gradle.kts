@@ -17,7 +17,6 @@
 @file:OptIn(ExperimentalKotlinGradlePluginApi::class)
 
 import dev.karmakrafts.conventions.configureJava
-import dev.karmakrafts.conventions.dokka.configureDokka
 import dev.karmakrafts.conventions.kotlin.defaultCompilerOptions
 import dev.karmakrafts.conventions.kotlin.withBrowser
 import dev.karmakrafts.conventions.kotlin.withJvm
@@ -81,7 +80,35 @@ benchmark {
             iterations = 10
             iterationTime = 1
             iterationTimeUnit = "s"
-            //outputTimeUnit = "ns"
         }
+        register("crc") {
+            include("dev.karmakrafts.kompress.*CRC32*")
+            warmups = 10
+            iterations = 10
+            iterationTime = 1
+            iterationTimeUnit = "s"
+        }
+        register("deflate") {
+            include("dev.karmakrafts.kompress.*Deflater*")
+            warmups = 10
+            iterations = 10
+            iterationTime = 1
+            iterationTimeUnit = "s"
+        }
+        register("inflate") {
+            include("dev.karmakrafts.kompress.*Inflater*")
+            warmups = 10
+            iterations = 10
+            iterationTime = 1
+            iterationTimeUnit = "s"
+        }
+    }
+}
+
+tasks {
+    // For all JVM benchmark tasks, we infer module path and add the correct module
+    named { name -> "jvm" in name && "Benchmark" in name }.withType<JavaExec>().configureEach {
+        modularity.inferModulePath = true
+        jvmArgs("--add-modules", "jdk.incubator.vector")
     }
 }

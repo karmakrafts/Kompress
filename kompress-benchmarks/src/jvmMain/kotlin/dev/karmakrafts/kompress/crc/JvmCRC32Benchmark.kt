@@ -27,11 +27,13 @@ import kotlin.time.Clock.System
 open class JvmCRC32Benchmark {
     private val crc32: CRC32 = CRC32()
     private val random: Random = Random(System.now().epochSeconds)
+    private val data: ByteArray = random.nextBytes(1024 * 1024) // 1MiB
 
     @JvmName("run")
     @Benchmark
     fun runBenchmark(): Long {
-        crc32.update(random.nextBytes(128))
+        crc32.reset()
+        crc32.update(data)
         return crc32.value
     }
 }

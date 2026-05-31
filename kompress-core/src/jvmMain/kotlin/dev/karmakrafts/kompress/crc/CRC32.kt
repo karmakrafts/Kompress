@@ -14,26 +14,16 @@
  * limitations under the License.
  */
 
+@file:JvmName("CRC32$")
+
 package dev.karmakrafts.kompress.crc
 
-import kotlinx.benchmark.Benchmark
-import kotlinx.benchmark.Scope
-import kotlinx.benchmark.State
-import kotlin.jvm.JvmName
-import kotlin.random.Random
-import kotlin.time.Clock.System
+import dev.karmakrafts.kompress.util.has256BitSimd
 
-@State(Scope.Benchmark)
-open class CRC32Benchmark {
-    private val crc32: CRC32 = CRC32()
-    private val random: Random = Random(System.now().epochSeconds)
-    private val data: ByteArray = random.nextBytes(1024 * 1024) // 1MiB
-
-    @JvmName("run")
-    @Benchmark
-    fun runBenchmark(): UInt {
-        crc32.reset()
-        crc32.round(data)
-        return crc32.finalize()
-    }
+// Decide which implementation we use based on module presence
+private val crc32Factory: (UInt, UInt) -> CRC32 by lazy {
+    if (has256BitSimd) ::FastCRC32
+    else ::CRC32Impl
 }
+
+actual fun CRC32(polynomial: UInt, initialValue: UInt): CRC32 = crc32Factory(polynomial, initialValue)

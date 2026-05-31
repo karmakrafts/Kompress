@@ -461,7 +461,7 @@ internal class DeflaterImpl( // @formatter:off
  */
 fun Deflater( // @formatter:off
     level: Int = Deflater.DEFAULT_LEVEL
-): Deflater = DeflaterImpl(level) // @formatter:on
+): Deflater = DeflaterImpl(level)
 
 /**
  * Returns a [RawSource] that reads uncompressed bytes from this source and

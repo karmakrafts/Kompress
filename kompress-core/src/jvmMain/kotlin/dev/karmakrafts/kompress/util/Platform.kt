@@ -14,10 +14,22 @@
  * limitations under the License.
  */
 
+@file:JvmName("Platform$")
+
 package dev.karmakrafts.kompress.util
 
 import dev.karmakrafts.kompress.InternalCompressionApi
+import jdk.incubator.vector.IntVector
 import oshi.util.PlatformEnum
+
+internal val hasVectorSupport: Boolean by lazy {
+    ModuleLayer.boot().findModule("jdk.incubator.vector").isPresent
+}
+
+internal val has256BitSimd: Boolean by lazy {
+    if (!hasVectorSupport) return@lazy false
+    IntVector.SPECIES_PREFERRED.vectorBitSize() >= 256
+}
 
 @InternalCompressionApi
 actual val currentPlatform: Platform by lazy {

@@ -12,7 +12,6 @@ Compression and archiver APIs for Kotlin Multiplatform.
 
 ### Features
 
-- **100% implemented in Kotlin common code!**
 - Supports all Kotlin Multiplatform targets
 - General purpose `Compressor` and `Decompressor` APIs for modeling streaming compressors
 - General purpose `Archiver<E>` and `Unarchiver<E>` APIs for modeling streaming archivers

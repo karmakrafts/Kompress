@@ -39,22 +39,19 @@ import platform.zlib.deflateEnd
 import platform.zlib.deflateInit2
 import platform.zlib.deflateReset
 import platform.zlib.z_stream
-import kotlin.random.Random
-import kotlin.time.Clock
 
 @OptIn(ExperimentalForeignApi::class)
 abstract class AbstractNativeDeflaterBenchmark(level: Int) {
     private companion object {
-        private const val DATA_SIZE: Int = 128
-        private const val DATA_COUNT: Int = 100
+        private const val DATA_SIZE: Int = 1024 * 1024 // 1MiB
         private const val RAW_WINDOW_BITS: Int = -15
         private const val DEFAULT_MEMORY_LEVEL: Int = 8
     }
 
-    protected val random: Random = Random(Clock.System.now().epochSeconds)
-    protected var dataIndex: Int = 0
-    protected val data: Array<ByteArray> = Array(DATA_COUNT) { random.nextBytes(DATA_SIZE) }
     protected val stream: z_stream = nativeHeap.alloc()
+    protected val data: ByteArray = ByteArray(DATA_SIZE) { 1 }
+    protected val buffer: Buffer = Buffer()
+    protected val chunkBuffer: ByteArray = ByteArray(4096)
 
     init {
         stream.zalloc = null
@@ -68,14 +65,11 @@ abstract class AbstractNativeDeflaterBenchmark(level: Int) {
 
     @Benchmark
     fun run(): ByteArray {
-        // Same code as in compressBulk()
         val resetResult = deflateReset(stream.ptr)
         check(resetResult == Z_OK) { "deflateReset failed with code $resetResult" }
-        val buffer = Buffer()
-        val chunkBuffer = ByteArray(4096)
 
-        data[dataIndex++ % DATA_COUNT].usePinned { input ->
-            stream.next_in = input.addressOf(0).reinterpret()
+        data.usePinned { pinnedInput ->
+            stream.next_in = pinnedInput.addressOf(0).reinterpret()
             stream.avail_in = data.size.convert()
             var result: Int = Z_OK
             do {

@@ -29,31 +29,26 @@ import kotlinx.cinterop.reinterpret
 import kotlinx.cinterop.usePinned
 import kotlinx.io.Buffer
 import kotlinx.io.readByteArray
-import platform.zlib.Z_NO_FLUSH
 import platform.zlib.Z_OK
 import platform.zlib.Z_STREAM_END
+import platform.zlib.Z_SYNC_FLUSH
 import platform.zlib.inflate
 import platform.zlib.inflateEnd
 import platform.zlib.inflateInit2
 import platform.zlib.inflateReset
 import platform.zlib.z_stream
-import kotlin.random.Random
-import kotlin.time.Clock
 
 @OptIn(ExperimentalForeignApi::class)
 abstract class AbstractNativeInflaterBenchmark(level: Int) {
     private companion object {
-        private const val DATA_SIZE: Int = 128
-        private const val DATA_COUNT: Int = 100
+        private const val DATA_SIZE: Int = 1024 * 1024 // 1MiB
         private const val RAW_WINDOW_BITS: Int = -15
     }
 
     protected val stream: z_stream = nativeHeap.alloc()
-    protected val random: Random = Random(Clock.System.now().epochSeconds)
-    protected var dataIndex: Int = 0
-    protected val data: Array<ByteArray> = Array(DATA_COUNT) {
-        Deflater.compress(random.nextBytes(DATA_SIZE), level = level)
-    }
+    protected val data: ByteArray = Deflater.compress(ByteArray(DATA_SIZE) { 1 }, level = level)
+    protected val buffer: Buffer = Buffer()
+    protected val chunkBuffer: ByteArray = ByteArray(4096)
 
     init {
         stream.zalloc = null
@@ -67,13 +62,9 @@ abstract class AbstractNativeInflaterBenchmark(level: Int) {
 
     @Benchmark
     fun run(): ByteArray {
-        // Same code as in decompressBulk()
         val resetResult = inflateReset(stream.ptr)
         check(resetResult == Z_OK) { "inflateReset failed with code $resetResult" }
-        val buffer = Buffer()
-        val chunkBuffer = ByteArray(4096)
 
-        val data = data[dataIndex++ % DATA_COUNT]
         data.usePinned { input ->
             stream.next_in = input.addressOf(0).reinterpret()
             stream.avail_in = data.size.convert()
@@ -82,7 +73,7 @@ abstract class AbstractNativeInflaterBenchmark(level: Int) {
                 chunkBuffer.usePinned { output ->
                     stream.next_out = output.addressOf(0).reinterpret()
                     stream.avail_out = chunkBuffer.size.convert()
-                    result = inflate(stream.ptr, Z_NO_FLUSH)
+                    result = inflate(stream.ptr, Z_SYNC_FLUSH)
                     check(result == Z_OK || result == Z_STREAM_END) { "inflate failed with code $result" }
                     val bytesDecompressed = chunkBuffer.size - stream.avail_out.toInt()
                     if (bytesDecompressed > 0) {

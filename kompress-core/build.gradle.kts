@@ -58,7 +58,17 @@ kotlin {
             test(listOf(NativeBuildType.RELEASE))
         }
     }
-    withJvm()
+    withJvm {
+        testRuns {
+            create("vector") { // Run tests with jdk.incubator.vector API
+                setExecutionSourceFrom(compilations["test"])
+                executionTask {
+                    modularity.inferModulePath = true
+                    jvmArgs("--add-modules", "jdk.incubator.vector")
+                }
+            }
+        }
+    }
     withWeb {
         withBrowser {
             useEsModules()
@@ -101,14 +111,19 @@ kotlin {
                 implementation(libs.oshi.core)
             }
         }
+        webMain {
+            dependencies {
+                implementation(libs.kotlin.wrappers.browser)
+            }
+        }
         commonTest {
             dependencies {
                 implementation(libs.kotlin.test)
             }
         }
-        webMain {
+        jvmTest {
             dependencies {
-                implementation(libs.kotlin.wrappers.browser)
+                implementation(libs.kotlin.test.junit)
             }
         }
     }
