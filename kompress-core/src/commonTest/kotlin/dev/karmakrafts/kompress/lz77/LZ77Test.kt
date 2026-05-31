@@ -21,7 +21,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
-class LZ77EncodeTest {
+class LZ77Test {
     @Test
     fun `empty input`() {
         val lz77 = LZ77()
