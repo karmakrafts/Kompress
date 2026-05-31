@@ -49,7 +49,17 @@ kotlin {
     withSourcesJar()
     withAndroidLibrary("$group.zip")
     withNative()
-    withJvm()
+    withJvm {
+        testRuns {
+            create("vector") { // Run tests with jdk.incubator.vector API
+                setExecutionSourceFrom(compilations["test"])
+                executionTask {
+                    modularity.inferModulePath = true
+                    jvmArgs("--add-modules", "jdk.incubator.vector")
+                }
+            }
+        }
+    }
     withWeb {
         withBrowser {
             useEsModules()
@@ -74,6 +84,11 @@ kotlin {
         commonTest {
             dependencies {
                 implementation(libs.kotlin.test)
+            }
+        }
+        jvmTest {
+            dependencies {
+                implementation(libs.kotlin.test.junit)
             }
         }
     }

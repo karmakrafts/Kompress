@@ -152,6 +152,8 @@ internal class InflaterImpl(
     override val finished: Boolean get() = ended
 
     private val window: ByteArray = ByteArray(windowSize)
+    private val windowSize: Int = window.size
+    private val windowMask: Int = if (windowSize > 0 && windowSize and (windowSize - 1) == 0) windowSize - 1 else -1
     private val codeLengthLengths: IntArray = IntArray(DeflateConstants.CODE_LENGTH_ALPHABET_SIZE)
     private val inputSource = input.source()
     private val bitSource: BitSource = inputSource.buffered().bitSource(bitOrder = BitOrder.LSB_FIRST)
@@ -220,12 +222,18 @@ internal class InflaterImpl(
     private fun writeLiteral(output: ByteArray, position: Int, value: Int): Int {
         val byte = value.toByte()
         output[position] = byte
-        window[windowPosition] = byte
-        windowPosition++
-        if (windowPosition == window.size) {
-            windowPosition = 0
+        val window = window
+        val windowSize = windowSize
+        val writePosition = windowPosition
+        window[writePosition] = byte
+        if (windowMask != -1) {
+            windowPosition = (writePosition + 1) and windowMask
         }
-        if (windowFilled < window.size) {
+        else {
+            val nextPosition = writePosition + 1
+            windowPosition = if (nextPosition == windowSize) 0 else nextPosition
+        }
+        if (windowFilled < windowSize) {
             windowFilled++
         }
         return position + 1
@@ -240,34 +248,133 @@ internal class InflaterImpl(
         if (distance !in 1..windowFilled) {
             throw DataFormatException("Invalid backwards distance: $distance")
         }
-        pendingLength = length
         pendingDistance = distance
-        var outputPosition = position
         var readPosition = windowPosition - distance
         if (readPosition < 0) {
-            readPosition += window.size
+            readPosition += windowSize
         }
-        while (pendingLength > 0 && outputPosition < limit) {
-            val byte = window[readPosition]
-            output[outputPosition++] = byte
-            window[windowPosition] = byte
-            readPosition++
-            if (readPosition == window.size) {
+
+        val copyLimit = minOf(length, limit - position)
+        return when {
+            distance == 1 -> writeRepeatedMatch(output, position, copyLimit, length, readPosition)
+            distance >= copyLimit -> writeBulkMatch(output, position, copyLimit, length, readPosition)
+            windowMask != -1 -> writeMaskedOverlapMatch(output, position, copyLimit, length, readPosition)
+            else -> writeWrappedOverlapMatch(output, position, copyLimit, length, readPosition)
+        }
+    }
+
+    private fun writeRepeatedMatch(
+        output: ByteArray, position: Int, copyLimit: Int, length: Int, readPosition: Int
+    ): Int {
+        val window = window
+        val windowSize = windowSize
+        var writePosition = windowPosition
+        val byte = window[readPosition]
+        output.fill(byte, position, position + copyLimit)
+        var copied = 0
+        while (copied < copyLimit) {
+            val writeChunk = minOf(copyLimit - copied, windowSize - writePosition)
+            output.copyInto(window, writePosition, position + copied, position + copied + writeChunk)
+            copied += writeChunk
+            writePosition += writeChunk
+            if (writePosition == windowSize) {
+                writePosition = 0
+            }
+        }
+
+        finishMatchWrite(writePosition, copyLimit, length)
+        return position + copyLimit
+    }
+
+    private fun writeBulkMatch(
+        output: ByteArray, position: Int, copyLimit: Int, length: Int, initialReadPosition: Int
+    ): Int {
+        val window = window
+        val windowSize = windowSize
+        var readPosition = initialReadPosition
+        var writePosition = windowPosition
+        var outputPosition = position
+        var copied = 0
+        while (copied < copyLimit) {
+            val readChunk = minOf(copyLimit - copied, windowSize - readPosition)
+            window.copyInto(output, outputPosition, readPosition, readPosition + readChunk)
+            val writeChunk = minOf(readChunk, windowSize - writePosition)
+            output.copyInto(window, writePosition, outputPosition, outputPosition + writeChunk)
+            if (writeChunk < readChunk) {
+                output.copyInto(window, 0, outputPosition + writeChunk, outputPosition + readChunk)
+            }
+            writePosition += readChunk
+            if (writePosition >= windowSize) {
+                writePosition -= windowSize
+            }
+            copied += readChunk
+            outputPosition += readChunk
+            readPosition += readChunk
+            if (readPosition == windowSize) {
                 readPosition = 0
             }
-            windowPosition++
-            if (windowPosition == window.size) {
-                windowPosition = 0
-            }
-            if (windowFilled < window.size) {
-                windowFilled++
-            }
-            pendingLength--
         }
+
+        finishMatchWrite(writePosition, copied, length)
+        return outputPosition
+    }
+
+    private fun writeMaskedOverlapMatch(
+        output: ByteArray, position: Int, copyLimit: Int, length: Int, initialReadPosition: Int
+    ): Int {
+        val window = window
+        val windowMask = windowMask
+        var readPosition = initialReadPosition
+        var writePosition = windowPosition
+        var outputPosition = position
+        val endPosition = position + copyLimit
+        while (outputPosition < endPosition) {
+            val byte = window[readPosition]
+            output[outputPosition++] = byte
+            window[writePosition] = byte
+            readPosition = (readPosition + 1) and windowMask
+            writePosition = (writePosition + 1) and windowMask
+        }
+
+        finishMatchWrite(writePosition, copyLimit, length)
+        return outputPosition
+    }
+
+    private fun writeWrappedOverlapMatch(
+        output: ByteArray, position: Int, copyLimit: Int, length: Int, initialReadPosition: Int
+    ): Int {
+        val window = window
+        val windowSize = windowSize
+        var readPosition = initialReadPosition
+        var writePosition = windowPosition
+        var outputPosition = position
+        val endPosition = position + copyLimit
+        while (outputPosition < endPosition) {
+            val byte = window[readPosition]
+            output[outputPosition++] = byte
+            window[writePosition] = byte
+            readPosition++
+            if (readPosition == windowSize) {
+                readPosition = 0
+            }
+            writePosition++
+            if (writePosition == windowSize) {
+                writePosition = 0
+            }
+        }
+
+        finishMatchWrite(writePosition, copyLimit, length)
+        return outputPosition
+    }
+
+    private fun finishMatchWrite(writePosition: Int, copied: Int, length: Int) {
+        windowPosition = writePosition
+        val filled = windowFilled
+        windowFilled = if (windowSize - filled > copied) filled + copied else windowSize
+        pendingLength = length - copied
         if (pendingLength == 0) {
             pendingDistance = 0
         }
-        return outputPosition
     }
 
     private fun finishBlock() {
@@ -346,12 +453,36 @@ internal class InflaterImpl(
      */
     private fun inflateStoredBlock(output: ByteArray, position: Int, limit: Int): Int {
         var outputPosition = position
-        while (storedRemaining > 0 && outputPosition < limit) {
-            if (!needBits(Byte.SIZE_BITS)) return outputPosition
-            outputPosition = writeLiteral(output, outputPosition, bitSource.readBitsLsb(Byte.SIZE_BITS).toInt())
-            storedRemaining--
+        var remaining = storedRemaining
+        val window = window
+        val windowSize = windowSize
+        val windowMask = windowMask
+        var writePosition = windowPosition
+        val startPosition = outputPosition
+        while (remaining > 0 && outputPosition < limit) {
+            if (!needBits(Byte.SIZE_BITS)) break
+            val byte = bitSource.readBitsLsb(Byte.SIZE_BITS).toByte()
+            output[outputPosition++] = byte
+            window[writePosition] = byte
+            if (windowMask != -1) {
+                writePosition = (writePosition + 1) and windowMask
+            }
+            else {
+                writePosition++
+                if (writePosition == windowSize) {
+                    writePosition = 0
+                }
+            }
+            remaining--
         }
-        if (storedRemaining == 0) {
+        storedRemaining = remaining
+        windowPosition = writePosition
+        val copied = outputPosition - startPosition
+        if (copied > 0) {
+            val filled = windowFilled
+            windowFilled = if (windowSize - filled > copied) filled + copied else windowSize
+        }
+        if (remaining == 0) {
             finishBlock()
         }
         return outputPosition
@@ -414,9 +545,8 @@ internal class InflaterImpl(
                         throw DataFormatException("Code length repeat exceeds dynamic tree size")
                     }
                     val endIndex = dynamicLengthIndex + repeatCount
-                    while (dynamicLengthIndex < endIndex) {
-                        dynamicLengths[dynamicLengthIndex++] = dynamicPreviousLength
-                    }
+                    dynamicLengths.fill(dynamicPreviousLength, dynamicLengthIndex, endIndex)
+                    dynamicLengthIndex = endIndex
                 }
 
                 DeflateConstants.SYM_REPEAT_ZERO_LENGTH -> {
@@ -427,9 +557,7 @@ internal class InflaterImpl(
                         throw DataFormatException("Code length repeat exceeds dynamic tree size")
                     }
                     val endIndex = dynamicLengthIndex + repeatCount
-                    while (dynamicLengthIndex < endIndex) {
-                        dynamicLengths[dynamicLengthIndex++] = 0
-                    }
+                    dynamicLengthIndex = endIndex
                     dynamicPreviousLength = 0
                 }
 
@@ -441,9 +569,7 @@ internal class InflaterImpl(
                         throw DataFormatException("Code length repeat exceeds dynamic tree size")
                     }
                     val endIndex = dynamicLengthIndex + repeatCount
-                    while (dynamicLengthIndex < endIndex) {
-                        dynamicLengths[dynamicLengthIndex++] = 0
-                    }
+                    dynamicLengthIndex = endIndex
                     dynamicPreviousLength = 0
                 }
             }
@@ -497,7 +623,7 @@ internal class InflaterImpl(
         if (code == HuffmanTree.NO_SYMBOL) return position
         val distanceSymbol = HuffmanTree.unpackSymbol(code)
         val codeLength = HuffmanTree.unpackLength(code)
-        if (distanceSymbol !in DeflateConstants.DIST_BASE.indices) {
+        if (distanceSymbol < 0 || distanceSymbol >= DeflateConstants.DIST_BASE.size) {
             throw DataFormatException("Invalid distance symbol: $distanceSymbol")
         }
         // RFC1951 3.2.5: distance symbols may be followed by extra bits added to the base
@@ -505,7 +631,8 @@ internal class InflaterImpl(
         val extraBits = DeflateConstants.DIST_EXTRA_BITS[distanceSymbol]
         if (extraBits > 0 && !needBits(codeLength + extraBits)) return position
         bitSource.skipBits(codeLength)
-        val distance = DeflateConstants.DIST_BASE[distanceSymbol] + bitSource.readBitsLsb(extraBits).toInt()
+        val distance = DeflateConstants.DIST_BASE[distanceSymbol] + if (extraBits == 0) 0
+        else bitSource.readBitsLsb(extraBits).toInt()
         return writeMatch(output, position, limit, pendingLength, distance)
     }
 
@@ -518,12 +645,8 @@ internal class InflaterImpl(
         var outputPosition = position
         while (outputPosition < limit) {
             if (pendingLength > 0) {
-                outputPosition = if (pendingDistance == 0) {
-                    decodeMatch(output, outputPosition, limit)
-                }
-                else {
-                    writeMatch(output, outputPosition, limit, pendingLength, pendingDistance)
-                }
+                outputPosition = if (pendingDistance == 0) decodeMatch(output, outputPosition, limit)
+                else writeMatch(output, outputPosition, limit, pendingLength, pendingDistance)
                 if (pendingLength > 0) return outputPosition
                 continue
             }
@@ -531,27 +654,28 @@ internal class InflaterImpl(
             if (code == HuffmanTree.NO_SYMBOL) return outputPosition
             val symbol = HuffmanTree.unpackSymbol(code)
             val codeLength = HuffmanTree.unpackLength(code)
-            when (symbol) {
-                in 0 until DeflateConstants.SYM_EOF -> {
+            when {
+                symbol < DeflateConstants.SYM_EOF -> {
                     bitSource.skipBits(codeLength)
                     outputPosition = writeLiteral(output, outputPosition, symbol)
                 }
 
-                DeflateConstants.SYM_EOF -> {
+                symbol == DeflateConstants.SYM_EOF -> {
                     // RFC1951 3.2.3: literal/length symbol 256 marks the end of the block.
                     bitSource.skipBits(codeLength)
                     finishBlock()
                     return outputPosition
                 }
 
-                in DeflateConstants.HLIT_OFFSET..285 -> {
+                symbol <= 285 -> {
                     val index = symbol - DeflateConstants.HLIT_OFFSET
                     // RFC1951 3.2.5: length symbols may be followed by extra bits added to the
                     // base length.
                     val extraBits = DeflateConstants.LENGTH_EXTRA_BITS[index]
                     if (extraBits > 0 && !needBits(codeLength + extraBits)) return outputPosition
                     bitSource.skipBits(codeLength)
-                    pendingLength = DeflateConstants.LENGTH_BASE[index] + bitSource.readBitsLsb(extraBits).toInt()
+                    pendingLength = DeflateConstants.LENGTH_BASE[index] + if (extraBits == 0) 0
+                    else bitSource.readBitsLsb(extraBits).toInt()
                     outputPosition = decodeMatch(output, outputPosition, limit)
                     if (pendingLength > 0) return outputPosition
                 }
@@ -562,13 +686,22 @@ internal class InflaterImpl(
         return outputPosition
     }
 
-    private fun inflate(output: ByteArray, position: Int, limit: Int): Int = when (state) {
-        State.HEADER -> if (decodeBlockHeader()) position else position
-        State.STORED_HEADER -> if (decodeStoredHeader()) position else position
+    private fun inflate(output: ByteArray, position: Int, limit: Int): Int = when (state) { // @formatter:off
+        State.HEADER -> {
+            decodeBlockHeader()
+            position
+        }
+        State.STORED_HEADER -> {
+            decodeStoredHeader()
+            position
+        }
         State.STORED -> inflateStoredBlock(output, position, limit)
-        State.DYNAMIC_HEADER -> if (decodeDynamicHeader()) position else position
+        State.DYNAMIC_HEADER -> {
+            decodeDynamicHeader()
+            position
+        }
         State.COMPRESSED -> inflateCompressedBlock(output, position, limit)
-    }
+    } // @formatter:on
 
     override fun decompress( // @formatter:off
         output: ByteArray,

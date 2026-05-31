@@ -19,6 +19,7 @@ Compression and archiver APIs for Kotlin Multiplatform.
 - Synchronous streaming API inspired by Java's `Inflater`/`Deflater` APIs
 - Integration with [kotlinx.io](https://github.com/Kotlin/kotlinx-io)
 - Customizable compression-level for supported (de)compressors
+- Optional SIMD acceleration on JVM using [jdk.incubator.vector](https://openjdk.org/jeps/537)
 
 ### Modules
 
