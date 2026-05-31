@@ -16,64 +16,39 @@
 
 package dev.karmakrafts.kompress.lz77
 
-import dev.karmakrafts.kompress.exception.DataFormatException
-import kotlinx.io.Buffer
-
-/**
- * A simple LZ77 implementation which allows
- * overriding the level, match counts and window size.
- */
-internal class LZ77( // @formatter:off
-    level: Int = DEFAULT_LEVEL,
-    val minMatch: Int = DEFAULT_MIN_MATCH,
-    val maxMatch: Int = DEFAULT_MAX_MATCH,
-    val windowSize: Int = DEFAULT_WINDOW_SIZE
-) { // @formatter:on
+internal interface LZ77 {
     companion object {
         const val DEFAULT_LEVEL: Int = 6
         const val DEFAULT_MIN_MATCH: Int = 3
         const val DEFAULT_MAX_MATCH: Int = 258
         const val DEFAULT_WINDOW_SIZE: Int = 32 * 1024
 
-        private const val HASH_SIZE: Int = 1 shl 15
-        private const val HASH_MASK: Int = HASH_SIZE - 1
-        private const val DEFAULT_HEAD: Int = -1
-        private const val DEFAULT_NEXT: Int = -1
+        const val HASH_SIZE: Int = 1 shl 15
+        const val HASH_MASK: Int = HASH_SIZE - 1
+        const val DEFAULT_HEAD: Int = -1
+        const val DEFAULT_NEXT: Int = -1
 
-        /**
-         * Simple rolling hash implementation according to https://en.wikipedia.org/wiki/Rolling_hash
-         * for creating 3-byte hashes for indexing into a hash table.
-         */
-        private fun rollingHash(data: ByteArray, offset: Int): Int {
-            require(data.size - offset >= 3) { "Rolling hash offset out of bounds" }
-            return ( // @formatter:off
-                ((data[offset].toInt() and 0xFF) shl 10) xor
-                ((data[offset + 1].toInt() and 0xFF) shl 5) xor
-                ((data[offset + 2].toInt() and 0xFF))
-            ) and HASH_MASK // @formatter:on
-        }
-
-        private fun getMaxChainDepth(level: Int): Int = when (level) {
+        fun getMaxChainDepth(level: Int): Int = when (level) {
             in 0..2 -> 4
             in 3..5 -> 16
             in 6..7 -> 64
             else -> 256
         }
+
+        fun rollingHash(data: ByteArray, offset: Int): Int {
+            require(data.size - offset >= 3) { "Rolling hash offset out of bounds" }
+            return ( // @formatter:off
+                ((data[offset].toInt() and 0xFF) shl 10) xor
+                    ((data[offset + 1].toInt() and 0xFF) shl 5) xor
+                    ((data[offset + 2].toInt() and 0xFF))
+                ) and HASH_MASK // @formatter:on
+        }
     }
 
-    private var maxChain: Int = getMaxChainDepth(level)
-
-    var level: Int = level
-        set(value) {
-            maxChain = getMaxChainDepth(value)
-            field = value
-        }
-
-    private val head: IntArray = IntArray(HASH_SIZE) { DEFAULT_HEAD }
-    private val window: ByteArray = ByteArray(windowSize)
-
-    private var windowPosition: Int = 0
-    private var windowFilled: Int = 0
+    var level: Int
+    val minMatch: Int
+    val maxMatch: Int
+    val windowSize: Int
 
     /**
      * Encodes the given data into an LZ77 token stream.
@@ -90,18 +65,52 @@ internal class LZ77( // @formatter:off
         data: ByteArray,
         offset: Int = 0,
         size: Int = data.size - offset
+    )
+
+    fun reset()
+}
+
+/**
+ * A simple LZ77 implementation which allows
+ * overriding the level, match counts and window size.
+ */
+internal class LZ77Impl( // @formatter:off
+    level: Int = LZ77.DEFAULT_LEVEL,
+    override val minMatch: Int = LZ77.DEFAULT_MIN_MATCH,
+    override val maxMatch: Int = LZ77.DEFAULT_MAX_MATCH,
+    override val windowSize: Int = LZ77.DEFAULT_WINDOW_SIZE
+) : LZ77 { // @formatter:on
+    private var maxChain: Int = LZ77.getMaxChainDepth(level)
+
+    override var level: Int = level
+        set(value) {
+            maxChain = LZ77.getMaxChainDepth(value)
+            field = value
+        }
+
+    private val head: IntArray = IntArray(LZ77.HASH_SIZE) { LZ77.DEFAULT_HEAD }
+    private val window: ByteArray = ByteArray(windowSize)
+
+    private var windowPosition: Int = 0
+    private var windowFilled: Int = 0
+
+    override fun encode( // @formatter:off
+        tokens: MutableList<Token>,
+        data: ByteArray,
+        offset: Int,
+        size: Int
     ) { // @formatter:on
         // Reset the hash table for each encoding run
-        head.fill(DEFAULT_HEAD)
+        head.fill(LZ77.DEFAULT_HEAD)
         // 'next' stores the previous position in the hash chain for each input position
-        val next = IntArray(size) { DEFAULT_NEXT }
+        val next = IntArray(size) { LZ77.DEFAULT_NEXT }
         var pos = 0
         while (pos < size) {
             var bestLength = 0
             var bestDistance = 0
             // Wait until we have enough bytes available to match against (minimum match length)
             if (pos + minMatch <= size) {
-                val hash = rollingHash(data, pos + offset)
+                val hash = LZ77.rollingHash(data, pos + offset)
                 var candidate = head[hash] // Newest candidate position in hash chain
                 var chain = 0
                 // Search backwards through previous matches in the hash chain
@@ -126,7 +135,7 @@ internal class LZ77( // @formatter:off
                         if (length == maxMatch) break
                     }
                     // Follow the chain to the next (older) candidate
-                    candidate = if (candidate < size) next[candidate] else DEFAULT_NEXT
+                    candidate = if (candidate < size) next[candidate] else LZ77.DEFAULT_NEXT
                 }
                 // Insert current position into the hash chain
                 next[pos] = head[hash]
@@ -139,7 +148,7 @@ internal class LZ77( // @formatter:off
                 for (chainOffset in 1..<bestLength) {
                     val currentPosition = pos + chainOffset
                     if (currentPosition + minMatch <= size) {
-                        val currentHash = rollingHash(data, currentPosition + offset)
+                        val currentHash = LZ77.rollingHash(data, currentPosition + offset)
                         next[currentPosition] = head[currentHash]
                         head[currentHash] = currentPosition
                     }
@@ -154,66 +163,16 @@ internal class LZ77( // @formatter:off
         }
     }
 
-    fun decodeLiteral(output: Buffer, value: Int) {
-        val byte = value.toByte()
-        val decoderWindow = window
-        output.writeByte(byte)
-        decoderWindow[windowPosition] = byte
-        windowPosition++
-        if (windowPosition == decoderWindow.size) {
-            windowPosition = 0
-        }
-        if (windowFilled < decoderWindow.size) {
-            windowFilled++
-        }
-    }
-
-    fun decodeMatch(output: Buffer, length: Int, distance: Int) {
-        if (distance !in 1..windowFilled) {
-            throw DataFormatException("Invalid backwards distance: $distance")
-        }
-        val decoderWindow = window
-        val windowSize = decoderWindow.size
-        var readPosition = windowPosition - distance
-        if (readPosition < 0) {
-            readPosition += windowSize
-        }
-        var writePosition = windowPosition
-        if ( // @formatter:off
-            distance >= length &&
-            readPosition + length <= windowSize &&
-            writePosition + length <= windowSize
-        ) { // @formatter:on
-            output.write(decoderWindow, readPosition, readPosition + length)
-            decoderWindow.copyInto(decoderWindow, writePosition, readPosition, readPosition + length)
-            writePosition += length
-            if (writePosition == windowSize) {
-                writePosition = 0
-            }
-            windowPosition = writePosition
-            windowFilled = (windowFilled + length).coerceAtMost(windowSize)
-            return
-        }
-        repeat(length) {
-            val byte = decoderWindow[readPosition]
-            output.writeByte(byte)
-            decoderWindow[writePosition] = byte
-            readPosition++
-            if (readPosition == windowSize) {
-                readPosition = 0
-            }
-            writePosition++
-            if (writePosition == windowSize) {
-                writePosition = 0
-            }
-        }
-        windowPosition = writePosition
-        windowFilled = (windowFilled + length).coerceAtMost(windowSize)
-    }
-
-    fun reset() {
+    override fun reset() {
         window.fill(0)
         windowPosition = 0
         windowFilled = 0
     }
 }
+
+internal expect fun LZ77(
+    level: Int = LZ77.DEFAULT_LEVEL,
+    minMatch: Int = LZ77.DEFAULT_MIN_MATCH,
+    maxMatch: Int = LZ77.DEFAULT_MAX_MATCH,
+    windowSize: Int = LZ77.DEFAULT_WINDOW_SIZE
+): LZ77
