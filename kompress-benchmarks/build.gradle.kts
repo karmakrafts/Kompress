@@ -32,7 +32,7 @@ plugins {
     alias(libs.plugins.kotlinx.benchmark)
 }
 
-configureJava(libs.versions.java)
+configureJava(libs.versions.javaCompile, libs.versions.javaTarget)
 
 kotlin {
     defaultCompilerOptions()

@@ -36,6 +36,7 @@ import kotlinx.io.Buffer
 import kotlinx.io.RawSink
 import kotlinx.io.Sink
 import kotlinx.io.readByteArray
+import kotlin.reflect.KClass
 import kotlin.time.Instant
 
 @OptIn(InternalCompressionApi::class, ExperimentalCompressionApi::class)
