@@ -17,14 +17,15 @@
 ### Changed
 
 - Pure Kotlin implementation of `Deflater` and `Inflater`!
-- Updated to Karma Conventions 1.16.4
-- Updated to Gradle 9.5.1
-- Updated to Kotlin Wrappers 2026.5.4
+- Updated to Karma Conventions 1.17.1
+- Downgraded to Gradle 9.4.1 because of IDEA compatibility regression
+- Updated to Kotlin Wrappers 2026.6.3
 - Updated to Android Gradle 9.2.1
 - Deprecated `Deflater.deflate` bulk compression function in favor of `Deflater.compress`/`Deflater.compressBulk`
 - Deprecated `Inflater.inflate` bulk decompression function in favor of `Inflater.decompress`/`Inflater.decompressBulk`
 - Deprecated `Deflater.input` property setter in favor of `Compressor.setInput`
 - Deprecated `Inflater.input` property setter in favor of `Decompressor.setInput`
+- Library now depends on `dev.karmakrafts.karbide`
 
 ## [1.4.3]
 

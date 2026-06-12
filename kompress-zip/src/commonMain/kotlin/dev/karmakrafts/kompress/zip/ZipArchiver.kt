@@ -34,9 +34,10 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import kotlinx.io.Buffer
 import kotlinx.io.RawSink
+import kotlinx.io.RawSource
 import kotlinx.io.Sink
 import kotlinx.io.readByteArray
-import kotlin.reflect.KClass
+import kotlin.time.Clock
 import kotlin.time.Instant
 
 @OptIn(InternalCompressionApi::class, ExperimentalCompressionApi::class)
@@ -302,4 +303,33 @@ fun RawSink.zip( // @formatter:off
     compressors: Map<ZipCompressionMethod, Compressor> = mapOf(ZipCompressionMethod.DEFLATE to Deflater()),
     isSinkOwned: Boolean = true,
     isCompressorOwned: Boolean = true
-): Archiver<ZipEntry, ZipCompressionMethod> = ZipArchiver(this, compressors, isSinkOwned, isCompressorOwned) // @formatter:on
+): Archiver<ZipEntry, ZipCompressionMethod> =
+    ZipArchiver(this, compressors, isSinkOwned, isCompressorOwned) // @formatter:on
+
+@ExperimentalCompressionApi
+fun Archiver<in ZipEntry, *>.appendEntry( // @formatter:off
+    name: String,
+    modificationTime: Instant = Clock.System.now(),
+    comment: String? = null,
+    callback: (Sink) -> Boolean
+) = appendEntry(ZipEntry(
+    modificationTime = modificationTime,
+    name = name,
+    comment = comment
+), callback
+) // @formatter:on
+
+@ExperimentalCompressionApi
+fun Archiver<in ZipEntry, *>.appendEntry( // @formatter:off
+    name: String,
+    source: RawSource,
+    modificationTime: Instant = Clock.System.now(),
+    comment: String? = null
+) = appendEntry(ZipEntry(
+    modificationTime = modificationTime,
+    name = name,
+    comment = comment
+)
+) { sink -> // @formatter:on
+    sink.transferFrom(source) > 0
+}
