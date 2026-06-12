@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [2.0.0]
+
 ### Added
 
 - `Archiver<E, D>` interface for modeling streaming archivers
