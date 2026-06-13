@@ -1,5 +1,14 @@
 ## [Unreleased]
 
+### Added
+
+- WASM WASI support
+
+### Changed
+
+- Updated to Karma Conventions 1.18.0
+- Updated to Karbide 1.10.0
+
 ## [2.0.0]
 
 ### Added

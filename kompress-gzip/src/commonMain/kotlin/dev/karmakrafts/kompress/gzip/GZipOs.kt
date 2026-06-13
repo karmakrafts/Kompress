@@ -47,10 +47,11 @@ enum class GZipOs(val encodedValue: UByte) {
         fun byEncodedValue(encodedValue: UByte): GZipOs = entries.first { os -> os.encodedValue == encodedValue }
 
         @OptIn(InternalCompressionApi::class)
-        fun guessCurrent(): GZipOs = when (currentPlatform) {
-            Platform.WINDOWS -> NTFS
-            Platform.MACOS -> MACINTOSH
-            else -> UNIX
+        fun guessCurrent(): GZipOs = when {
+            currentPlatform == Platform.WINDOWS -> NTFS
+            currentPlatform.isApple -> MACINTOSH
+            currentPlatform.isUnix -> UNIX
+            else -> UNKNOWN
         }
     }
 }

@@ -17,24 +17,12 @@
 package dev.karmakrafts.kompress.util
 
 import dev.karmakrafts.kompress.InternalCompressionApi
+import kotlinx.io.files.Path
+import kotlin.time.Instant
 
 @InternalCompressionApi
-enum class Platform { // @formatter:off
-    WINDOWS,
-    LINUX,
-    MACOS,
-    ANDROID,
-    IOS,
-    TVOS,
-    WATCHOS,
-    WASI;
-
-    inline val isApple: Boolean
-        get() = this == MACOS || this == IOS || this == TVOS || this == WATCHOS
-
-    inline val isUnix: Boolean
-        get() = this == LINUX || this == ANDROID
-} // @formatter:on
-
-@InternalCompressionApi
-expect val currentPlatform: Platform
+actual object FileUtils {
+    actual fun getModificationTime(path: Path): Instant? {
+        return null
+    }
+}
