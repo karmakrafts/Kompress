@@ -3,6 +3,7 @@
 ### Added
 
 - WASM WASI support
+- `Platform.WASI` since WASI doesn't expose host platform
 
 ### Changed
 
