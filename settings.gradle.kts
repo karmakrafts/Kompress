@@ -1,3 +1,5 @@
+import java.time.Duration
+
 /*
  * Copyright 2026 Karma Krafts
  *
@@ -33,6 +35,21 @@ dependencyResolutionManagement {
         mavenCentral()
         mavenLocal()
         maven("https://central.sonatype.com/repository/maven-snapshots")
+    }
+}
+
+plugins {
+    id("org.gradle.toolchains.foojay-resolver") version "1.0.0"
+    id("com.gradleup.nmcp.settings") version "1.6.0"
+}
+
+nmcpSettings {
+    providers.environmentVariable("OSSRH_USERNAME").orNull?.let { username ->
+        centralPortal {
+            this.username = username
+            password = providers.environmentVariable("OSSRH_PASSWORD").get()
+            validationTimeout = Duration.ofMinutes(30)
+        }
     }
 }
 

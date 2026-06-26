@@ -1,5 +1,11 @@
 ## [Unreleased]
 
+### Changed
+
+- Updated to Gradle 9.6.0
+- Updated to Karma Conventions 1.18.1
+- Updated to Karbide 1.10.1
+
 ## [2.1.0]
 
 ### Added

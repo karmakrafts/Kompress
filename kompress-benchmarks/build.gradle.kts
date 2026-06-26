@@ -102,6 +102,15 @@ benchmark {
             iterationTime = 1
             iterationTimeUnit = "s"
         }
+
+        register("deflateInflate") {
+            include("dev.karmakrafts.kompress.*Inflater*")
+            include("dev.karmakrafts.kompress.*Deflater*")
+            warmups = 10
+            iterations = 10
+            iterationTime = 1
+            iterationTimeUnit = "s"
+        }
     }
 }
 

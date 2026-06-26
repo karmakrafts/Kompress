@@ -119,23 +119,21 @@ build:
 
 # ------------------------------ Publish
 
-publish-gitlab:
+publish:snapshot:maven:
   stage: publish
   rules:
     - *if-main
-    - *if-release
   script:
-    - ./gradlew publishAllPublicationsToGitLabRepository
+    - ./gradlew publishAllPublicationsToGitLabRepository publishAggregationToCentralSnapshots
   tags:
     - macos
 
-publish-central:
+publish:release:maven:
   stage: publish
   rules:
-    - *if-main
     - *if-release
   script:
-    - ./gradlew publishToSonatype closeAndReleaseStagingRepositories
+    - ./gradlew publishAllPublicationsToGitLabRepository publishAggregationToCentralPortal
   tags:
     - macos
 
