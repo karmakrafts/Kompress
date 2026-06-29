@@ -12,7 +12,7 @@ kotlinBrowser = "2026.6.9" # https://github.com/JetBrains/kotlin-wrappers/releas
 dokka = "2.2.0" # https://github.com/Kotlin/dokka/releases
 karmaConventions = "1.18.1" # https://github.com/karmakrafts/karma-conventions/tags
 oshi = "7.3.2" # https://github.com/oshi/oshi/releases
-karbide = "1.10.2" # https://github.com/karmakrafts/Karbide/releases
+karbide = "1.10.3" # https://github.com/karmakrafts/Karbide/releases
 
 # kompress-benchmarks
 
