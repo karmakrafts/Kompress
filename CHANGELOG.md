@@ -1,11 +1,16 @@
 ## [Unreleased]
 
+### Added
+
+- ZIP unarchiving support
+
 ### Changed
 
 - Performance improvements on Kotlin/JS
+- Minor performance improvements for decompression on all platforms
 - Updated to Gradle 9.6.0
 - Updated to Karma Conventions 1.18.1
-- Updated to Karbide 1.10.2
+- Updated to Karbide 1.10.3
 - Updated to Kotlin Wrappers 2026.6.9
 - Updated to OSHI 7.3.2
 - Migrated to NMCP based Maven Central publishing
