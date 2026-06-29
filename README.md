@@ -32,7 +32,7 @@ Compression and archiver APIs for Kotlin Multiplatform.
 
 - **kompress-core**: Core compression and CRC APIs, provides a common DEFLATE implementation
 - **kompress-gzip**: Support for the GZIP archive container format
-- **kompress-zip**: Support for the ZIP archive container format **(WIP)**
+- **kompress-zip**: Support for the ZIP archive container format (no en-/decryption support)
 - **kompress-benchmarks**: Various benchmarks comparing Kompress implementations against platform references
 
 ### How to use it

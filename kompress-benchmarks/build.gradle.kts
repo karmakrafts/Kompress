@@ -22,6 +22,7 @@ import dev.karmakrafts.conventions.kotlin.withBrowser
 import dev.karmakrafts.conventions.kotlin.withJvm
 import dev.karmakrafts.conventions.kotlin.withNative
 import dev.karmakrafts.conventions.kotlin.withNodeJs
+import dev.karmakrafts.conventions.kotlin.withWasmWasi
 import dev.karmakrafts.conventions.kotlin.withWeb
 import kotlinx.benchmark.gradle.benchmark
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
@@ -46,6 +47,9 @@ kotlin {
         withBrowser {
             useEsModules()
         }
+        withNodeJs()
+    }
+    withWasmWasi {
         withNodeJs()
     }
     applyDefaultHierarchyTemplate()
@@ -73,6 +77,7 @@ benchmark {
         register("mingwX64")
         register("js")
         register("wasmJs")
+        register("wasmWasi")
     }
     configurations {
         named("main") {
