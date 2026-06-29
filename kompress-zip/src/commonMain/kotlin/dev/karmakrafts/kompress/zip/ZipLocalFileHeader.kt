@@ -18,23 +18,10 @@ package dev.karmakrafts.kompress.zip
 
 import dev.karmakrafts.kompress.ExperimentalCompressionApi
 
-/**
- * See [PKWARE APPNOTE](https://pkware.cachefly.net/webdocs/casestudies/APPNOTE.TXT) 4.4.5.
- */
 @ExperimentalCompressionApi
-enum class ZipCompressionMethod(val encodedValue: UShort) {
-    // @formatter:off
-    NONE     (0x0000U),
-    DEFLATE  (0x0008U),
-    BZIP2    (0x000CU),
-    LZMA     (0x000EU),
-    ZSTD     (0x005DU),
-    XZ       (0x005FU);
-    // @formatter:on
-
-    companion object {
-        fun byEncodedValue(encodedValue: UShort): ZipCompressionMethod = entries.first { method ->
-            method.encodedValue == encodedValue
-        }
-    }
-}
+data class ZipLocalFileHeader( // @formatter:off
+    val entry: ZipEntry,
+    val checksum: UInt,
+    val compressedSize: Long,
+    val uncompressedSize: Long
+) // @formatter:on

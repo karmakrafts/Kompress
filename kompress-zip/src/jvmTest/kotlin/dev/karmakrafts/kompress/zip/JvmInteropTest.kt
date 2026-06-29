@@ -19,14 +19,18 @@ package dev.karmakrafts.kompress.zip
 import dev.karmakrafts.kompress.ExperimentalCompressionApi
 import kotlinx.io.Buffer
 import kotlinx.io.asInputStream
+import kotlinx.io.asSource
 import kotlinx.io.readByteArray
 import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
 import java.util.zip.ZipInputStream
+import java.util.zip.ZipOutputStream
 import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
+import java.util.zip.ZipEntry as JvmZipEntry
 
 @OptIn(ExperimentalCompressionApi::class)
 class JvmInteropTest {
@@ -76,5 +80,65 @@ class JvmInteropTest {
             assertEquals("2.txt", entry2.name)
             assertContentEquals(data2, zipInputStream.readAllBytes())
         }
+    }
+
+    @Test
+    fun `kompress zip archiver to kompress zip unarchiver`() {
+        val data1 = Random(42).nextBytes(1024 * 1024)
+        val data2 = "Hello ZIP".encodeToByteArray()
+        val outputBuffer = Buffer()
+
+        outputBuffer.zip().use { archiver ->
+            archiver.appendEntry("1.bin") { it.write(data1); false }
+            archiver.appendEntry("2.txt") { it.write(data2); false }
+        }
+
+        val entries = ArrayList<String>()
+        val contents = ArrayList<ByteArray>()
+        outputBuffer.unzip().use { unarchiver ->
+            unarchiver.forEachEntry { entry, source, fetchMore ->
+                entries += entry.name
+                fetchMore()
+                val content = Buffer()
+                var read = source.readAtMostTo(content, 4096)
+                while (read != -1L || fetchMore()) {
+                    read = source.readAtMostTo(content, 4096)
+                }
+                contents += content.readByteArray()
+            }
+        }
+
+        assertEquals(listOf("1.bin", "2.txt"), entries)
+        assertContentEquals(data1, contents[0])
+        assertContentEquals(data2, contents[1])
+    }
+
+    @Test
+    fun `jvm zip output stream to kompress zip unarchiver`() {
+        val data = Random(42).nextBytes(1024 * 1024)
+        val outputStream = ByteArrayOutputStream()
+
+        ZipOutputStream(outputStream).use { zipOutputStream ->
+            zipOutputStream.putNextEntry(JvmZipEntry("test.bin"))
+            zipOutputStream.write(data)
+            zipOutputStream.closeEntry()
+        }
+
+        val contents = ArrayList<ByteArray>()
+        ByteArrayInputStream(outputStream.toByteArray()).asSource().unzip().use { unarchiver ->
+            unarchiver.forEachEntry { entry, source, fetchMore ->
+                assertEquals("test.bin", entry.name)
+                fetchMore()
+                val content = Buffer()
+                var read = source.readAtMostTo(content, 4096)
+                while (read != -1L || fetchMore()) {
+                    read = source.readAtMostTo(content, 4096)
+                }
+                contents += content.readByteArray()
+            }
+        }
+
+        assertEquals(1, contents.size)
+        assertContentEquals(data, contents.single())
     }
 }

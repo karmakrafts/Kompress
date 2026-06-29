@@ -22,6 +22,7 @@ import dev.karmakrafts.karbide.writeUIntLeFast
 import dev.karmakrafts.karbide.writeUShortLeFast
 import dev.karmakrafts.kompress.Decompressor
 import dev.karmakrafts.kompress.InternalCompressionApi
+import dev.karmakrafts.kompress.archive.AbstractBufferedUnarchiver
 import dev.karmakrafts.kompress.archive.Unarchiver
 import dev.karmakrafts.kompress.archive.UnarchiverEntryCallback
 import dev.karmakrafts.kompress.crc.CRC32
@@ -50,28 +51,13 @@ private class GZipUnarchiver( // @formatter:off
     private val inflater: Inflater,
     private val isSourceOwned: Boolean,
     private val isDecompressorOwned: Boolean
-) : Unarchiver<GZipEntry, GZipCompressionMethod> { // @formatter:on
+) : AbstractBufferedUnarchiver<GZipEntry, GZipCompressionMethod>() { // @formatter:on
     override val decompressors: Map<GZipCompressionMethod, Decompressor> =
         mapOf(GZipCompressionMethod.DEFLATE to inflater)
 
-    private val buffer: Buffer = Buffer()
     private val decompressionBuffer: Buffer = Buffer()
     private var isClosed: Boolean = false
     private val crc32: CRC32 = CRC32()
-
-    // Allows buffering N bytes on demand based on the bytes already in the buffer
-    private fun ensureBufferFilled(size: Long): Boolean {
-        var missing = size - buffer.size
-        var read = source.readAtMostTo(buffer, missing)
-        if (read == -1L) return false
-        missing -= read
-        while (missing > 0) {
-            read = source.readAtMostTo(buffer, missing)
-            if (read == -1L) break
-            missing -= read
-        }
-        return missing == 0L
-    }
 
     private fun parseExtraField(): ByteArray? {
         if (!ensureBufferFilled(UShort.SIZE_BYTES.toLong())) return null
