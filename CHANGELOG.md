@@ -2,7 +2,7 @@
 
 ### Added
 
-- ZLIB support via new `ZlibArchiver` and `ZlibUnarchiver` provided by `kompress-zlib`
+- ZLIB support via new `ZlibCompressor` and `ZlibDecompressor` provided by `kompress-zlib`
 - `WrappingCompressor` delegate compressor to support wrapping existing compressors with extra data
 - `UnwrappingDecompressor` delegate decompressor to support unwrapping extra data with existing decompressors
 
