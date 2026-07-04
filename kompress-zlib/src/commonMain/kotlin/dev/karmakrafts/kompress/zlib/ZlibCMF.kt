@@ -23,14 +23,31 @@ import kotlin.jvm.JvmInline
 @OptIn(InternalCompressionApi::class)
 @JvmInline
 value class ZlibCMF(val value: UByte) {
+    private companion object {
+        const val MIN_WINDOW_SIZE: Int = 1 shl 8
+        const val MAX_WINDOW_SIZE: Int = 1 shl 15
+
+        fun encodeWindowSize(windowSize: Int): UInt {
+            require(windowSize in MIN_WINDOW_SIZE..MAX_WINDOW_SIZE) {
+                "Window size must be in [$MIN_WINDOW_SIZE, $MAX_WINDOW_SIZE] bytes"
+            }
+            require(windowSize.countOneBits() == 1) {
+                "Window size must be a power of two"
+            }
+            return (windowSize.countTrailingZeroBits() - 8).toUInt() and 0b1111U
+        }
+    }
+
     constructor(
         compressionMethod: ZlibCompressionMethod = ZlibCompressionMethod.DEFLATE,
         windowSize: Int = LZ77.DEFAULT_WINDOW_SIZE
-    ) : this((((windowSize.toUInt() shl 4) and 0b1111U) or (compressionMethod.encodedValue.toUInt() and 0b1111U)).toUByte())
+    ) : this(
+        (((encodeWindowSize(windowSize) shl 4) or (compressionMethod.encodedValue.toUInt() and 0b1111U))).toUByte()
+    )
 
     inline val compressionMethod: ZlibCompressionMethod
         get() = ZlibCompressionMethod.byEncodedValue(value and 0b1111U)
 
     inline val windowSize: Int
-        get() = ((value.toUInt() shr 4) and 0b1111U).toInt()
+        get() = 1 shl ((((value.toUInt() shr 4) and 0b1111U).toInt()) + 8)
 }

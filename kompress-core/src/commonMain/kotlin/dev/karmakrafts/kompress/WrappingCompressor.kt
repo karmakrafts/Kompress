@@ -17,6 +17,7 @@
 package dev.karmakrafts.kompress
 
 import kotlinx.io.Buffer
+import kotlinx.io.readByteArray
 
 abstract class WrappingCompressor(val compressor: Compressor) : Compressor by compressor {
     protected val buffer: Buffer = Buffer()
@@ -84,5 +85,18 @@ abstract class WrappingCompressor(val compressor: Compressor) : Compressor by co
         wrapperBytesWritten = 0L
         buffer.clear()
         compressor.reset()
+    }
+
+    override fun compressBulk(data: ByteArray, bufferSize: Int): ByteArray {
+        setInput(data)
+        finish()
+        val compressedData = Buffer()
+        val chunkBuffer = ByteArray(bufferSize)
+        while (true) {
+            val bytesCompressed = compress(chunkBuffer)
+            if (bytesCompressed == 0) break
+            compressedData.write(chunkBuffer, 0, bytesCompressed)
+        }
+        return compressedData.readByteArray()
     }
 }

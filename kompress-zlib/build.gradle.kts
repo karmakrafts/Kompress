@@ -71,14 +71,7 @@ kotlin {
     withWasmWasi {
         withNodeJs()
     }
-    applyDefaultHierarchyTemplate {
-        common {
-            group("jvmAndAndroid") {
-                withJvm()
-                withAndroidLibrary()
-            }
-        }
-    }
+    applyDefaultHierarchyTemplate()
     sourceSets {
         commonMain {
             dependencies {
