@@ -21,7 +21,9 @@ import dev.karmakrafts.karbide.BitSink
 import dev.karmakrafts.karbide.bitSink
 import dev.karmakrafts.karbide.writeBit
 import dev.karmakrafts.karbide.writeBitsLsb
+import dev.karmakrafts.kompress.AbstractCompressor
 import dev.karmakrafts.kompress.Compressor
+import dev.karmakrafts.kompress.InternalCompressionApi
 import dev.karmakrafts.kompress.compressingSink
 import dev.karmakrafts.kompress.compressingSource
 import dev.karmakrafts.kompress.huffman.HuffmanTree
@@ -70,10 +72,11 @@ interface Deflater : Compressor {
     var level: Int
 }
 
+@OptIn(InternalCompressionApi::class)
 internal class DeflaterImpl( // @formatter:off
     level: Int,
     windowSize: Int = LZ77.DEFAULT_WINDOW_SIZE
-) : Deflater { // @formatter:on
+) : AbstractCompressor(), Deflater { // @formatter:on
     private companion object {
         const val FIXED_BLOCK_TOKEN_THRESHOLD: Int = 512
 
@@ -90,20 +93,6 @@ internal class DeflaterImpl( // @formatter:off
             field = value
         }
 
-    override var input: ByteArray = ByteArray(0)
-        private set
-    override var inputOffset: Int = 0
-        private set
-    override var inputSize: Int = 0
-        private set
-    override var remaining: Int = 0
-        private set
-
-    override var bytesRead: Long = 0L
-        private set
-    override var bytesWritten: Long = 0L
-        private set
-
     override val needsInput: Boolean get() = !finished && remaining == 0
 
     private var finishing: Boolean = false
@@ -119,13 +108,6 @@ internal class DeflaterImpl( // @formatter:off
     private val lengthFrequencies: IntArray = IntArray(DeflateConstants.CODE_LENGTH_ALPHABET_SIZE)
     private val tokenBuffer: ArrayList<Token> = ArrayList()
     private val symbolBuffer: ArrayList<EncodedSymbol> = ArrayList()
-
-    override fun setInput(data: ByteArray, offset: Int, size: Int) {
-        input = data
-        inputOffset = offset
-        inputSize = size
-        remaining = size
-    }
 
     /**
      * Computes the HCLEN value for the dynamic Huffman block header by omitting trailing zero code-length

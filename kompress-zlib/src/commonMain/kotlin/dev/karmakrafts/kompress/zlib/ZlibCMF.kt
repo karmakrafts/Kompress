@@ -14,23 +14,23 @@
  * limitations under the License.
  */
 
-@file:JvmName("LZ77$")
-
-package dev.karmakrafts.kompress.lz77
+package dev.karmakrafts.kompress.zlib
 
 import dev.karmakrafts.kompress.InternalCompressionApi
-import dev.karmakrafts.kompress.util.has256BitSimd
+import dev.karmakrafts.kompress.lz77.LZ77
+import kotlin.jvm.JvmInline
 
 @OptIn(InternalCompressionApi::class)
-private val lz77Factory: (Int, Int, Int, Int) -> LZ77 by lazy {
-    if (has256BitSimd) ::FastLZ77
-    else ::LZ77Impl
-}
+@JvmInline
+value class ZlibCMF(val value: UByte) {
+    constructor(
+        compressionMethod: ZlibCompressionMethod = ZlibCompressionMethod.DEFLATE,
+        windowSize: Int = LZ77.DEFAULT_WINDOW_SIZE
+    ) : this((((windowSize.toUInt() shl 4) and 0b1111U) or (compressionMethod.encodedValue.toUInt() and 0b1111U)).toUByte())
 
-@InternalCompressionApi
-actual fun LZ77( // @formatter:off
-    level: Int,
-    minMatch: Int,
-    maxMatch: Int,
-    windowSize: Int
-): LZ77 = lz77Factory(level, minMatch, maxMatch, windowSize)
+    inline val compressionMethod: ZlibCompressionMethod
+        get() = ZlibCompressionMethod.byEncodedValue(value and 0b1111U)
+
+    inline val windowSize: Int
+        get() = ((value.toUInt() shr 4) and 0b1111U).toInt()
+}

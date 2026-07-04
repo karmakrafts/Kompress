@@ -40,7 +40,7 @@ dependencyResolutionManagement {
 
 plugins {
     id("org.gradle.toolchains.foojay-resolver") version "1.0.0"
-    id("com.gradleup.nmcp.settings") version "1.6.0"
+    id("com.gradleup.nmcp.settings") version "1.6.1"
 }
 
 nmcpSettings {
@@ -55,6 +55,7 @@ nmcpSettings {
 
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
 include("kompress-core")
+include("kompress-zlib")
 include("kompress-gzip")
 include("kompress-zip")
 include("kompress-benchmarks")

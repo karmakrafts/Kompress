@@ -14,23 +14,14 @@
  * limitations under the License.
  */
 
-@file:JvmName("LZ77$")
+package dev.karmakrafts.kompress.zlib
 
-package dev.karmakrafts.kompress.lz77
+enum class ZlibCompressionMethod(val encodedValue: UByte) {
+    DEFLATE(0x08U);
 
-import dev.karmakrafts.kompress.InternalCompressionApi
-import dev.karmakrafts.kompress.util.has256BitSimd
-
-@OptIn(InternalCompressionApi::class)
-private val lz77Factory: (Int, Int, Int, Int) -> LZ77 by lazy {
-    if (has256BitSimd) ::FastLZ77
-    else ::LZ77Impl
+    companion object {
+        fun byEncodedValue(encodedValue: UByte): ZlibCompressionMethod = entries.first { method ->
+            method.encodedValue == encodedValue
+        }
+    }
 }
-
-@InternalCompressionApi
-actual fun LZ77( // @formatter:off
-    level: Int,
-    minMatch: Int,
-    maxMatch: Int,
-    windowSize: Int
-): LZ77 = lz77Factory(level, minMatch, maxMatch, windowSize)

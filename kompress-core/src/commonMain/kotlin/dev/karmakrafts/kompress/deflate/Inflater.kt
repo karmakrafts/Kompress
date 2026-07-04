@@ -22,6 +22,7 @@ import dev.karmakrafts.karbide.bitSource
 import dev.karmakrafts.karbide.readBitsLsb
 import dev.karmakrafts.karbide.source
 import dev.karmakrafts.kompress.Decompressor
+import dev.karmakrafts.kompress.InternalCompressionApi
 import dev.karmakrafts.kompress.decompressingSink
 import dev.karmakrafts.kompress.decompressingSource
 import dev.karmakrafts.kompress.exception.DataFormatException
@@ -110,6 +111,7 @@ interface Inflater : Decompressor {
     }
 }
 
+@OptIn(InternalCompressionApi::class)
 internal class InflaterImpl(
     windowSize: Int = LZ77.DEFAULT_WINDOW_SIZE
 ) : Inflater {

@@ -16,10 +16,12 @@
 
 package dev.karmakrafts.kompress.lz77
 
+import dev.karmakrafts.kompress.InternalCompressionApi
 import jdk.incubator.vector.ByteVector
 import jdk.incubator.vector.VectorOperators
 import jdk.incubator.vector.VectorSpecies
 
+@OptIn(InternalCompressionApi::class)
 internal class FastLZ77( // @formatter:off
     level: Int ,
     override val minMatch: Int,

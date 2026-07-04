@@ -16,7 +16,10 @@
 
 package dev.karmakrafts.kompress.lz77
 
-internal interface LZ77 {
+import dev.karmakrafts.kompress.InternalCompressionApi
+
+@InternalCompressionApi
+interface LZ77 {
     companion object {
         const val DEFAULT_LEVEL: Int = 6
         const val DEFAULT_MIN_MATCH: Int = 3
@@ -74,6 +77,7 @@ internal interface LZ77 {
  * A simple LZ77 implementation which allows
  * overriding the level, match counts and window size.
  */
+@InternalCompressionApi
 internal class LZ77Impl( // @formatter:off
     level: Int = LZ77.DEFAULT_LEVEL,
     override val minMatch: Int = LZ77.DEFAULT_MIN_MATCH,
@@ -170,7 +174,8 @@ internal class LZ77Impl( // @formatter:off
     }
 }
 
-internal expect fun LZ77(
+@InternalCompressionApi
+expect fun LZ77(
     level: Int = LZ77.DEFAULT_LEVEL,
     minMatch: Int = LZ77.DEFAULT_MIN_MATCH,
     maxMatch: Int = LZ77.DEFAULT_MAX_MATCH,

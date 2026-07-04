@@ -16,11 +16,13 @@
 
 package dev.karmakrafts.kompress.lz77
 
+import dev.karmakrafts.kompress.InternalCompressionApi
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
+@OptIn(InternalCompressionApi::class)
 class LZ77Test {
     @Test
     fun `empty input`() {

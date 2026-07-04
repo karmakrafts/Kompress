@@ -16,11 +16,14 @@
 
 package dev.karmakrafts.kompress.lz77
 
+import dev.karmakrafts.kompress.InternalCompressionApi
+
 /**
  * Base interface for the two possible LZ77 token types included
  * in any LZ77 token stream.
  */
-internal sealed interface Token {
+@InternalCompressionApi
+sealed interface Token {
     /**
      * A literal byte token.
      */
