@@ -19,14 +19,20 @@ package dev.karmakrafts.kompress.zlib
 import dev.karmakrafts.kompress.Decompressor
 import dev.karmakrafts.kompress.InternalCompressionApi
 import dev.karmakrafts.kompress.UnwrappingDecompressor
+import dev.karmakrafts.kompress.decompressingSink
+import dev.karmakrafts.kompress.decompressingSource
 import dev.karmakrafts.kompress.deflate.Inflater
 import dev.karmakrafts.kompress.exception.DataFormatException
 import dev.karmakrafts.kompress.exception.InvalidChecksumException
-import dev.karmakrafts.kompress.lz77.LZ77
 import dev.karmakrafts.kompress.util.Adler32
+import kotlinx.io.RawSink
+import kotlinx.io.RawSource
 import kotlinx.io.readUByte
 import kotlinx.io.readUInt
 
+/**
+ * Decompresses data from the Zlib format.
+ */
 @OptIn(InternalCompressionApi::class)
 class ZlibDecompressor : UnwrappingDecompressor(Inflater()) {
     companion object {
@@ -38,6 +44,7 @@ class ZlibDecompressor : UnwrappingDecompressor(Inflater()) {
          * @param bufferSize The size of the intermediate buffer used during decompression.
          * @return The decompressed data.
          * @throws dev.karmakrafts.kompress.exception.DataFormatException when the decompressor encounters invalid data.
+         * @throws dev.karmakrafts.kompress.exception.InvalidChecksumException when the trailing Adler-32 checksum does not match.
          */
         fun decompress( // @formatter:off
             data: ByteArray,
@@ -66,10 +73,6 @@ class ZlibDecompressor : UnwrappingDecompressor(Inflater()) {
         if (compressionMethod != ZlibCompressionMethod.DEFLATE) {
             throw DataFormatException("Unsupported Zlib compression method 0x${compressionMethod.encodedValue.toHexString()}")
         }
-        val windowSize = cmf.windowSize
-        if (windowSize > LZ77.DEFAULT_WINDOW_SIZE) {
-            throw DataFormatException("Unsupported Zlib window size $windowSize")
-        }
         if (flg.hasDictionary) {
             throw DataFormatException("Zlib preset dictionaries are not supported")
         }
@@ -95,3 +98,35 @@ class ZlibDecompressor : UnwrappingDecompressor(Inflater()) {
         adler32.reset()
     }
 }
+
+/**
+ * Returns a [RawSource] that reads Zlib-compressed bytes from this source
+ * and emits their uncompressed form.
+ *
+ * This is a streaming wrapper: bytes are decompressed on the fly as you read
+ * from the returned source. Close the returned source when finished to free
+ * any underlying resources.
+ *
+ * @param bufferSize Size of the internal working buffers used during
+ *  decompression.
+ * @return A [RawSource] that produces decompressed data.
+ */
+fun RawSource.unzlibSource( // @formatter:off
+    bufferSize: Int = Decompressor.DEFAULT_BUFFER_SIZE
+): RawSource = decompressingSource(ZlibDecompressor(), bufferSize) // @formatter:on
+
+/**
+ * Returns a [RawSink] that decompresses written bytes using Zlib and
+ * writes them to this sink.
+ *
+ * This is a streaming wrapper: bytes are decompressed on the fly as you write
+ * to the returned sink. Close the returned sink when finished to free
+ * any underlying resources and ensure all data is flushed.
+ *
+ * @param bufferSize Size of the internal working buffers used during
+ *  decompression.
+ * @return A [RawSink] that accepts compressed data and writes decompressed data.
+ */
+fun RawSink.unzlibSink( // @formatter:off
+    bufferSize: Int = Decompressor.DEFAULT_BUFFER_SIZE
+): RawSink = decompressingSink(ZlibDecompressor(), bufferSize) // @formatter:on

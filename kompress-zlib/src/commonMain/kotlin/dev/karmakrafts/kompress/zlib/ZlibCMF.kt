@@ -20,6 +20,11 @@ import dev.karmakrafts.kompress.InternalCompressionApi
 import dev.karmakrafts.kompress.lz77.LZ77
 import kotlin.jvm.JvmInline
 
+/**
+ * Represents the Zlib `CMF` (compression method and flags) header byte.
+ *
+ * @property value The raw encoded CMF byte.
+ */
 @OptIn(InternalCompressionApi::class)
 @JvmInline
 value class ZlibCMF(val value: UByte) {
@@ -38,6 +43,12 @@ value class ZlibCMF(val value: UByte) {
         }
     }
 
+    /**
+     * Creates a CMF byte from a compression method and window size.
+     *
+     * @param compressionMethod The compression method to encode.
+     * @param windowSize The LZ77 window size in bytes.
+     */
     constructor(
         compressionMethod: ZlibCompressionMethod = ZlibCompressionMethod.DEFLATE,
         windowSize: Int = LZ77.DEFAULT_WINDOW_SIZE
@@ -45,9 +56,11 @@ value class ZlibCMF(val value: UByte) {
         (((encodeWindowSize(windowSize) shl 4) or (compressionMethod.encodedValue.toUInt() and 0b1111U))).toUByte()
     )
 
+    /** The compression method encoded in this CMF byte. */
     inline val compressionMethod: ZlibCompressionMethod
         get() = ZlibCompressionMethod.byEncodedValue(value and 0b1111U)
 
+    /** The encoded LZ77 window size in bytes. */
     inline val windowSize: Int
         get() = 1 shl ((((value.toUInt() shr 4) and 0b1111U).toInt()) + 8)
 }
