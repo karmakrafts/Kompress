@@ -18,26 +18,32 @@ package dev.karmakrafts.kompress.util
 
 import dev.karmakrafts.kompress.InternalCompressionApi
 
+/**
+ * See [the example implementation](https://en.wikipedia.org/wiki/Adler-32) of Adler32 on Wikipedia.
+ */
 @InternalCompressionApi
 class Adler32(private val mod: Int = DEFAULT_MOD) {
     companion object {
         private const val DEFAULT_MOD: Int = 0xFFF1
     }
 
-    var checksum: UInt = 0U
-        private set
+    private var a: Int = 1
+    private var b: Int = 0
+    val checksum: UInt get() = ((b shl 16) or (a and 0xFFFF)).toUInt()
 
     fun round(bytes: ByteArray, offset: Int = 0, size: Int = bytes.size) {
         for (index in offset..<(offset + size)) round(bytes[index])
     }
 
     fun round(byte: Byte) {
-        val a = ((checksum.toInt() and 0xFFFF) + byte.toInt()) % mod
-        val b = (((checksum.toInt() shr 16) and 0xFFFF) + a) % mod
-        checksum = (b.toUInt() shl 16) or a.toUInt()
+        a += byte.toInt() and 0xFF
+        if (a >= mod) a -= mod
+        b += a
+        if (b >= mod) b -= mod
     }
 
     fun reset() {
-        checksum = 0U
+        a = 1
+        b = 0
     }
 }
