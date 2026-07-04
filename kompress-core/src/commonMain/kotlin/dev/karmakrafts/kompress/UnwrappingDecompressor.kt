@@ -23,17 +23,13 @@ import kotlinx.io.readByteArray
 abstract class UnwrappingDecompressor(
     val decompressor: Decompressor
 ) : Decompressor by decompressor {
-    companion object {
-        private val EMPTY_BUFFER = ByteArray(0)
-    }
-
     protected val buffer: Buffer = Buffer()
     private var readPrologue: Boolean = false
     private var finishing: Boolean = false
     private var readEpilogue: Boolean = false
     private var wrapperBytesRead: Long = 0L
 
-    private var wrappedInput: ByteArray = EMPTY_BUFFER
+    private var wrappedInput: ByteArray = ByteArray(0)
     private var wrappedInputOffset: Int = 0
     private var wrappedInputSize: Int = 0
 
@@ -79,10 +75,7 @@ abstract class UnwrappingDecompressor(
     }
 
     override fun decompress(
-        output: ByteArray,
-        offset: Int,
-        size: Int,
-        flush: Boolean
+        output: ByteArray, offset: Int, size: Int, flush: Boolean
     ): Int {
         if (size <= 0 || finished) return 0
 
@@ -122,7 +115,7 @@ abstract class UnwrappingDecompressor(
         finishing = false
         readEpilogue = false
         wrapperBytesRead = 0L
-        wrappedInput = EMPTY_BUFFER
+        wrappedInput = ByteArray(0)
         wrappedInputOffset = 0
         wrappedInputSize = 0
         buffer.clear()
@@ -169,6 +162,6 @@ abstract class UnwrappingDecompressor(
         if (remainingInput <= 0) return
         val readOffset = decompressor.inputOffset + (decompressor.inputSize - remainingInput).coerceAtLeast(0)
         buffer.write(decompressor.input, readOffset, readOffset + remainingInput)
-        decompressor.setInput(EMPTY_BUFFER, 0, 0)
+        decompressor.setInput(ByteArray(0), 0, 0)
     }
 }

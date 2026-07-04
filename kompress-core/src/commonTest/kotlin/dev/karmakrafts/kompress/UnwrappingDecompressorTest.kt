@@ -32,9 +32,7 @@ class UnwrappingDecompressorTest {
         val delegate = ScriptedDecompressor(byteArrayOf(0x10, 0x11))
         delegate.scriptReads(2)
         val decompressor = TestUnwrappingDecompressor(
-            delegate,
-            prologue = byteArrayOf(0x01, 0x02),
-            epilogue = byteArrayOf()
+            delegate, prologue = byteArrayOf(0x01, 0x02), epilogue = byteArrayOf()
         )
 
         decompressor.setInput(byteArrayOf(0x01, 0x02, 0x33, 0x34))
@@ -52,9 +50,7 @@ class UnwrappingDecompressorTest {
         val delegate = ScriptedDecompressor(byteArrayOf(0x40))
         delegate.scriptReads(1)
         val decompressor = TestUnwrappingDecompressor(
-            delegate,
-            prologue = byteArrayOf(0x01),
-            epilogue = byteArrayOf(0x7A, 0x7B)
+            delegate, prologue = byteArrayOf(0x01), epilogue = byteArrayOf(0x7A, 0x7B)
         )
 
         decompressor.setInput(byteArrayOf(0x01, 0x55))
@@ -79,9 +75,7 @@ class UnwrappingDecompressorTest {
         val delegate = ScriptedDecompressor(byteArrayOf(0x10))
         delegate.scriptReads(1)
         val decompressor = TestUnwrappingDecompressor(
-            delegate,
-            prologue = byteArrayOf(0x01),
-            epilogue = byteArrayOf()
+            delegate, prologue = byteArrayOf(0x01), epilogue = byteArrayOf()
         )
 
         decompressor.setInput(byteArrayOf(0x01, 0x20))
@@ -104,15 +98,11 @@ class UnwrappingDecompressorTest {
     @Test
     fun `decompress notifies data writes incrementally`() {
         val delegate = ScriptedDecompressor(
-            byteArrayOf(0x10),
-            byteArrayOf(0x11),
-            byteArrayOf(0x12)
+            byteArrayOf(0x10), byteArrayOf(0x11), byteArrayOf(0x12)
         )
         delegate.scriptReads(2, 1, 3)
         val decompressor = TestUnwrappingDecompressor(
-            delegate,
-            prologue = byteArrayOf(),
-            epilogue = byteArrayOf()
+            delegate, prologue = byteArrayOf(), epilogue = byteArrayOf()
         )
 
         decompressor.setInput(byteArrayOf(0x00, 0x01, 0x02, 0x03, 0x04, 0x05))
@@ -131,9 +121,7 @@ class UnwrappingDecompressorTest {
     fun `decompress throws when wrapper prologue is incomplete at finish`() {
         val delegate = ScriptedDecompressor(byteArrayOf(0x10))
         val decompressor = TestUnwrappingDecompressor(
-            delegate,
-            prologue = byteArrayOf(0x01, 0x02),
-            epilogue = byteArrayOf()
+            delegate, prologue = byteArrayOf(0x01, 0x02), epilogue = byteArrayOf()
         )
 
         decompressor.setInput(byteArrayOf(0x01))
@@ -156,9 +144,7 @@ class UnwrappingDecompressorTest {
     }
 
     private class TestUnwrappingDecompressor(
-        decompressor: Decompressor,
-        private val prologue: ByteArray,
-        private val epilogue: ByteArray
+        decompressor: Decompressor, private val prologue: ByteArray, private val epilogue: ByteArray
     ) : UnwrappingDecompressor(decompressor) {
         var prologueCalls: Int = 0
             private set

@@ -24,7 +24,6 @@ import java.util.zip.Inflater
 import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
-import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 
 class JvmInteropTest {
@@ -63,8 +62,7 @@ class JvmInteropTest {
     }
 
     private fun assertZlibEnvelopeMatchesJvm(
-        kompressCompressed: ByteArray,
-        jvmCompressed: ByteArray
+        kompressCompressed: ByteArray, jvmCompressed: ByteArray
     ) {
         assertContentEquals(jvmCompressed.copyOfRange(0, 2), kompressCompressed.copyOfRange(0, 2))
         assertContentEquals(

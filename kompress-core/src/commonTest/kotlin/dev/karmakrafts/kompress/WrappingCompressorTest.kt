@@ -27,13 +27,10 @@ class WrappingCompressorTest {
     @Test
     fun `compress emits prologue before compressed payload`() {
         val delegate = ScriptedCompressor(
-            byteArrayOf(0x10, 0x11),
-            byteArrayOf(0x12)
+            byteArrayOf(0x10, 0x11), byteArrayOf(0x12)
         )
         val compressor = TestWrappingCompressor(
-            delegate,
-            prologue = byteArrayOf(0x01, 0x02, 0x03),
-            epilogue = byteArrayOf(0x7F)
+            delegate, prologue = byteArrayOf(0x01, 0x02, 0x03), epilogue = byteArrayOf(0x7F)
         )
 
         val output = ByteArray(2)
@@ -53,13 +50,10 @@ class WrappingCompressorTest {
     @Test
     fun `compress emits epilogue only after finish and after payload`() {
         val delegate = ScriptedCompressor(
-            byteArrayOf(0x10),
-            byteArrayOf(0x11)
+            byteArrayOf(0x10), byteArrayOf(0x11)
         )
         val compressor = TestWrappingCompressor(
-            delegate,
-            prologue = byteArrayOf(0x01),
-            epilogue = byteArrayOf(0x20, 0x21)
+            delegate, prologue = byteArrayOf(0x01), epilogue = byteArrayOf(0x20, 0x21)
         )
 
         val output = ByteArray(1)
@@ -84,9 +78,7 @@ class WrappingCompressorTest {
     fun `reset re-enables prologue emission`() {
         val delegate = ScriptedCompressor(byteArrayOf(0x10))
         val compressor = TestWrappingCompressor(
-            delegate,
-            prologue = byteArrayOf(0x01),
-            epilogue = byteArrayOf(0x20)
+            delegate, prologue = byteArrayOf(0x01), epilogue = byteArrayOf(0x20)
         )
 
         val output = ByteArray(8)
@@ -123,15 +115,11 @@ class WrappingCompressorTest {
     @Test
     fun `compress notifies data reads incrementally`() {
         val delegate = ScriptedCompressor(
-            byteArrayOf(0x10),
-            byteArrayOf(0x11),
-            byteArrayOf(0x12)
+            byteArrayOf(0x10), byteArrayOf(0x11), byteArrayOf(0x12)
         )
         delegate.scriptReads(2, 1, 3)
         val compressor = TestWrappingCompressor(
-            delegate,
-            prologue = byteArrayOf(),
-            epilogue = byteArrayOf()
+            delegate, prologue = byteArrayOf(), epilogue = byteArrayOf()
         )
 
         compressor.setInput(byteArrayOf(0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06), 1, 6)
@@ -146,9 +134,7 @@ class WrappingCompressorTest {
     }
 
     private class TestWrappingCompressor(
-        compressor: Compressor,
-        private val prologue: ByteArray,
-        private val epilogue: ByteArray
+        compressor: Compressor, private val prologue: ByteArray, private val epilogue: ByteArray
     ) : WrappingCompressor(compressor) {
         var prologueCalls: Int = 0
             private set
