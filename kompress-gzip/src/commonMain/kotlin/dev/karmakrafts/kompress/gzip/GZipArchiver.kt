@@ -153,6 +153,7 @@ private class GZipArchiver( // @formatter:off
 /**
  * Appends a new entry to the GZip archive from the given [path].
  *
+ * @receiver The target archiver.
  * @param path The path to the file to append.
  * @param modificationTime The modification time of the file. Defaults to the actual modification time of the file or the current time if not available.
  * @param comment An optional comment for the entry.
@@ -179,11 +180,12 @@ fun Archiver<in GZipEntry, *>.appendEntry( // @formatter:off
 /**
  * Appends a new entry to the GZip archive with the given [name] and a [callback] to write the data.
  *
+ * @receiver The target archiver.
  * @param name The name of the entry.
  * @param modificationTime The modification time of the entry. Defaults to the current time.
  * @param comment An optional comment for the entry.
  * @param isText Whether the entry is a text file.
- * @param callback A callback to write the entry's data to the given [Sink].
+ * @param callback A callback that writes data to the provided [Sink] and returns `true` while more data is available.
  */
 fun Archiver<in GZipEntry, *>.appendEntry( // @formatter:off
     name: String,
@@ -203,6 +205,7 @@ fun Archiver<in GZipEntry, *>.appendEntry( // @formatter:off
 /**
  * Appends a new entry to the GZip archive with the given [name] and [source].
  *
+ * @receiver The target archiver.
  * @param name The name of the entry.
  * @param source The source to read the entry's data from.
  * @param modificationTime The modification time of the entry. Defaults to the current time.
@@ -229,6 +232,7 @@ fun Archiver<in GZipEntry, *>.appendEntry( // @formatter:off
 /**
  * Wraps this [RawSink] into a GZip [Archiver] using the given [deflater].
  *
+ * @receiver The sink to wrap.
  * @param deflater The [Deflater] to use for compression.
  * @param isSinkOwned Whether the [RawSink] is owned by the archiver and should be closed when the archiver is closed.
  * @param isCompressorOwned Whether the [deflater] is owned by the archiver and should be closed when the archiver is closed.

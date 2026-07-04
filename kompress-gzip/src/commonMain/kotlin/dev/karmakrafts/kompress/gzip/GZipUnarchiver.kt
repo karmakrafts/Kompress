@@ -180,6 +180,7 @@ private class GZipUnarchiver( // @formatter:off
 /**
  * Wraps this [RawSource] into a GZip [Unarchiver] using the given [inflater].
  *
+ * @receiver The source to wrap.
  * @param inflater The [Inflater] to use for decompression.
  * @param isSourceOwned Whether the [RawSource] is owned by the unarchiver and should be closed when the unarchiver is closed.
  * @param isDecompressorOwned Whether the [inflater] is owned by the unarchiver and should be closed when the unarchiver is closed.
@@ -195,6 +196,7 @@ fun RawSource.ungzip( // @formatter:off
 /**
  * Wraps this [Source] into a GZip [Unarchiver] using the given [inflater].
  *
+ * @receiver The source to wrap.
  * @param inflater The [Inflater] to use for decompression.
  * @param isSourceOwned Whether the [Source] is owned by the unarchiver and should be closed when the unarchiver is closed.
  * @param isDecompressorOwned Whether the [inflater] is owned by the unarchiver and should be closed when the unarchiver is closed.

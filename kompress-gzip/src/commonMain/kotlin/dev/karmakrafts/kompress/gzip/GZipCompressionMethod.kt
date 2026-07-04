@@ -17,15 +17,26 @@
 package dev.karmakrafts.kompress.gzip
 
 /**
- * See [RFC1952](https://datatracker.ietf.org/doc/html/rfc1952) 2.3.1.
+ * Compression methods supported by GZip entries.
+ *
+ * See [RFC1952](https://datatracker.ietf.org/doc/html/rfc1952) 2.3.1,
  * start of page 6.
+ *
+ * @param encodedValue The encoded method value stored in the GZip header.
  */
 enum class GZipCompressionMethod(val encodedValue: UByte) {
     // @formatter:off
+    /** Deflate compression. */
     DEFLATE(0x08U);
     // @formatter:on
 
     companion object {
+        /**
+         * Resolves a [GZipCompressionMethod] by its encoded value.
+         *
+         * @param encodedValue The encoded method value from a GZip header.
+         * @return The matching [GZipCompressionMethod].
+         */
         fun byEncodedValue(encodedValue: UByte): GZipCompressionMethod = entries.first { method ->
             method.encodedValue == encodedValue
         }

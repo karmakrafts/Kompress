@@ -18,6 +18,16 @@ package dev.karmakrafts.kompress.gzip
 
 import kotlin.time.Instant
 
+/**
+ * Metadata describing a single GZip archive entry.
+ *
+ * @property modificationTime Modification time stored in the header.
+ * @property os Originating operating system marker.
+ * @property isText Whether the payload should be treated as text data.
+ * @property name Optional original entry name.
+ * @property comment Optional entry comment.
+ * @property extraField Optional extra metadata field stored in the header.
+ */
 data class GZipEntry( // @formatter:off
     val modificationTime: Instant,
     val os: GZipOs,
