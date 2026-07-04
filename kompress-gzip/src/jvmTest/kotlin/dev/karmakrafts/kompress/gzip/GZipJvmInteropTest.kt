@@ -28,7 +28,7 @@ import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 
-class JvmInteropTest {
+class GZipJvmInteropTest {
     @Test
     fun `kompress gzip archiver to jvm gzip input stream`() {
         val data = Random(42).nextBytes(1024 * 1024)
