@@ -20,19 +20,36 @@ import dev.karmakrafts.kompress.ExperimentalCompressionApi
 
 /**
  * See [PKWARE APPNOTE](https://pkware.cachefly.net/webdocs/casestudies/APPNOTE.TXT) 4.4.5.
+ *
+ * @property encodedValue Encoded compression method identifier stored in ZIP headers.
  */
 @ExperimentalCompressionApi
 enum class ZipCompressionMethod(val encodedValue: UShort) {
     // @formatter:off
+    /** No compression is applied to entry data. */
     NONE     (0x0000U),
+    /** Entry data is compressed using DEFLATE. */
     DEFLATE  (0x0008U),
+    /** Entry data is compressed using BZIP2. */
     BZIP2    (0x000CU),
+    /** Entry data is compressed using LZMA. */
     LZMA     (0x000EU),
+    /** Entry data is compressed using Zstandard. */
     ZSTD     (0x005DU),
+    /** Entry data is compressed using XZ. */
     XZ       (0x005FU);
     // @formatter:on
 
+    /**
+     * Utilities for resolving encoded compression method identifiers.
+     */
     companion object {
+        /**
+         * Resolves a compression method by its encoded ZIP header value.
+         *
+         * @param encodedValue Encoded compression method identifier.
+         * @return Compression method matching [encodedValue].
+         */
         fun byEncodedValue(encodedValue: UShort): ZipCompressionMethod = entries.first { method ->
             method.encodedValue == encodedValue
         }

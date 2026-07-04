@@ -19,6 +19,16 @@ package dev.karmakrafts.kompress.zip
 import dev.karmakrafts.kompress.ExperimentalCompressionApi
 import kotlin.time.Instant
 
+/**
+ * Metadata describing a single ZIP entry.
+ *
+ * @property modificationTime Last modification timestamp stored for the entry.
+ * @property name Entry name as written in the archive.
+ * @property comment Optional entry comment.
+ * @property extraFields Extra field records associated with the entry.
+ * @property compressionMethod Compression method used for entry data.
+ * @property gpbf General purpose bit flag values used for the entry.
+ */
 @ExperimentalCompressionApi
 data class ZipEntry(
     val modificationTime: Instant,
@@ -28,6 +38,9 @@ data class ZipEntry(
     val compressionMethod: ZipCompressionMethod = ZipCompressionMethod.DEFLATE,
     val gpbf: ZipGPBF = ZipGPBF()
 ) {
+    /**
+     * Whether this entry includes ZIP64 extended information in its extra fields.
+     */
     val isZip64: Boolean
         get() = extraFields.any { entry -> entry.headerId == ZipExtraFieldEntryHeaderId.ZIP64_EXTENDED_INFORMATION }
 }

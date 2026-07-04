@@ -26,15 +26,27 @@ import kotlinx.io.writeULongLe
 
 /**
  * See [PKWARE APPNOTE](https://pkware.cachefly.net/webdocs/casestudies/APPNOTE.TXT) 4.5.2.
+ *
+ * @property size Encoded size of this extra field payload in bytes.
  */
 @ExperimentalCompressionApi
 sealed interface ZipExtraFieldEntryData {
     val size: Long
 
+    /**
+     * Encodes this extra field payload to [sink].
+     *
+     * @param sink Sink receiving the encoded payload.
+     */
     fun encode(sink: Sink)
 
     /**
      * See [PKWARE APPNOTE](https://pkware.cachefly.net/webdocs/casestudies/APPNOTE.TXT) 4.5.3.
+     *
+     * @property uncompressedSize Uncompressed entry size.
+     * @property compressedSize Compressed entry size.
+     * @property lhrOffset Offset of the local header record.
+     * @property startDiskIndex Disk index containing the local header.
      */
     data class Zip64( // @formatter:off
         val uncompressedSize: ULong,
@@ -42,9 +54,19 @@ sealed interface ZipExtraFieldEntryData {
         val lhrOffset: ULong,
         val startDiskIndex: UInt
     ) : ZipExtraFieldEntryData { // @formatter:on
+        /**
+         * ZIP64 extra field payload decoding helpers.
+         */
         companion object {
+            /** Encoded ZIP64 extra field payload size in bytes. */
             const val SIZE: Long = (ULong.SIZE_BYTES * 3 + UInt.SIZE_BYTES).toLong()
 
+            /**
+             * Decodes ZIP64 extra field payload data from [source].
+             *
+             * @param source Source containing the encoded ZIP64 extra field payload.
+             * @return Decoded ZIP64 extra field payload.
+             */
             fun decode(source: Source): Zip64 = Zip64(
                 uncompressedSize = source.readULongLe(),
                 compressedSize = source.readULongLe(),

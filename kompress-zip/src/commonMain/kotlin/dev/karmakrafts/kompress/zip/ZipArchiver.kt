@@ -298,6 +298,14 @@ private class ZipArchiver(
     }
 }
 
+/**
+ * Creates a ZIP [Archiver] that writes archive records to this sink.
+ *
+ * @param compressors Compressors available per ZIP compression method.
+ * @param isSinkOwned Whether closing the returned archiver also closes this sink.
+ * @param isCompressorOwned Whether closing the returned archiver closes configured compressors.
+ * @return ZIP archiver writing to this sink.
+ */
 @ExperimentalCompressionApi
 fun RawSink.zip( // @formatter:off
     compressors: Map<ZipCompressionMethod, Compressor> = mapOf(ZipCompressionMethod.DEFLATE to Deflater()),
@@ -306,6 +314,14 @@ fun RawSink.zip( // @formatter:off
 ): Archiver<ZipEntry, ZipCompressionMethod> =
     ZipArchiver(this, compressors, isSinkOwned, isCompressorOwned) // @formatter:on
 
+/**
+ * Appends a ZIP entry by streaming entry bytes through [callback].
+ *
+ * @param name Entry name to store in the archive.
+ * @param modificationTime Entry modification timestamp.
+ * @param comment Optional entry comment.
+ * @param callback Callback that writes uncompressed entry bytes to the provided sink.
+ */
 @ExperimentalCompressionApi
 fun Archiver<in ZipEntry, *>.appendEntry( // @formatter:off
     name: String,
@@ -319,6 +335,14 @@ fun Archiver<in ZipEntry, *>.appendEntry( // @formatter:off
 ), callback
 ) // @formatter:on
 
+/**
+ * Appends a ZIP entry by copying data from [source].
+ *
+ * @param name Entry name to store in the archive.
+ * @param source Source providing uncompressed entry bytes.
+ * @param modificationTime Entry modification timestamp.
+ * @param comment Optional entry comment.
+ */
 @ExperimentalCompressionApi
 fun Archiver<in ZipEntry, *>.appendEntry( // @formatter:off
     name: String,

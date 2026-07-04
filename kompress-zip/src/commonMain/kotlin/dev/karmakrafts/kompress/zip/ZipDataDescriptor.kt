@@ -18,6 +18,15 @@ package dev.karmakrafts.kompress.zip
 
 import dev.karmakrafts.kompress.ExperimentalCompressionApi
 
+/**
+ * Data descriptor that follows entry data when checksum and size fields are deferred.
+ *
+ * See [PKWARE APPNOTE](https://pkware.cachefly.net/webdocs/casestudies/APPNOTE.TXT) 4.3.9.
+ *
+ * @property checksum CRC-32 checksum of the entry payload.
+ * @property compressedSize Number of bytes used by the compressed payload.
+ * @property uncompressedSize Number of bytes produced after decompression.
+ */
 @ExperimentalCompressionApi
 data class ZipDataDescriptor( // @formatter:off
     val checksum: UInt,

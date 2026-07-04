@@ -19,6 +19,9 @@ package dev.karmakrafts.kompress.zip
 import dev.karmakrafts.kompress.ExperimentalCompressionApi
 import kotlin.math.min
 
+/**
+ * Constants and helpers used for ZIP record encoding and decoding.
+ */
 @ExperimentalCompressionApi
 object ZipConstants {
     /**
@@ -143,6 +146,10 @@ object ZipConstants {
 
     /**
      * See [PKWARE APPNOTE](https://pkware.cachefly.net/webdocs/casestudies/APPNOTE.TXT) 4.4.2.3.
+     *
+     * @param major Major ZIP version component.
+     * @param minor Minor ZIP version component.
+     * @return Encoded ZIP version field value.
      */
     fun makeZipVersion(major: Int, minor: Int): UShort = min(UShort.MAX_VALUE.toInt(), major * 10 + minor).toUShort()
 }

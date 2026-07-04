@@ -18,6 +18,14 @@ package dev.karmakrafts.kompress.zip
 
 import dev.karmakrafts.kompress.ExperimentalCompressionApi
 
+/**
+ * Parsed ZIP local file header together with resolved size fields.
+ *
+ * @property entry Logical entry metadata stored in the local header.
+ * @property checksum CRC-32 checksum stored in the header or descriptor.
+ * @property compressedSize Number of compressed bytes for the entry payload.
+ * @property uncompressedSize Number of bytes expected after decompression.
+ */
 @ExperimentalCompressionApi
 data class ZipLocalFileHeader( // @formatter:off
     val entry: ZipEntry,

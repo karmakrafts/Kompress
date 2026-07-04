@@ -227,6 +227,14 @@ private class ZipUnarchiver( // @formatter:off
     }
 }
 
+/**
+ * Creates a ZIP [Unarchiver] for this raw source.
+ *
+ * @param decompressors Decompressors available per ZIP compression method.
+ * @param isSourceOwned Whether closing the returned unarchiver also closes this source.
+ * @param areDecompressorsOwned Whether closing the returned unarchiver closes configured decompressors.
+ * @return ZIP unarchiver reading from this source.
+ */
 @ExperimentalCompressionApi
 fun RawSource.unzip( // @formatter:off
     decompressors: Map<ZipCompressionMethod, Decompressor> = mapOf(ZipCompressionMethod.DEFLATE to Inflater()),
@@ -235,6 +243,14 @@ fun RawSource.unzip( // @formatter:off
 ): Unarchiver<ZipEntry, ZipCompressionMethod> =
     ZipUnarchiver(buffered(), decompressors, isSourceOwned, areDecompressorsOwned) // @formatter:on
 
+/**
+ * Creates a ZIP [Unarchiver] for this source.
+ *
+ * @param decompressors Decompressors available per ZIP compression method.
+ * @param isSourceOwned Whether closing the returned unarchiver also closes this source.
+ * @param areDecompressorsOwned Whether closing the returned unarchiver closes configured decompressors.
+ * @return ZIP unarchiver reading from this source.
+ */
 @ExperimentalCompressionApi
 fun Source.unzip( // @formatter:off
     decompressors: Map<ZipCompressionMethod, Decompressor> = mapOf(ZipCompressionMethod.DEFLATE to Inflater()),

@@ -24,13 +24,25 @@ import kotlinx.io.writeUShortLe
 
 /**
  * See [PKWARE APPNOTE](https://pkware.cachefly.net/webdocs/casestudies/APPNOTE.TXT) 4.5.2.
+ *
+ * @property headerId Header identifier describing the extra field payload type.
+ * @property data Parsed payload data for the extra field.
  */
 @ExperimentalCompressionApi
 data class ZipExtraFieldEntry( // @formatter:off
     val headerId: ZipExtraFieldEntryHeaderId,
     val data: ZipExtraFieldEntryData
 ) { // @formatter:on
+    /**
+     * Utilities for decoding extra field entries.
+     */
     companion object {
+        /**
+         * Decodes a single extra field entry from [source].
+         *
+         * @param source Source positioned at the extra field entry header id.
+         * @return Decoded extra field entry.
+         */
         fun decode(source: Source): ZipExtraFieldEntry {
             val headerId = ZipExtraFieldEntryHeaderId.byEncodedValue(source.readUShortLe())
             source.skip(UShort.SIZE_BYTES.toLong()) // We don't care about the data size
@@ -39,8 +51,16 @@ data class ZipExtraFieldEntry( // @formatter:off
         }
     }
 
+    /**
+     * Total encoded entry size in bytes, including id and size fields.
+     */
     inline val size: Long get() = UShort.SIZE_BYTES.toLong() * 2 + data.size
 
+    /**
+     * Encodes this extra field entry to [sink].
+     *
+     * @param sink Sink receiving the encoded entry.
+     */
     fun encode(sink: Sink) {
         sink.writeUShortLe(headerId.encodedValue)
         sink.writeUShortLe(data.size.toUShort())

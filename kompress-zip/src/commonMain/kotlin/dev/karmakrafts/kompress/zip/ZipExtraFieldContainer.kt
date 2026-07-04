@@ -20,17 +20,38 @@ import dev.karmakrafts.kompress.ExperimentalCompressionApi
 import kotlinx.io.Sink
 import kotlin.jvm.JvmInline
 
+/**
+ * Mutable container for ZIP extra field entries.
+ *
+ * @property delegate Backing mutable list storing all extra field entries.
+ */
 @ExperimentalCompressionApi
 @JvmInline
 value class ZipExtraFieldContainer(
     val delegate: MutableList<ZipExtraFieldEntry>
 ) : MutableList<ZipExtraFieldEntry> by delegate {
+    /**
+     * Factory helpers for [ZipExtraFieldContainer].
+     */
     companion object {
+        /**
+         * Creates an empty extra field container.
+         *
+         * @return New empty extra field container.
+         */
         fun empty(): ZipExtraFieldContainer = ZipExtraFieldContainer(mutableListOf())
     }
 
+    /**
+     * Total encoded size of all contained extra field entries in bytes.
+     */
     inline val byteSize: Long get() = sumOf(ZipExtraFieldEntry::size)
 
+    /**
+     * Encodes all contained extra field entries to [sink].
+     *
+     * @param sink Sink receiving the encoded extra field payload.
+     */
     fun encode(sink: Sink) {
         forEach { entry -> entry.encode(sink) }
     }
