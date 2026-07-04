@@ -14,8 +14,9 @@
  * limitations under the License.
  */
 
-package dev.karmakrafts.kompress.gzip
+package dev.karmakrafts.kompress.zip
 
+import dev.karmakrafts.kompress.ExperimentalCompressionApi
 import kotlinx.io.Buffer
 import kotlinx.io.Source
 import kotlinx.io.readByteArray
@@ -27,7 +28,8 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 import kotlin.time.Instant
 
-class GZipArchiverUnarchiverTest {
+@OptIn(ExperimentalCompressionApi::class)
+class ZipArchiverUnarchiverTest {
     private companion object {
         fun readEntryBytes(source: Source, fetchMore: () -> Boolean): ByteArray {
             val buffer = Buffer()
@@ -42,33 +44,33 @@ class GZipArchiverUnarchiverTest {
     @Test
     fun `archive and unarchive text entry preserves metadata and content`() {
         val payload = "HELLO, WORLD!".encodeToByteArray()
-        val expectedEntry = GZipEntry(
-            modificationTime = Instant.fromEpochSeconds(42),
-            os = GZipOs.UNIX,
-            isText = true,
+        val expectedEntry = ZipEntry(
+            modificationTime = Instant.fromEpochSeconds(1_704_067_242),
             name = "test.txt",
-            comment = "hello",
-            extraField = byteArrayOf(0x01, 0x02, 0x03)
+            gpbf = ZipGPBF(omitChecksumAndSizes = true, languageEncoding = false)
         )
         val archiveBuffer = Buffer()
 
-        archiveBuffer.gzip().use { archiver ->
+        archiveBuffer.zip().use { archiver ->
             archiver.appendEntry(expectedEntry) { sink ->
                 sink.write(payload)
                 false
             }
         }
 
-        val entries = ArrayList<GZipEntry>()
+        val entries = ArrayList<ZipEntry>()
         val contents = ArrayList<ByteArray>()
-        archiveBuffer.ungzip().use { unarchiver ->
+        archiveBuffer.unzip().use { unarchiver ->
             unarchiver.forEachEntry { entry, source, fetchMore ->
                 entries += entry
                 contents += readEntryBytes(source, fetchMore)
             }
         }
 
-        assertEquals(listOf(expectedEntry), entries)
+        val actualEntry = assertNotNull(entries.singleOrNull())
+        assertEquals(expectedEntry.name, actualEntry.name)
+        assertEquals(expectedEntry.compressionMethod, actualEntry.compressionMethod)
+        assertEquals(expectedEntry.gpbf, actualEntry.gpbf)
         assertContentEquals(payload, contents.single())
     }
 
@@ -80,16 +82,16 @@ class GZipArchiverUnarchiverTest {
         inputBuffer2.writeString("The fox goes yap!")
         val archiveBuffer = Buffer()
 
-        archiveBuffer.gzip().use { archiver ->
+        archiveBuffer.zip().use { archiver ->
             archiver.appendEntry("test1.txt", source = inputBuffer1)
             archiver.appendEntry("test2.txt", source = inputBuffer2)
         }
 
         val names = ArrayList<String>()
         val contents = ArrayList<String>()
-        archiveBuffer.ungzip().use { unarchiver ->
+        archiveBuffer.unzip().use { unarchiver ->
             unarchiver.forEachEntry { entry, source, fetchMore ->
-                names += assertNotNull(entry.name)
+                names += entry.name
                 contents += readEntryBytes(source, fetchMore).decodeToString()
             }
         }
@@ -99,25 +101,32 @@ class GZipArchiverUnarchiverTest {
     }
 
     @Test
-    fun `archive and unarchive supports latin-1 names`() {
-        val inputBuffer = Buffer()
-        inputBuffer.writeString("LATIN-1 test")
+    fun `archive and unarchive supports utf-8 names when language encoding is enabled`() {
+        val payload = "UTF-8 test".encodeToByteArray()
         val archiveBuffer = Buffer()
-        val latin1Name = "täst-lâtìn1-ÿ.txt"
+        val utf8Name = "täst-lâtìn1-ÿ-☃.txt"
+        val entry = ZipEntry(
+            modificationTime = Instant.fromEpochSeconds(1_704_067_242),
+            name = utf8Name,
+            gpbf = ZipGPBF(omitChecksumAndSizes = false, languageEncoding = true)
+        )
 
-        archiveBuffer.gzip().use { archiver ->
-            archiver.appendEntry(latin1Name, source = inputBuffer)
+        archiveBuffer.zip().use { archiver ->
+            archiver.appendEntry(entry) { sink ->
+                sink.write(payload)
+                false
+            }
         }
 
-        archiveBuffer.ungzip().use { unarchiver ->
+        archiveBuffer.unzip().use { unarchiver ->
             var entryFound = false
             unarchiver.forEachEntry { entry, source, fetchMore ->
-                if (entry.name == latin1Name) {
+                if (entry.name == utf8Name) {
                     entryFound = true
                 }
                 readEntryBytes(source, fetchMore)
             }
-            assertTrue(entryFound, "Entry with name $latin1Name should be present")
+            assertTrue(entryFound, "Entry with name $utf8Name should be present")
         }
     }
 
@@ -126,11 +135,11 @@ class GZipArchiverUnarchiverTest {
         val inputBuffer = Buffer()
         val archiveBuffer = Buffer()
 
-        archiveBuffer.gzip().use { archiver ->
+        archiveBuffer.zip().use { archiver ->
             archiver.appendEntry("empty.txt", source = inputBuffer)
         }
 
-        archiveBuffer.ungzip().use { unarchiver ->
+        archiveBuffer.unzip().use { unarchiver ->
             var entryFound = false
             unarchiver.forEachEntry { entry, source, fetchMore ->
                 if (entry.name == "empty.txt") {

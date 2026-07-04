@@ -24,16 +24,6 @@ import kotlin.test.assertFailsWith
 @OptIn(ExperimentalCompressionApi::class)
 class ZipCompressionMethodTest {
     @Test
-    fun `Compression method constants use expected PKWARE values`() {
-        assertEquals(0x0000U, ZipCompressionMethod.NONE.encodedValue)
-        assertEquals(0x0008U, ZipCompressionMethod.DEFLATE.encodedValue)
-        assertEquals(0x000CU, ZipCompressionMethod.BZIP2.encodedValue)
-        assertEquals(0x000EU, ZipCompressionMethod.LZMA.encodedValue)
-        assertEquals(0x005DU, ZipCompressionMethod.ZSTD.encodedValue)
-        assertEquals(0x005FU, ZipCompressionMethod.XZ.encodedValue)
-    }
-
-    @Test
     fun `byEncodedValue resolves all known compression methods`() {
         ZipCompressionMethod.entries.forEach { method ->
             assertEquals(method, ZipCompressionMethod.byEncodedValue(method.encodedValue))

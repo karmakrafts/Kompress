@@ -14,26 +14,29 @@
  * limitations under the License.
  */
 
-package dev.karmakrafts.kompress.zip
+package dev.karmakrafts.kompress.gzip
 
-import dev.karmakrafts.kompress.ExperimentalCompressionApi
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 
-@OptIn(ExperimentalCompressionApi::class)
-class ZipDeflateCompressionTypeTest {
+class GZipCompressionMethodTest {
     @Test
-    fun `byEncodedValue resolves all known deflate compression types`() {
-        ZipDeflateCompressionType.entries.forEach { type ->
-            assertEquals(type, ZipDeflateCompressionType.byEncodedValue(type.encodedValue))
+    fun `compression method constants use expected RFC1952 value`() {
+        assertEquals(0x08U, GZipCompressionMethod.DEFLATE.encodedValue)
+    }
+
+    @Test
+    fun `byEncodedValue resolves all known compression methods`() {
+        GZipCompressionMethod.entries.forEach { method ->
+            assertEquals(method, GZipCompressionMethod.byEncodedValue(method.encodedValue))
         }
     }
 
     @Test
-    fun `byEncodedValue fails for unsupported encoded values`() {
+    fun `byEncodedValue fails for unsupported compression method ids`() {
         assertFailsWith<NoSuchElementException> {
-            ZipDeflateCompressionType.byEncodedValue(0b100U)
+            GZipCompressionMethod.byEncodedValue(0x00U)
         }
     }
 }

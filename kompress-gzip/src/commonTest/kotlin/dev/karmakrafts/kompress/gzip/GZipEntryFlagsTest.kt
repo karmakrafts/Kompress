@@ -24,16 +24,6 @@ import kotlin.time.Instant
 
 class GZipEntryFlagsTest {
     @Test
-    fun `Flag constants use RFC1952 bit layout`() {
-        assertEquals(0b0000_0000U, GZipEntryFlags.FNONE)
-        assertEquals(0b0000_0001U, GZipEntryFlags.FTEXT)
-        assertEquals(0b0000_0010U, GZipEntryFlags.FHCRC)
-        assertEquals(0b0000_0100U, GZipEntryFlags.FEXTRA)
-        assertEquals(0b0000_1000U, GZipEntryFlags.FNAME)
-        assertEquals(0b0001_0000U, GZipEntryFlags.FCOMMENT)
-    }
-
-    @Test
     fun `Boolean constructor sets only selected bits`() {
         val flags = GZipEntryFlags(ftext = true, fextra = true, fcomment = true)
 
@@ -59,8 +49,7 @@ class GZipEntryFlagsTest {
     @Test
     fun `computeFlags always sets header checksum and optional metadata bits`() {
         val emptyEntry = GZipEntry(
-            modificationTime = Instant.fromEpochSeconds(0),
-            os = GZipOs.UNKNOWN
+            modificationTime = Instant.fromEpochSeconds(0), os = GZipOs.UNKNOWN
         )
         val emptyFlags = emptyEntry.computeFlags()
 

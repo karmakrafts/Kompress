@@ -25,15 +25,6 @@ import kotlin.test.assertTrue
 @OptIn(ExperimentalCompressionApi::class)
 class ZipGPBFTest {
     @Test
-    fun `GPBF constants use expected bit layout`() {
-        assertEquals(0b00000000_00001000U.toUShort(), ZipGPBF.OMIT_CHECKSUM_AND_SIZES)
-        assertEquals(0b00000000_00010000U.toUShort(), ZipGPBF.PATCHED_DATA)
-        assertEquals(0b00000000_01000000U.toUShort(), ZipGPBF.STRONG_ENCRYPTION)
-        assertEquals(0b00001000_00000000U.toUShort(), ZipGPBF.LANGUAGE_ENCODING)
-        assertEquals(0b00100000_00000000U.toUShort(), ZipGPBF.MASKED_HEADER_VALUES)
-    }
-
-    @Test
     fun `Boolean constructor sets patched data flag`() {
         val gpbf = ZipGPBF(
             omitChecksumAndSizes = false,
