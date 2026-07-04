@@ -16,18 +16,27 @@
 
 package dev.karmakrafts.kompress
 
+/**
+ * Base [Compressor] implementation that stores input state and byte counters.
+ *
+ * Implementations can update these properties while performing compression.
+ */
 abstract class AbstractCompressor : Compressor {
     override var input: ByteArray = ByteArray(0)
         protected set
+
     override var inputOffset: Int = 0
         protected set
+
     override var inputSize: Int = 0
         protected set
+
     override var remaining: Int = 0
         protected set
 
     override var bytesRead: Long = 0L
         protected set
+
     override var bytesWritten: Long = 0L
         protected set
 

@@ -20,9 +20,19 @@ import dev.karmakrafts.kompress.exception.DataFormatException
 import kotlinx.io.Buffer
 import kotlinx.io.readByteArray
 
+/**
+ * A [Decompressor] wrapper that consumes wrapper-specific bytes around compressed payload data.
+ *
+ * Subclasses can define how wrapper prologue/epilogue sections are consumed and observe produced payload bytes.
+ *
+ * @property decompressor The underlying decompressor for payload data.
+ */
 abstract class UnwrappingDecompressor(
     val decompressor: Decompressor
 ) : Decompressor by decompressor {
+    /**
+     * Internal buffer containing wrapped input bytes pending processing.
+     */
     protected val buffer: Buffer = Buffer()
     private var readPrologue: Boolean = false
     private var finishing: Boolean = false
@@ -33,10 +43,27 @@ abstract class UnwrappingDecompressor(
     private var wrappedInputOffset: Int = 0
     private var wrappedInputSize: Int = 0
 
+    /**
+     * Consumes wrapper prologue bytes from [buffer].
+     *
+     * @return True when the full prologue was consumed, false if more bytes are required.
+     */
     protected open fun consumePrologue(): Boolean = true
 
+    /**
+     * Called after payload bytes were written to [output].
+     *
+     * @param output The output buffer containing produced payload bytes.
+     * @param offset The start offset in [output] of the produced bytes.
+     * @param size The number of produced payload bytes.
+     */
     protected open fun onDataWritten(output: ByteArray, offset: Int, size: Int) = Unit
 
+    /**
+     * Consumes wrapper epilogue bytes from [buffer].
+     *
+     * @return True when the full epilogue was consumed, false if more bytes are required.
+     */
     protected open fun consumeEpilogue(): Boolean = true
 
     override val input: ByteArray

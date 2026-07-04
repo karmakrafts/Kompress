@@ -19,17 +19,39 @@ package dev.karmakrafts.kompress
 import kotlinx.io.Buffer
 import kotlinx.io.readByteArray
 
+/**
+ * A [Compressor] wrapper that injects wrapper-specific bytes around compressed payload data.
+ *
+ * Subclasses can provide wrapper prologue/epilogue data and inspect consumed payload bytes.
+ *
+ * @property compressor The underlying compressor that produces the wrapped payload.
+ */
 abstract class WrappingCompressor(val compressor: Compressor) : Compressor by compressor {
+    /**
+     * Internal wrapper output buffer.
+     */
     protected val buffer: Buffer = Buffer()
     private var wrotePrologue: Boolean = false
     private var finishing: Boolean = false
     private var wroteEpilogue: Boolean = false
     private var wrapperBytesWritten: Long = 0L
 
+    /**
+     * Appends wrapper prologue bytes to [buffer].
+     */
     protected open fun appendPrologue() = Unit
 
+    /**
+     * Called after payload data has been consumed from [input].
+     *
+     * @param offset The start offset in [input] of consumed payload bytes.
+     * @param size The number of consumed payload bytes.
+     */
     protected open fun onDataRead(offset: Int, size: Int) = Unit
 
+    /**
+     * Appends wrapper epilogue bytes to [buffer].
+     */
     protected open fun appendEpilogue() = Unit
 
     override val bytesWritten: Long
