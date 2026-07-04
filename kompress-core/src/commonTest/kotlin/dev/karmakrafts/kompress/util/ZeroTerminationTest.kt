@@ -64,8 +64,7 @@ class ZeroTerminationTest {
 
         assertEquals(123, result)
         assertContentEquals(
-            byteArrayOf('a'.code.toByte(), 'b'.code.toByte(), 'c'.code.toByte(), 0),
-            sink.readByteArray()
+            byteArrayOf('a'.code.toByte(), 'b'.code.toByte(), 'c'.code.toByte(), 0), sink.readByteArray()
         )
     }
 }
