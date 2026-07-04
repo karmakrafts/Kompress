@@ -16,6 +16,7 @@
 
 package dev.karmakrafts.kompress.zlib
 
+import dev.karmakrafts.kompress.Compressor
 import dev.karmakrafts.kompress.InternalCompressionApi
 import dev.karmakrafts.kompress.WrappingCompressor
 import dev.karmakrafts.kompress.deflate.Deflater
@@ -29,6 +30,26 @@ class ZlibCompressor(
     private val cmf: ZlibCMF = ZlibCMF(),
     private val flags: ZlibFlags = ZlibFlags(ZlibCompressionLevel.fromDeflaterLevel(level))
 ) : WrappingCompressor(Deflater(level)) {
+    companion object {
+        /**
+         * Compresses the given data in one go using the given
+         * compression level and buffer size.
+         *
+         * @param data The data to compress.
+         * @param level The compression level between 0 and 9.
+         * @param bufferSize The size of the intermediate buffer used during compression.
+         * @return The compressed data.
+         * @throws dev.karmakrafts.kompress.exception.DataFormatException when the compressor encounters invalid data.
+         */
+        fun compress( // @formatter:off
+            data: ByteArray,
+            level: Int = Deflater.DEFAULT_LEVEL,
+            bufferSize: Int = Compressor.DEFAULT_BUFFER_SIZE
+        ): ByteArray = ZlibCompressor(level).use { compressor -> // @formatter:on
+            compressor.compressBulk(data, bufferSize)
+        }
+    }
+
     private val adler32: Adler32 = Adler32()
 
     override fun appendPrologue() {

@@ -16,6 +16,8 @@
 
 package dev.karmakrafts.kompress.zlib
 
+import dev.karmakrafts.kompress.exception.DataFormatException
+import dev.karmakrafts.kompress.exception.InvalidChecksumException
 import java.io.ByteArrayOutputStream
 import java.util.zip.Deflater
 import java.util.zip.Inflater
@@ -75,7 +77,7 @@ class JvmInteropTest {
     fun `zlib compressor round trip against jvm deflater`() {
         val data = "Hello, World! This is a zlib interoperability test.".encodeToByteArray()
 
-        val kompressCompressed = ZlibCompressor().compressBulk(data)
+        val kompressCompressed = ZlibCompressor.compress(data)
         val jvmCompressed = deflateWithJvm(data)
 
         assertZlibEnvelopeMatchesJvm(kompressCompressed, jvmCompressed)
@@ -85,13 +87,15 @@ class JvmInteropTest {
 
         assertContentEquals(data, jvmRoundTrip)
         assertContentEquals(data, kompressRoundTrip)
+        assertContentEquals(data, ZlibDecompressor.decompress(jvmCompressed))
+        assertContentEquals(data, ZlibDecompressor.decompress(kompressCompressed))
     }
 
     @Test
     fun `large zlib compressor round trip against jvm deflater`() {
         val data = Random(42).nextBytes(1024 * 1024)
 
-        val kompressCompressed = ZlibCompressor().compressBulk(data)
+        val kompressCompressed = ZlibCompressor.compress(data)
         val jvmCompressed = deflateWithJvm(data)
 
         assertZlibEnvelopeMatchesJvm(kompressCompressed, jvmCompressed)
@@ -101,5 +105,35 @@ class JvmInteropTest {
 
         assertContentEquals(data, jvmRoundTrip)
         assertContentEquals(data, kompressRoundTrip)
+        assertContentEquals(data, ZlibDecompressor.decompress(jvmCompressed))
+        assertContentEquals(data, ZlibDecompressor.decompress(kompressCompressed))
+    }
+
+    @Test
+    fun `empty zlib stream round trips through decompressor`() {
+        val data = ByteArray(0)
+        val jvmCompressed = deflateWithJvm(data)
+
+        assertContentEquals(data, ZlibDecompressor.decompress(jvmCompressed))
+    }
+
+    @Test
+    fun `zlib decompressor rejects invalid header check bits`() {
+        val compressedData = deflateWithJvm("invalid header".encodeToByteArray()).copyOf()
+        compressedData[1] = (compressedData[1].toInt() xor 1).toByte()
+
+        assertFailsWith<DataFormatException> {
+            ZlibDecompressor.decompress(compressedData)
+        }
+    }
+
+    @Test
+    fun `zlib decompressor rejects invalid checksum`() {
+        val compressedData = deflateWithJvm("invalid checksum".encodeToByteArray()).copyOf()
+        compressedData[compressedData.lastIndex] = (compressedData[compressedData.lastIndex].toInt() xor 1).toByte()
+
+        assertFailsWith<InvalidChecksumException> {
+            ZlibDecompressor.decompress(compressedData)
+        }
     }
 }
