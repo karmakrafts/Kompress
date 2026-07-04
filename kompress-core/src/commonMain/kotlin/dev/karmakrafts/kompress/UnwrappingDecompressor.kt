@@ -81,7 +81,7 @@ abstract class UnwrappingDecompressor(
 
         if (!readPrologue) {
             if (!consumeWrapperSection(::consumePrologue)) {
-                if (finishing) throw DataFormatException("Incomplete wrapper prologue")
+                if (finishing) throw DataFormatException("Incomplete prologue")
                 return 0
             }
             readPrologue = true
@@ -96,7 +96,7 @@ abstract class UnwrappingDecompressor(
         if (decompressor.finished && !readEpilogue) {
             queueDelegateRemainingInput()
             if (!consumeWrapperSection(::consumeEpilogue)) {
-                if (finishing) throw DataFormatException("Incomplete wrapper epilogue")
+                if (finishing) throw DataFormatException("Incomplete epilogue")
                 return written
             }
             readEpilogue = true
