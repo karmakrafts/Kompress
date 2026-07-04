@@ -34,6 +34,7 @@ class ZlibCMFTest {
         val cmf = ZlibCMF(windowSize = 4096)
 
         assertEquals(0x48.toUByte(), cmf.value)
+        assertEquals(ZlibCompressionMethod.DEFLATE, cmf.compressionMethod)
         assertEquals(4096, cmf.windowSize)
     }
 
@@ -42,5 +43,27 @@ class ZlibCMFTest {
         assertFailsWith<IllegalArgumentException> {
             ZlibCMF(windowSize = 30 * 1024)
         }
+    }
+
+    @Test
+    fun `cmf rejects window sizes below 256 bytes`() {
+        assertFailsWith<IllegalArgumentException> {
+            ZlibCMF(windowSize = 128)
+        }
+    }
+
+    @Test
+    fun `cmf rejects window sizes above 32768 bytes`() {
+        assertFailsWith<IllegalArgumentException> {
+            ZlibCMF(windowSize = 64 * 1024)
+        }
+    }
+
+    @Test
+    fun `cmf value constructor decodes compression method and window size`() {
+        val cmf = ZlibCMF(0x28U)
+
+        assertEquals(ZlibCompressionMethod.DEFLATE, cmf.compressionMethod)
+        assertEquals(1024, cmf.windowSize)
     }
 }
