@@ -3,12 +3,18 @@
 ### Added
 
 - ZLIB support via new `ZlibCompressor` and `ZlibDecompressor` provided by `kompress-zlib`
+- `zlibSink` and `zlibSource` extensions for `ZlibCompressor`
+- `unzlibSink` and `unzlibSource` extensions for `ZlibDecompressor`
 - `WrappingCompressor` delegate compressor to support wrapping existing compressors with extra data
 - `UnwrappingDecompressor` delegate decompressor to support unwrapping extra data with existing decompressors
+- Documentation for `kompress-gzip` APIs
+- Documentation for `kompress-zip` APIs
+- Documentation for `kompress-zlib` APIs
 
 ### Changed
 
 - Updated NMCP to 1.6.1
+- Major increase in test coverage for all modules
 
 ## [2.2.0]
 
