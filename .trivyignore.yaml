@@ -1,0 +1,3 @@
+vulnerabilities:
+  - id: CVE-2025-14813
+    statement: Only affects local runtime
