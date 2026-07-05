@@ -1,5 +1,18 @@
 ## [Unreleased]
 
+### Fixed
+
+- Deflater not selecting the optimal block size when writing data, causing overallocation of the output in some cases ([GH-5](https://github.com/karmakrafts/Kompress/issues/5))
+
+### Changed
+
+- Updated to Gradle 9.6.1
+- Updated to Karma Conventions 1.18.2
+- Updated to Karbide 1.10.4
+- Updated to Kotlin Wrappers 2026.7.0
+- Updated to kotlinx.io 0.9.1
+- Major performance improvement (~2,5x) of CRC32 on JVM
+
 ## [2.3.0]
 
 ### Added

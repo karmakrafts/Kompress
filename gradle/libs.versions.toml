@@ -4,15 +4,15 @@ javaCompile = "25"
 javaTarget = "17"
 
 androidGradle = "9.2.1" # https://developer.android.com/reference/tools/gradle-api
-kompress = "2.3.0"
+kompress = "2.3.1"
 kotlin = "2.4.0" # https://github.com/JetBrains/kotlin/releases
-kotlinxIo = "0.9.0" # https://github.com/Kotlin/kotlinx-io/releases
+kotlinxIo = "0.9.1" # https://github.com/Kotlin/kotlinx-io/releases
 kotlinxDateTime = "0.8.0" # https://github.com/Kotlin/kotlinx-datetime/releases
-kotlinBrowser = "2026.6.9" # https://github.com/JetBrains/kotlin-wrappers/releases
+kotlinBrowser = "2026.7.0" # https://github.com/JetBrains/kotlin-wrappers/releases
 dokka = "2.2.0" # https://github.com/Kotlin/dokka/releases
-karmaConventions = "1.18.1" # https://github.com/karmakrafts/karma-conventions/tags
+karmaConventions = "1.18.2" # https://github.com/karmakrafts/karma-conventions/tags
 oshi = "7.3.2" # https://github.com/oshi/oshi/releases
-karbide = "1.10.3" # https://github.com/karmakrafts/Karbide/releases
+karbide = "1.10.4" # https://github.com/karmakrafts/Karbide/releases
 
 # kompress-benchmarks
 

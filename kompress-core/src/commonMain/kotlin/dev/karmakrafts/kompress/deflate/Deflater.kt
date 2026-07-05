@@ -78,11 +78,21 @@ internal class DeflaterImpl( // @formatter:off
     windowSize: Int = LZ77.DEFAULT_WINDOW_SIZE
 ) : AbstractCompressor(), Deflater { // @formatter:on
     private companion object {
-        const val FIXED_BLOCK_TOKEN_THRESHOLD: Int = 512
-
         val FIXED_LITERAL_TREE: HuffmanTree = HuffmanTree(DeflateConstants.FIXED_LIT_TREE_LENGTHS)
         val FIXED_DISTANCE_TREE: HuffmanTree = HuffmanTree(DeflateConstants.FIXED_DIST_TREE_LENGTHS)
     }
+
+    private class DynamicTrees(
+        val literalTree: HuffmanTree,
+        val distanceTree: HuffmanTree,
+        val lengthTree: HuffmanTree,
+        val lengthTreeLengths: IntArray,
+        val literalCodesCount: Int,
+        val distanceCodesCount: Int,
+        val codeLengthCodesCount: Int,
+        val symbols: List<EncodedSymbol>,
+        val bitSize: Int
+    )
 
     private val lz77: LZ77 = LZ77(level = level, windowSize = windowSize)
     private var isClosed: Boolean = false
@@ -108,6 +118,44 @@ internal class DeflaterImpl( // @formatter:off
     private val lengthFrequencies: IntArray = IntArray(DeflateConstants.CODE_LENGTH_ALPHABET_SIZE)
     private val tokenBuffer: ArrayList<Token> = ArrayList()
     private val symbolBuffer: ArrayList<EncodedSymbol> = ArrayList()
+
+    private fun computeLiteralCodesCount(literalLengths: IntArray): Int {
+        var literalCodesCount = literalLengths.size
+        while (literalCodesCount > DeflateConstants.HLIT_OFFSET && literalLengths[literalCodesCount - 1] == 0) {
+            literalCodesCount--
+        }
+        return literalCodesCount
+    }
+
+    private fun computeDistanceCodesCount(distanceLengths: IntArray): Int {
+        var distanceCodesCount = distanceLengths.size
+        while (distanceCodesCount > 2 && distanceLengths[distanceCodesCount - 1] == 0) {
+            distanceCodesCount--
+        }
+        return distanceCodesCount.coerceAtLeast(2)
+    }
+
+    private fun buildDistanceTree(): HuffmanTree {
+        var distanceSymbols = 0
+        var distanceSymbol = -1
+        for (index in distanceFrequencies.indices) {
+            if (distanceFrequencies[index] == 0) continue
+            distanceSymbols++
+            distanceSymbol = index
+        }
+        if (distanceSymbols >= 2) return HuffmanTree.fromFrequencies(distanceFrequencies)
+
+        val distanceLengths = IntArray(DeflateConstants.DISTANCE_ALPHABET_SIZE)
+        if (distanceSymbol == -1) {
+            distanceLengths[0] = 1
+            distanceLengths[1] = 1
+        }
+        else {
+            distanceLengths[distanceSymbol] = 1
+            distanceLengths[if (distanceSymbol == 0) 1 else 0] = 1
+        }
+        return HuffmanTree(distanceLengths)
+    }
 
     /**
      * Computes the HCLEN value for the dynamic Huffman block header by omitting trailing zero code-length
@@ -139,102 +187,154 @@ internal class DeflaterImpl( // @formatter:off
         )
     }
 
-    /**
-     * Encodes the Huffman trees for the current block using dynamic Huffman coding, including the
-     * code-length alphabet and repeat symbols 16, 17 and 18.
-     *
-     * See [RFC1951](https://datatracker.ietf.org/doc/html/rfc1951) section 3.2.7.
-     */
-    private fun encodeDynamicTrees(literalTree: HuffmanTree, distanceTree: HuffmanTree) {
-        val literalLengths = literalTree.codeLengths()
-        val distanceLengths = distanceTree.codeLengths()
-        val literalCodesCount = literalLengths.size
-        val distanceCodesCount = distanceLengths.size
-
-        lengthFrequencies.fill(0)
-        symbolBuffer.clear()
-
-        fun collect(lengths: IntArray) {
-            var index = 0
-            while (index < lengths.size) {
-                var count = 1
-                val length = lengths[index]
-                while (index + count < lengths.size && lengths[index + count] == length) {
-                    count++
+    private fun collectDynamicTreeSymbols(lengths: IntArray, size: Int) {
+        var index = 0
+        while (index < size) {
+            var count = 1
+            val length = lengths[index]
+            while (index + count < size && lengths[index + count] == length) {
+                count++
+            }
+            var remaining = count
+            if (length == 0) {
+                // RFC1951 3.2.7: code 18 repeats zero lengths 11-138 times using 7 extra bits.
+                while (remaining >= DeflateConstants.SYM_LONG_ZERO_LENGTH_RUN_MIN) {
+                    val runLength = remaining.coerceAtMost(DeflateConstants.SYM_LONG_ZERO_LENGTH_RUN_MAX)
+                    symbolBuffer += EncodedSymbol( // @formatter:off
+                        symbol = DeflateConstants.SYM_LONG_ZERO_LENGTH_RUN,
+                        extraBits = runLength - DeflateConstants.SYM_LONG_ZERO_LENGTH_RUN_MIN
+                    ) // @formatter:on
+                    lengthFrequencies[DeflateConstants.SYM_LONG_ZERO_LENGTH_RUN]++
+                    remaining -= runLength
                 }
-                var remaining = count
-                if (length == 0) {
-                    // RFC1951 3.2.7: code 18 repeats zero lengths 11-138 times using 7 extra bits.
-                    while (remaining >= DeflateConstants.SYM_LONG_ZERO_LENGTH_RUN_MIN) {
-                        val runLength = remaining.coerceAtMost(DeflateConstants.SYM_LONG_ZERO_LENGTH_RUN_MAX)
-                        symbolBuffer += EncodedSymbol( // @formatter:off
-                            symbol = DeflateConstants.SYM_LONG_ZERO_LENGTH_RUN,
-                            extraBits = runLength - DeflateConstants.SYM_LONG_ZERO_LENGTH_RUN_MIN
-                        ) // @formatter:on
-                        lengthFrequencies[DeflateConstants.SYM_LONG_ZERO_LENGTH_RUN]++
-                        remaining -= runLength
-                    }
-                    // RFC1951 3.2.7: code 17 repeats zero lengths 3-10 times using 3 extra bits.
-                    if (remaining >= DeflateConstants.SYM_REPEAT_ZERO_LENGTH_MIN) {
-                        symbolBuffer += EncodedSymbol( // @formatter:off
-                            symbol = DeflateConstants.SYM_REPEAT_ZERO_LENGTH,
-                            extraBits = remaining - DeflateConstants.SYM_REPEAT_ZERO_LENGTH_MIN
-                        ) // @formatter:on
-                        lengthFrequencies[DeflateConstants.SYM_REPEAT_ZERO_LENGTH]++
-                        remaining = 0
-                    }
-                    while (remaining > 0) {
-                        symbolBuffer += EncodedSymbol()
-                        lengthFrequencies[0]++
-                        remaining--
-                    }
+                // RFC1951 3.2.7: code 17 repeats zero lengths 3-10 times using 3 extra bits.
+                if (remaining >= DeflateConstants.SYM_REPEAT_ZERO_LENGTH_MIN) {
+                    symbolBuffer += EncodedSymbol( // @formatter:off
+                        symbol = DeflateConstants.SYM_REPEAT_ZERO_LENGTH,
+                        extraBits = remaining - DeflateConstants.SYM_REPEAT_ZERO_LENGTH_MIN
+                    ) // @formatter:on
+                    lengthFrequencies[DeflateConstants.SYM_REPEAT_ZERO_LENGTH]++
+                    remaining = 0
                 }
-                else {
+                while (remaining > 0) {
+                    symbolBuffer += EncodedSymbol()
+                    lengthFrequencies[0]++
+                    remaining--
+                }
+            }
+            else {
+                symbolBuffer += EncodedSymbol(length)
+                lengthFrequencies[length]++
+                remaining--
+                // RFC1951 3.2.7: code 16 repeats the previous non-zero length 3-6 times using 2 extra bits.
+                while (remaining >= DeflateConstants.SYM_REPEAT_PREVIOUS_MIN) {
+                    val runLength = remaining.coerceAtMost(DeflateConstants.SYM_REPEAT_PREVIOUS_MAX)
+                    symbolBuffer += EncodedSymbol( // @formatter:off
+                        symbol = DeflateConstants.SYM_REPEAT_PREVIOUS,
+                        extraBits = runLength - DeflateConstants.SYM_REPEAT_PREVIOUS_MIN
+                    ) // @formatter:on
+                    lengthFrequencies[DeflateConstants.SYM_REPEAT_PREVIOUS]++
+                    remaining -= runLength
+                }
+                while (remaining > 0) {
                     symbolBuffer += EncodedSymbol(length)
                     lengthFrequencies[length]++
                     remaining--
-                    // RFC1951 3.2.7: code 16 repeats the previous non-zero length 3-6 times using 2 extra bits.
-                    while (remaining >= DeflateConstants.SYM_REPEAT_PREVIOUS_MIN) {
-                        val runLength = remaining.coerceAtMost(DeflateConstants.SYM_REPEAT_PREVIOUS_MAX)
-                        symbolBuffer += EncodedSymbol( // @formatter:off
-                            symbol = DeflateConstants.SYM_REPEAT_PREVIOUS,
-                            extraBits = runLength - DeflateConstants.SYM_REPEAT_PREVIOUS_MIN
-                        ) // @formatter:on
-                        lengthFrequencies[DeflateConstants.SYM_REPEAT_PREVIOUS]++
-                        remaining -= runLength
-                    }
-                    while (remaining > 0) {
-                        symbolBuffer += EncodedSymbol(length)
-                        lengthFrequencies[length]++
-                        remaining--
-                    }
                 }
-                index += count
             }
+            index += count
         }
+    }
 
-        collect(literalLengths)
-        collect(distanceLengths)
+    private fun computeCodeLengthExtraBitSize(symbol: Int): Int = when (symbol) {
+        DeflateConstants.SYM_REPEAT_PREVIOUS -> DeflateConstants.SYM_REPEAT_PREVIOUS_SIZE
+        DeflateConstants.SYM_REPEAT_ZERO_LENGTH -> DeflateConstants.SYM_REPEAT_ZERO_LENGTH_SIZE
+        DeflateConstants.SYM_LONG_ZERO_LENGTH_RUN -> DeflateConstants.SYM_LONG_ZERO_LENGTH_RUN_SIZE
+        else -> 0
+    }
+
+    private fun buildDynamicTrees(tokens: List<Token>): DynamicTrees {
+        literalFrequencies.fill(0)
+        distanceFrequencies.fill(0)
+        var index = 0
+        while (index < tokens.size) {
+            when (val token = tokens[index]) {
+                is Token.Literal -> literalFrequencies[token.value.toInt() and 0xFF]++
+                is Token.Match -> {
+                    val lengthSymbol = DeflateConstants.computeLengthSymbol(token.length)
+                    literalFrequencies[lengthSymbol]++
+                    val distanceSymbol = DeflateConstants.computeDistanceSymbol(token.distance)
+                    distanceFrequencies[distanceSymbol]++
+                }
+            }
+            index++
+        }
+        literalFrequencies[DeflateConstants.SYM_EOF]++ // RFC1951 3.2.3: end-of-block symbol 256 occurs once.
+
+        val literalTree = HuffmanTree.fromFrequencies(literalFrequencies)
+        val distanceTree = buildDistanceTree()
+        val literalLengths = literalTree.codeLengths()
+        val distanceLengths = distanceTree.codeLengths()
+        val literalCodesCount = computeLiteralCodesCount(literalLengths)
+        val distanceCodesCount = computeDistanceCodesCount(distanceLengths)
+
+        lengthFrequencies.fill(0)
+        symbolBuffer.clear()
+        collectDynamicTreeSymbols(literalLengths, literalCodesCount)
+        collectDynamicTreeSymbols(distanceLengths, distanceCodesCount)
 
         // RFC1951 3.2.7: derive the code-length tree from frequencies of lengths and repeat symbols.
         val lengthTree = HuffmanTree.fromFrequencies(lengthFrequencies)
         val lengthTreeLengths = lengthTree.codeLengths()
         // RFC1951 3.2.7: HCLEN stores the number of code-length codes minus four.
         val codeLengthCodesCount = computeCodeLengthCodesCount(lengthTreeLengths)
+
+        val symbols = ArrayList(symbolBuffer)
+        var bitSize = DeflateConstants.HLIT_SIZE + DeflateConstants.HDIST_SIZE + DeflateConstants.HCLEN_SIZE
+        bitSize += codeLengthCodesCount * DeflateConstants.CL_CODE_LENGTH_SIZE
+        index = 0
+        while (index < symbols.size) {
+            val encodedSymbol = symbols[index]
+            bitSize += lengthTree.encodingOf(encodedSymbol.symbol).length
+            bitSize += computeCodeLengthExtraBitSize(encodedSymbol.symbol)
+            index++
+        }
+        return DynamicTrees(
+            literalTree = literalTree,
+            distanceTree = distanceTree,
+            lengthTree = lengthTree,
+            lengthTreeLengths = lengthTreeLengths,
+            literalCodesCount = literalCodesCount,
+            distanceCodesCount = distanceCodesCount,
+            codeLengthCodesCount = codeLengthCodesCount,
+            symbols = symbols,
+            bitSize = bitSize
+        )
+    }
+
+    /**
+     * Encodes the Huffman trees for the current block using dynamic Huffman coding, including the
+     * code-length alphabet and repeat symbols 16, 17 and 18.
+     *
+     * See [RFC1951](https://datatracker.ietf.org/doc/html/rfc1951) section 3.2.7.
+     */
+    private fun encodeDynamicTrees(dynamicTrees: DynamicTrees) {
         // RFC1951 3.2.7: write HLIT, HDIST and HCLEN before the code-length tree.
-        encodeDynamicHeader(literalCodesCount, distanceCodesCount, codeLengthCodesCount)
+        encodeDynamicHeader(
+            dynamicTrees.literalCodesCount, dynamicTrees.distanceCodesCount, dynamicTrees.codeLengthCodesCount
+        )
         // RFC1951 3.2.7: code-length code lengths are serialized in CODE_LENGTH_ORDER.
-        for (index in 0..<codeLengthCodesCount) {
+        for (index in 0..<dynamicTrees.codeLengthCodesCount) {
             val symbol = DeflateConstants.CODE_LENGTH_ORDER[index]
-            bitSink.writeBitsLsb(DeflateConstants.CL_CODE_LENGTH_SIZE, lengthTreeLengths[symbol].toULong())
+            bitSink.writeBitsLsb(DeflateConstants.CL_CODE_LENGTH_SIZE, dynamicTrees.lengthTreeLengths[symbol].toULong())
         }
         // RFC1951 3.2.7: write literal/length and distance code lengths through the code-length tree.
         var index = 0
-        while (index < symbolBuffer.size) {
-            val encodedSymbol = symbolBuffer[index]
+        while (index < dynamicTrees.symbols.size) {
+            val encodedSymbol = dynamicTrees.symbols[index]
             val symbol = encodedSymbol.symbol
             val extraBits = encodedSymbol.extraBits
-            val (bits, length) = lengthTree.encodingOf(symbol)
+            val (bits, length) = dynamicTrees.lengthTree.encodingOf(symbol)
             bitSink.writeBits(length, bits.toULong())
             when (symbol) {
                 DeflateConstants.SYM_REPEAT_PREVIOUS -> bitSink.writeBitsLsb(
@@ -251,6 +351,39 @@ internal class DeflaterImpl( // @formatter:off
             }
             index++
         }
+    }
+
+    private fun encodedTokenBitSize(tokens: List<Token>, literalTree: HuffmanTree, distanceTree: HuffmanTree): Int {
+        var bitSize = 0
+        var index = 0
+        while (index < tokens.size) {
+            when (val token = tokens[index]) {
+                is Token.Literal -> bitSize += literalTree.encodingOf(token.value.toInt() and 0xFF).length
+                is Token.Match -> {
+                    val lengthSymbol = DeflateConstants.computeLengthSymbol(token.length)
+                    bitSize += literalTree.encodingOf(lengthSymbol).length
+                    bitSize += DeflateConstants.LENGTH_EXTRA_BITS[lengthSymbol - DeflateConstants.HLIT_OFFSET]
+
+                    val distanceSymbol = DeflateConstants.computeDistanceSymbol(token.distance)
+                    bitSize += distanceTree.encodingOf(distanceSymbol).length
+                    bitSize += DeflateConstants.DIST_EXTRA_BITS[distanceSymbol]
+                }
+            }
+            index++
+        }
+        return bitSize
+    }
+
+    private fun fixedBlockBitSize(tokens: List<Token>): Int {
+        return 1 + DeflateConstants.BTYPE_SIZE + encodedTokenBitSize(
+            tokens, FIXED_LITERAL_TREE, FIXED_DISTANCE_TREE
+        ) + FIXED_LITERAL_TREE.encodingOf(DeflateConstants.SYM_EOF).length
+    }
+
+    private fun dynamicBlockBitSize(tokens: List<Token>, dynamicTrees: DynamicTrees): Int {
+        return 1 + DeflateConstants.BTYPE_SIZE + dynamicTrees.bitSize + encodedTokenBitSize(
+            tokens, dynamicTrees.literalTree, dynamicTrees.distanceTree
+        ) + dynamicTrees.literalTree.encodingOf(DeflateConstants.SYM_EOF).length
     }
 
     /**
@@ -330,34 +463,15 @@ internal class DeflaterImpl( // @formatter:off
      *
      * See [RFC1951](https://datatracker.ietf.org/doc/html/rfc1951) sections 3.2.3 and 3.2.7.
      */
-    private fun encodeDynamicBlock(tokens: List<Token>) {
+    private fun encodeDynamicBlock(tokens: List<Token>, dynamicTrees: DynamicTrees) {
         // RFC1951 3.2.3: BFINAL marks the last block, followed by two BTYPE bits.
         bitSink.writeBit(if (finishing) 1U else 0U) // BFINAL
         bitSink.writeBitsLsb(DeflateConstants.BTYPE_SIZE, DeflateConstants.BTYPE_DYNAMIC) // BTYPE = 10
-        // RFC1951 3.2.7: frequencies determine the dynamic literal/length and distance trees.
-        literalFrequencies.fill(0)
-        distanceFrequencies.fill(0)
-        var index = 0
-        while (index < tokens.size) {
-            when (val token = tokens[index]) {
-                is Token.Literal -> literalFrequencies[token.value.toInt() and 0xFF]++
-                is Token.Match -> {
-                    val lengthSymbol = DeflateConstants.computeLengthSymbol(token.length)
-                    literalFrequencies[lengthSymbol]++
-                    val distanceSymbol = DeflateConstants.computeDistanceSymbol(token.distance)
-                    distanceFrequencies[distanceSymbol]++
-                }
-            }
-            index++
-        }
-        literalFrequencies[DeflateConstants.SYM_EOF]++ // RFC1951 3.2.3: end-of-block symbol 256 occurs once.
-        // RFC1951 3.2.7: construct and emit the dynamic Huffman trees before compressed data.
-        val literalTree = HuffmanTree.fromFrequencies(literalFrequencies)
-        val distanceTree = HuffmanTree.fromFrequencies(distanceFrequencies)
-        encodeDynamicTrees(literalTree, distanceTree)
+        // RFC1951 3.2.7: emit the dynamic Huffman trees before compressed data.
+        encodeDynamicTrees(dynamicTrees)
         // RFC1951 3.2.3: compressed data follows the dynamic tree description and ends with symbol 256.
-        encodeTokens(tokens, literalTree, distanceTree)
-        val eofCode = literalTree.encodingOf(DeflateConstants.SYM_EOF)
+        encodeTokens(tokens, dynamicTrees.literalTree, dynamicTrees.distanceTree)
+        val eofCode = dynamicTrees.literalTree.encodingOf(DeflateConstants.SYM_EOF)
         bitSink.writeBits(eofCode.length, eofCode.bits.toULong())
     }
 
@@ -399,11 +513,12 @@ internal class DeflaterImpl( // @formatter:off
         if (finishing) {
             wroteFinalBlock = true
         }
-        if (level == Deflater.MIN_LEVEL || tokenBuffer.size <= FIXED_BLOCK_TOKEN_THRESHOLD) {
+        val dynamicTrees = if (level == Deflater.MIN_LEVEL) null else buildDynamicTrees(tokenBuffer)
+        if (dynamicTrees == null || fixedBlockBitSize(tokenBuffer) <= dynamicBlockBitSize(tokenBuffer, dynamicTrees)) {
             encodeFixedBlock(tokenBuffer)
         }
         else {
-            encodeDynamicBlock(tokenBuffer)
+            encodeDynamicBlock(tokenBuffer, dynamicTrees)
         }
         remaining = 0
         // Flush out any pending data before returning

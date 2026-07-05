@@ -18,12 +18,4 @@
 
 package dev.karmakrafts.kompress.crc
 
-import dev.karmakrafts.kompress.util.has256BitSimd
-
-// Decide which implementation we use based on module presence
-private val crc32Factory: (UInt, UInt) -> CRC32 by lazy {
-    if (has256BitSimd) ::FastCRC32
-    else ::CRC32Impl
-}
-
-actual fun CRC32(polynomial: UInt, initialValue: UInt): CRC32 = crc32Factory(polynomial, initialValue)
+actual fun CRC32(polynomial: UInt, initialValue: UInt): CRC32 = CRC32Impl(polynomial, initialValue)

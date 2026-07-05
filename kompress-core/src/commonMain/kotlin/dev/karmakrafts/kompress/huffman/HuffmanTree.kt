@@ -18,7 +18,6 @@ package dev.karmakrafts.kompress.huffman
 
 import dev.karmakrafts.karbide.BitSink
 import dev.karmakrafts.karbide.BitSource
-import dev.karmakrafts.karbide.reverseBits
 import dev.karmakrafts.kompress.exception.NoSuchCodeException
 import dev.karmakrafts.kompress.exception.NoSuchSymbolException
 
@@ -90,42 +89,91 @@ internal class HuffmanTree(
         fun unpackLength(code: Int): Int = code and LENGTH_MASK
 
         fun fromFrequencies(frequencies: IntArray): HuffmanTree {
-            class Node(val symbol: Int, val frequency: Int, val left: Node? = null, val right: Node? = null)
-
-            val nodes = ArrayList<Node>()
+            var symbols = 0
+            var onlySymbol = -1
             for (index in frequencies.indices) {
                 if (frequencies[index] > 0) {
-                    nodes += Node(index, frequencies[index])
+                    symbols++
+                    onlySymbol = index
                 }
             }
 
-            if (nodes.isEmpty()) {
+            if (symbols == 0) {
                 return HuffmanTree(IntArray(frequencies.size))
             }
 
-            if (nodes.size == 1) {
+            if (symbols == 1) {
                 val lengths = IntArray(frequencies.size)
-                lengths[nodes[0].symbol] = 1
+                lengths[onlySymbol] = 1
                 return HuffmanTree(lengths)
             }
 
-            while (nodes.size > 1) {
-                nodes.sortBy { node -> node.frequency }
-                val left = nodes.removeAt(0)
-                val right = nodes.removeAt(0)
-                nodes += Node(-1, left.frequency + right.frequency, left, right)
+            val maxNodes = frequencies.size * 2
+            val nodeFrequencies = IntArray(maxNodes)
+            val depths = IntArray(maxNodes)
+            val parents = IntArray(maxNodes) { -1 }
+            val heap = IntArray(maxNodes + 1)
+            var heapSize = 0
+
+            for (index in frequencies.indices) {
+                val frequency = frequencies[index]
+                if (frequency == 0) continue
+                nodeFrequencies[index] = frequency
+                heap[++heapSize] = index
+            }
+
+            fun smaller(lhs: Int, rhs: Int): Boolean {
+                return nodeFrequencies[lhs] < nodeFrequencies[rhs] || nodeFrequencies[lhs] == nodeFrequencies[rhs] && depths[lhs] <= depths[rhs]
+            }
+
+            fun restoreHeap(start: Int) {
+                var parent = start
+                val value = heap[parent]
+                var child = parent shl 1
+                while (child <= heapSize) {
+                    if (child < heapSize && smaller(heap[child + 1], heap[child])) {
+                        child++
+                    }
+                    if (smaller(value, heap[child])) break
+
+                    heap[parent] = heap[child]
+                    parent = child
+                    child = parent shl 1
+                }
+                heap[parent] = value
+            }
+
+            for (index in heapSize / 2 downTo 1) {
+                restoreHeap(index)
+            }
+
+            var nextNode = frequencies.size
+            while (heapSize >= 2) {
+                val left = heap[1]
+                heap[1] = heap[heapSize--]
+                restoreHeap(1)
+
+                val right = heap[1]
+                val parent = nextNode++
+                nodeFrequencies[parent] = nodeFrequencies[left] + nodeFrequencies[right]
+                depths[parent] = depths[left].coerceAtLeast(depths[right]) + 1
+                parents[left] = parent
+                parents[right] = parent
+                heap[1] = parent
+                restoreHeap(1)
             }
 
             val lengths = IntArray(frequencies.size)
-            fun walk(node: Node, depth: Int) {
-                if (node.symbol != -1) {
-                    lengths[node.symbol] = depth
-                    return
+            for (symbol in frequencies.indices) {
+                if (frequencies[symbol] == 0) continue
+                var node = symbol
+                var length = 0
+                while (parents[node] != -1) {
+                    length++
+                    node = parents[node]
                 }
-                walk(node.left!!, depth + 1)
-                walk(node.right!!, depth + 1)
+                lengths[symbol] = length
             }
-            walk(nodes[0], 0)
 
             return HuffmanTree(lengths)
         }
@@ -169,20 +217,6 @@ internal class HuffmanTree(
             if (code != NO_SYMBOL) return code
         }
         throw NoSuchCodeException("No symbol in huffman tree")
-    }
-
-    fun peekSymbolCode(bits: Int, count: Int): Int {
-        if (maxBits == 0) throw NoSuchCodeException("No symbol in huffman tree")
-        if (count >= maxBits) {
-            val code = decodeTable[(bits and ((1 shl maxBits) - 1)).reverseBits(maxBits)]
-            if (code != NO_SYMBOL) return code
-            throw NoSuchCodeException("No symbol in huffman tree")
-        }
-        for (length in 1..count) {
-            val code = exactSymbolCode((bits and ((1 shl length) - 1)).reverseBits(length), length)
-            if (code != NO_SYMBOL) return code
-        }
-        return NO_SYMBOL
     }
 
     private fun readSymbolCode(source: BitSource): Int {
