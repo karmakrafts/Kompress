@@ -25,7 +25,7 @@ import kotlin.test.assertEquals
 @OptIn(ExperimentalCompressionApi::class)
 class ZipExtraFieldEntryTest {
     @Test
-    fun `size includes header id, size field and payload`() {
+    fun `size includes header id size field and payload`() {
         val entry = ZipExtraFieldEntry(
             headerId = ZipExtraFieldEntryHeaderId.ZIP64_EXTENDED_INFORMATION, data = ZipExtraFieldEntryData.Zip64(
                 uncompressedSize = 1UL, compressedSize = 1UL, lhrOffset = 1UL, startDiskIndex = 0U

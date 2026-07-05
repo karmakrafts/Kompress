@@ -27,7 +27,7 @@ import kotlin.time.Instant
 @OptIn(ExperimentalCompressionApi::class)
 class ZipEntryAndRecordModelsTest {
     @Test
-    fun `ZipEntry defaults to no comment, DEFLATE and non-ZIP64`() {
+    fun `ZipEntry defaults to no comment DEFLATE and non-ZIP64`() {
         val entry = ZipEntry(
             modificationTime = Instant.fromEpochSeconds(0), name = "entry.bin"
         )
