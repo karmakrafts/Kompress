@@ -22,7 +22,8 @@ Compression and archiver APIs for Kotlin Multiplatform.
 - Supports all Kotlin Multiplatform targets
 - General purpose `Compressor` and `Decompressor` APIs for modeling streaming compressors
 - General purpose `Archiver<E>` and `Unarchiver<E>` APIs for modeling streaming archivers
-- Create and read various archive types, including GZIP and ZIP.
+- Compress and decompress various data formats like **Deflate** and **Zlib**
+- Create and read various archive types, including **GZIP** and **ZIP**
 - Synchronous streaming API inspired by Java's `Inflater`/`Deflater` APIs
 - Integration with [kotlinx.io](https://github.com/Kotlin/kotlinx-io)
 - Customizable compression-level for supported (de)compressors
@@ -31,6 +32,7 @@ Compression and archiver APIs for Kotlin Multiplatform.
 ### Modules
 
 - **kompress-core**: Core compression and CRC APIs, provides a common DEFLATE implementation
+- **kompress-zlib**: Support for Zlib compressed data streams
 - **kompress-gzip**: Support for the GZIP archive container format
 - **kompress-zip**: Support for the ZIP archive container format (no en-/decryption support)
 - **kompress-benchmarks**: Various benchmarks comparing Kompress implementations against platform references
