@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [2.3.0]
+
 ### Added
 
 - ZLIB support via new `ZlibCompressor` and `ZlibDecompressor` provided by `kompress-zlib`
