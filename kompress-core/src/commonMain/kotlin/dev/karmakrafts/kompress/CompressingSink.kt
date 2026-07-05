@@ -47,7 +47,7 @@ private class CompressingSink( // @formatter:off
     }
 
     private fun drain() {
-        while (!compressor.needsInput) {
+        while (true) {
             val written = compressor.compress(chunkBuffer)
             if (written > 0) {
                 drainBuffer.write(chunkBuffer, 0, written)
@@ -65,13 +65,13 @@ private class CompressingSink( // @formatter:off
     override fun close() {
         if (isClosed) return
         compressor.finish()
-        while (!compressor.finished) {
+        while (true) {
             val written = compressor.compress(chunkBuffer)
             if (written > 0) {
                 drainBuffer.write(chunkBuffer, 0, written)
                 delegate.write(drainBuffer, written.toLong())
             }
-            else if (compressor.needsInput) break
+            else if (compressor.finished || compressor.needsInput) break
         }
         delegate.flush()
         if (isCompressorOwned) compressor.close()

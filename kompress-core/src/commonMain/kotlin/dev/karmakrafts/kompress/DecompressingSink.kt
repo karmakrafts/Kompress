@@ -47,7 +47,7 @@ private class DecompressingSink( // @formatter:off
     }
 
     private fun drain() {
-        while (!decompressor.needsInput) {
+        while (true) {
             val written = decompressor.decompress(chunkBuffer)
             if (written > 0) {
                 drainBuffer.write(chunkBuffer, 0, written)
@@ -65,13 +65,13 @@ private class DecompressingSink( // @formatter:off
     override fun close() {
         if (isClosed) return
         decompressor.finish()
-        while (!decompressor.finished) {
+        while (true) {
             val written = decompressor.decompress(chunkBuffer)
             if (written > 0) {
                 drainBuffer.write(chunkBuffer, 0, written)
                 delegate.write(drainBuffer, written.toLong())
             }
-            else if (decompressor.needsInput) break
+            else if (decompressor.finished || decompressor.needsInput) break
         }
         delegate.flush()
         if (isDecompressorOwned) decompressor.close()
