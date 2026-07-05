@@ -18,7 +18,7 @@ package dev.karmakrafts.kompress.zlib
 
 import dev.karmakrafts.kompress.Decompressor
 import dev.karmakrafts.kompress.InternalCompressionApi
-import dev.karmakrafts.kompress.UnwrappingDecompressor
+import dev.karmakrafts.kompress.FramingDecompressor
 import dev.karmakrafts.kompress.decompressingSink
 import dev.karmakrafts.kompress.decompressingSource
 import dev.karmakrafts.kompress.deflate.Inflater
@@ -34,7 +34,7 @@ import kotlinx.io.readUInt
  * Decompresses data from the Zlib format.
  */
 @OptIn(InternalCompressionApi::class)
-class ZlibDecompressor : UnwrappingDecompressor(Inflater()) {
+class ZlibDecompressor : FramingDecompressor(Inflater()) {
     companion object {
         /**
          * Decompresses the given data in one go using the given

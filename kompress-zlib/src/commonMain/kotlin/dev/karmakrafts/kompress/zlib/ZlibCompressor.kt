@@ -18,7 +18,7 @@ package dev.karmakrafts.kompress.zlib
 
 import dev.karmakrafts.kompress.Compressor
 import dev.karmakrafts.kompress.InternalCompressionApi
-import dev.karmakrafts.kompress.WrappingCompressor
+import dev.karmakrafts.kompress.FramingCompressor
 import dev.karmakrafts.kompress.compressingSink
 import dev.karmakrafts.kompress.compressingSource
 import dev.karmakrafts.kompress.deflate.Deflater
@@ -40,7 +40,7 @@ class ZlibCompressor(
     level: Int = Deflater.DEFAULT_LEVEL,
     private val cmf: ZlibCMF = ZlibCMF(),
     private val flags: ZlibFlags = ZlibFlags(ZlibCompressionLevel.fromDeflaterLevel(level))
-) : WrappingCompressor(Deflater(level)) {
+) : FramingCompressor(Deflater(level)) {
     companion object {
         /**
          * Compresses the given data in one go using the given

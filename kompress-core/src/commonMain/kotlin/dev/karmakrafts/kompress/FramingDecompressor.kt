@@ -27,7 +27,7 @@ import kotlinx.io.readByteArray
  *
  * @property decompressor The underlying decompressor for payload data.
  */
-abstract class UnwrappingDecompressor(
+abstract class FramingDecompressor(
     val decompressor: Decompressor
 ) : Decompressor by decompressor {
     /**

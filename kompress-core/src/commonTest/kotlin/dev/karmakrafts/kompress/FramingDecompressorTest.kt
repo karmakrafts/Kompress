@@ -26,12 +26,12 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
-class UnwrappingDecompressorTest {
+class FramingDecompressorTest {
     @Test
     fun `decompress strips wrapper prologue before payload`() {
         val delegate = ScriptedDecompressor(byteArrayOf(0x10, 0x11))
         delegate.scriptReads(2)
-        val decompressor = TestUnwrappingDecompressor(
+        val decompressor = TestFramingDecompressor(
             delegate, prologue = byteArrayOf(0x01, 0x02), epilogue = byteArrayOf()
         )
 
@@ -49,7 +49,7 @@ class UnwrappingDecompressorTest {
     fun `decompress validates epilogue after payload`() {
         val delegate = ScriptedDecompressor(byteArrayOf(0x40))
         delegate.scriptReads(1)
-        val decompressor = TestUnwrappingDecompressor(
+        val decompressor = TestFramingDecompressor(
             delegate, prologue = byteArrayOf(0x01), epilogue = byteArrayOf(0x7A, 0x7B)
         )
 
@@ -74,7 +74,7 @@ class UnwrappingDecompressorTest {
     fun `reset re-enables prologue validation and clears bytes read`() {
         val delegate = ScriptedDecompressor(byteArrayOf(0x10))
         delegate.scriptReads(1)
-        val decompressor = TestUnwrappingDecompressor(
+        val decompressor = TestFramingDecompressor(
             delegate, prologue = byteArrayOf(0x01), epilogue = byteArrayOf()
         )
 
@@ -101,7 +101,7 @@ class UnwrappingDecompressorTest {
             byteArrayOf(0x10), byteArrayOf(0x11), byteArrayOf(0x12)
         )
         delegate.scriptReads(2, 1, 3)
-        val decompressor = TestUnwrappingDecompressor(
+        val decompressor = TestFramingDecompressor(
             delegate, prologue = byteArrayOf(), epilogue = byteArrayOf()
         )
 
@@ -120,7 +120,7 @@ class UnwrappingDecompressorTest {
     @Test
     fun `decompress throws when wrapper prologue is incomplete at finish`() {
         val delegate = ScriptedDecompressor(byteArrayOf(0x10))
-        val decompressor = TestUnwrappingDecompressor(
+        val decompressor = TestFramingDecompressor(
             delegate, prologue = byteArrayOf(0x01, 0x02), epilogue = byteArrayOf()
         )
 
@@ -143,9 +143,9 @@ class UnwrappingDecompressorTest {
         return output.readByteArray()
     }
 
-    private class TestUnwrappingDecompressor(
+    private class TestFramingDecompressor(
         decompressor: Decompressor, private val prologue: ByteArray, private val epilogue: ByteArray
-    ) : UnwrappingDecompressor(decompressor) {
+    ) : FramingDecompressor(decompressor) {
         var prologueCalls: Int = 0
             private set
         var epilogueCalls: Int = 0

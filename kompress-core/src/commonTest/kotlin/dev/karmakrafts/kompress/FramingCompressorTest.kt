@@ -23,13 +23,13 @@ import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 
-class WrappingCompressorTest {
+class FramingCompressorTest {
     @Test
     fun `compress emits prologue before compressed payload`() {
         val delegate = ScriptedCompressor(
             byteArrayOf(0x10, 0x11), byteArrayOf(0x12)
         )
-        val compressor = TestWrappingCompressor(
+        val compressor = TestFramingCompressor(
             delegate, prologue = byteArrayOf(0x01, 0x02, 0x03), epilogue = byteArrayOf(0x7F)
         )
 
@@ -52,7 +52,7 @@ class WrappingCompressorTest {
         val delegate = ScriptedCompressor(
             byteArrayOf(0x10), byteArrayOf(0x11)
         )
-        val compressor = TestWrappingCompressor(
+        val compressor = TestFramingCompressor(
             delegate, prologue = byteArrayOf(0x01), epilogue = byteArrayOf(0x20, 0x21)
         )
 
@@ -77,7 +77,7 @@ class WrappingCompressorTest {
     @Test
     fun `reset re-enables prologue emission`() {
         val delegate = ScriptedCompressor(byteArrayOf(0x10))
-        val compressor = TestWrappingCompressor(
+        val compressor = TestFramingCompressor(
             delegate, prologue = byteArrayOf(0x01), epilogue = byteArrayOf(0x20)
         )
 
@@ -118,7 +118,7 @@ class WrappingCompressorTest {
             byteArrayOf(0x10), byteArrayOf(0x11), byteArrayOf(0x12)
         )
         delegate.scriptReads(2, 1, 3)
-        val compressor = TestWrappingCompressor(
+        val compressor = TestFramingCompressor(
             delegate, prologue = byteArrayOf(), epilogue = byteArrayOf()
         )
 
@@ -133,9 +133,9 @@ class WrappingCompressorTest {
         assertEquals(6L, delegate.bytesRead)
     }
 
-    private class TestWrappingCompressor(
+    private class TestFramingCompressor(
         compressor: Compressor, private val prologue: ByteArray, private val epilogue: ByteArray
-    ) : WrappingCompressor(compressor) {
+    ) : FramingCompressor(compressor) {
         var prologueCalls: Int = 0
             private set
         var epilogueCalls: Int = 0

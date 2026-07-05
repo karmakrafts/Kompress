@@ -26,7 +26,7 @@ import kotlinx.io.readByteArray
  *
  * @property compressor The underlying compressor that produces the wrapped payload.
  */
-abstract class WrappingCompressor(val compressor: Compressor) : Compressor by compressor {
+abstract class FramingCompressor(val compressor: Compressor) : Compressor by compressor {
     /**
      * Internal wrapper output buffer.
      */
