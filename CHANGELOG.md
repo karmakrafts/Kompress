@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [2.3.1]
+
 ### Fixed
 
 - Deflater not selecting the optimal block size when writing data, causing overallocation of the output in some cases ([GH-5](https://github.com/karmakrafts/Kompress/issues/5))
