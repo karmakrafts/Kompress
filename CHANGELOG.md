@@ -8,10 +8,11 @@
 
 - Updated to Gradle 9.6.1
 - Updated to Karma Conventions 1.18.2
-- Updated to Karbide 1.10.4
+- Updated to Karbide 1.10.5
 - Updated to Kotlin Wrappers 2026.7.0
 - Updated to kotlinx.io 0.9.1
 - Major performance improvement (~2,5x) of CRC32 on JVM
+- Minor performance improvement for `Inflater` on all platforms
 
 ## [2.3.0]
 
