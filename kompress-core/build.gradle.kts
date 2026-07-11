@@ -115,11 +115,6 @@ kotlin {
                 implementation(libs.karbide.core)
             }
         }
-        jvmMain {
-            dependencies {
-                implementation(libs.oshi.core)
-            }
-        }
         webMain {
             dependencies {
                 implementation(libs.kotlin.wrappers.browser)

@@ -17,8 +17,8 @@
 package dev.karmakrafts.kompress.gzip
 
 import dev.karmakrafts.kompress.InternalCompressionApi
-import dev.karmakrafts.kompress.util.Platform
-import dev.karmakrafts.kompress.util.currentPlatform
+import dev.karmakrafts.kplatform.OsFamily
+import dev.karmakrafts.kplatform.Platform
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -41,10 +41,11 @@ class GZipOsTest {
 
     @Test
     fun `guessCurrent maps current platform to RFC1952 OS id`() {
+        val family = Platform.os.family
         val expected = when {
-            currentPlatform == Platform.WINDOWS -> GZipOs.NTFS
-            currentPlatform.isApple -> GZipOs.MACINTOSH
-            currentPlatform.isUnix -> GZipOs.UNIX
+            family == OsFamily.WINDOWS -> GZipOs.NTFS
+            family.isApple -> GZipOs.MACINTOSH
+            family.isUnixoid -> GZipOs.UNIX
             else -> GZipOs.UNKNOWN
         }
 

@@ -4,15 +4,15 @@ javaCompile = "25"
 javaTarget = "17"
 
 androidGradle = "9.2.1" # https://developer.android.com/reference/tools/gradle-api
-kompress = "2.3.1"
+kompress = "2.3.2"
 kotlin = "2.4.0" # https://github.com/JetBrains/kotlin/releases
 kotlinxIo = "0.9.1" # https://github.com/Kotlin/kotlinx-io/releases
 kotlinxDateTime = "0.8.0" # https://github.com/Kotlin/kotlinx-datetime/releases
-kotlinBrowser = "2026.7.0" # https://github.com/JetBrains/kotlin-wrappers/releases
+kotlinBrowser = "2026.7.1" # https://github.com/JetBrains/kotlin-wrappers/releases
 dokka = "2.2.0" # https://github.com/Kotlin/dokka/releases
-karmaConventions = "1.18.2" # https://github.com/karmakrafts/karma-conventions/tags
-oshi = "7.3.2" # https://github.com/oshi/oshi/releases
-karbide = "1.10.5" # https://github.com/karmakrafts/Karbide/releases
+karmaConventions = "1.18.3" # https://github.com/karmakrafts/karma-conventions/tags
+karbide = "1.10.7" # https://github.com/karmakrafts/Karbide/releases
+kplatform = "1.1.0" # https://github.com/karmakrafts/kPlatform/releases
 
 # kompress-benchmarks
 
@@ -27,8 +27,8 @@ kotlin-wrappers-browser = { module = "org.jetbrains.kotlin-wrappers:kotlin-brows
 kotlinx-io-bytestring = { module = "org.jetbrains.kotlinx:kotlinx-io-bytestring", version.ref = "kotlinxIo" }
 kotlinx-io-core = { module = "org.jetbrains.kotlinx:kotlinx-io-core", version.ref = "kotlinxIo" }
 kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinxDateTime" }
-oshi-core = { module = "com.github.oshi:oshi-core", version.ref = "oshi" }
 karbide-core = { module = "dev.karmakrafts.karbide:karbide-core", version.ref = "karbide" }
+kplatform-core = { module = "dev.karmakrafts.kplatform:kplatform-core", version.ref = "kplatform" }
 
 # kompress-benchmarks
 

@@ -17,8 +17,8 @@
 package dev.karmakrafts.kompress.gzip
 
 import dev.karmakrafts.kompress.InternalCompressionApi
-import dev.karmakrafts.kompress.util.Platform
-import dev.karmakrafts.kompress.util.currentPlatform
+import dev.karmakrafts.kplatform.OsFamily
+import dev.karmakrafts.kplatform.Platform
 
 /**
  * Operating-system identifiers used in GZip headers.
@@ -77,11 +77,14 @@ enum class GZipOs(val encodedValue: UByte) {
          * @return The best matching [GZipOs] for the current platform.
          */
         @OptIn(InternalCompressionApi::class)
-        fun guessCurrent(): GZipOs = when {
-            currentPlatform == Platform.WINDOWS -> NTFS
-            currentPlatform.isApple -> MACINTOSH
-            currentPlatform.isUnix -> UNIX
-            else -> UNKNOWN
+        fun guessCurrent(): GZipOs {
+            val family = Platform.os.family
+            return when {
+                family == OsFamily.WINDOWS -> NTFS
+                family.isApple -> MACINTOSH
+                family.isUnixoid -> UNIX
+                else -> UNKNOWN
+            }
         }
     }
 }

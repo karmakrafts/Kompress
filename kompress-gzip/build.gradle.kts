@@ -104,6 +104,7 @@ kotlin {
             dependencies {
                 api(projects.kompressCore)
                 implementation(libs.karbide.core) // Provided by core
+                implementation(libs.kplatform.core)
             }
         }
         commonTest {
