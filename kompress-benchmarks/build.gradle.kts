@@ -24,6 +24,7 @@ import dev.karmakrafts.conventions.kotlin.withNative
 import dev.karmakrafts.conventions.kotlin.withNodeJs
 import dev.karmakrafts.conventions.kotlin.withWasmWasi
 import dev.karmakrafts.conventions.kotlin.withWeb
+import kotlinx.benchmark.gradle.BenchmarkConfiguration
 import kotlinx.benchmark.gradle.benchmark
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.plugin.mpp.NativeBuildType
@@ -80,41 +81,31 @@ benchmark {
         register("wasmWasi")
     }
     configurations {
-        named("main") {
+        fun BenchmarkConfiguration.defaultConfig() {
             warmups = 10
             iterations = 10
             iterationTime = 1
             iterationTimeUnit = "s"
+        }
+        named("main") {
+            defaultConfig()
         }
         register("crc") {
             include("dev.karmakrafts.kompress.*CRC32*")
-            warmups = 10
-            iterations = 10
-            iterationTime = 1
-            iterationTimeUnit = "s"
+            defaultConfig()
         }
         register("deflate") {
             include("dev.karmakrafts.kompress.*Deflater*")
-            warmups = 10
-            iterations = 10
-            iterationTime = 1
-            iterationTimeUnit = "s"
+            defaultConfig()
         }
         register("inflate") {
             include("dev.karmakrafts.kompress.*Inflater*")
-            warmups = 10
-            iterations = 10
-            iterationTime = 1
-            iterationTimeUnit = "s"
+            defaultConfig()
         }
-
         register("deflateInflate") {
             include("dev.karmakrafts.kompress.*Inflater*")
             include("dev.karmakrafts.kompress.*Deflater*")
-            warmups = 10
-            iterations = 10
-            iterationTime = 1
-            iterationTimeUnit = "s"
+            defaultConfig()
         }
     }
 }

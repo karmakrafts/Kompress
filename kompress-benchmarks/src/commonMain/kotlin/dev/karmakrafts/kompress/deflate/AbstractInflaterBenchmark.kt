@@ -16,6 +16,7 @@
 
 package dev.karmakrafts.kompress.deflate
 
+import dev.karmakrafts.kompress.aliceInWonderlandData
 import kotlinx.benchmark.Benchmark
 import kotlinx.benchmark.TearDown
 import kotlinx.io.Buffer
@@ -29,14 +30,29 @@ abstract class AbstractInflaterBenchmark(level: Int) {
 
     protected val inflater: Inflater = Inflater()
     protected val data: ByteArray = Deflater.compress(ByteArray(DATA_SIZE) { 1 }, level = level)
+    protected val compressedAliceInWonderland: ByteArray = Deflater.compress(aliceInWonderlandData, level = level)
     protected val buffer: Buffer = Buffer()
     protected val chunkBuffer: ByteArray = ByteArray(4096)
 
-    @JvmName("run")
+    @JvmName("small")
     @Benchmark
-    fun run(): ByteArray {
+    fun small(): ByteArray {
         inflater.reset()
         inflater.setInput(data)
+        inflater.finish()
+        while (true) {
+            val bytesDecompressed = inflater.decompress(chunkBuffer)
+            if (bytesDecompressed == 0 || inflater.needsInput) break
+            buffer.write(chunkBuffer, 0, bytesDecompressed)
+        }
+        return buffer.readByteArray()
+    }
+
+    @JvmName("large")
+    @Benchmark
+    fun large(): ByteArray {
+        inflater.reset()
+        inflater.setInput(compressedAliceInWonderland)
         inflater.finish()
         while (true) {
             val bytesDecompressed = inflater.decompress(chunkBuffer)
