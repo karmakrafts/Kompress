@@ -16,6 +16,7 @@
 
 package dev.karmakrafts.kompress.gzip
 
+import dev.karmakrafts.kompress.exception.InvalidChecksumException
 import kotlinx.io.Buffer
 import kotlinx.io.Source
 import kotlinx.io.readByteArray
@@ -23,6 +24,7 @@ import kotlinx.io.writeString
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 import kotlin.time.Instant
@@ -70,6 +72,31 @@ class GZipArchiverUnarchiverTest {
 
         assertEquals(listOf(expectedEntry), entries)
         assertContentEquals(payload, contents.single())
+    }
+
+    @Test
+    fun `unarchive rejects invalid header checksum`() {
+        val archiveBuffer = Buffer()
+
+        archiveBuffer.gzip().use { archiver ->
+            archiver.appendEntry("test.txt") { sink ->
+                sink.writeString("HELLO, WORLD!")
+                false
+            }
+        }
+
+        val archive = archiveBuffer.readByteArray()
+        archive[10] = (archive[10].toInt() xor 1).toByte()
+        val corruptedBuffer = Buffer()
+        corruptedBuffer.write(archive)
+
+        assertFailsWith<InvalidChecksumException> {
+            corruptedBuffer.ungzip().use { unarchiver ->
+                unarchiver.forEachEntry { _, source, fetchMore ->
+                    readEntryBytes(source, fetchMore)
+                }
+            }
+        }
     }
 
     @Test
