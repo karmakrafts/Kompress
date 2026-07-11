@@ -98,8 +98,16 @@ benchmark {
             include("dev.karmakrafts.kompress.*Deflater*")
             defaultConfig()
         }
+        register("deflateDefaultLevel") {
+            include("dev.karmakrafts.kompress.*DeflaterDefaultLevel*")
+            defaultConfig()
+        }
         register("inflate") {
             include("dev.karmakrafts.kompress.*Inflater*")
+            defaultConfig()
+        }
+        register("inflateDefaultLevel") {
+            include("dev.karmakrafts.kompress.*InflaterDefaultLevel*")
             defaultConfig()
         }
         register("deflateInflate") {
