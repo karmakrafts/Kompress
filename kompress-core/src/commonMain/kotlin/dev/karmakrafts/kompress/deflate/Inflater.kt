@@ -260,8 +260,7 @@ internal class InflaterImpl(
         return when {
             distance == 1 -> writeRepeatedMatch(output, position, copyLimit, length, readPosition)
             distance >= copyLimit -> writeBulkMatch(output, position, copyLimit, length, readPosition)
-            windowMask != -1 -> writeMaskedOverlapMatch(output, position, copyLimit, length, readPosition)
-            else -> writeWrappedOverlapMatch(output, position, copyLimit, length, readPosition)
+            else -> writeOverlappingMatch(output, position, copyLimit, length, distance, readPosition)
         }
     }
 
@@ -276,7 +275,7 @@ internal class InflaterImpl(
         var copied = 0
         while (copied < copyLimit) {
             val writeChunk = minOf(copyLimit - copied, windowSize - writePosition)
-            output.copyInto(window, writePosition, position + copied, position + copied + writeChunk)
+            window.fill(byte, writePosition, writePosition + writeChunk)
             copied += writeChunk
             writePosition += writeChunk
             if (writePosition == windowSize) {
@@ -321,52 +320,78 @@ internal class InflaterImpl(
         return outputPosition
     }
 
-    private fun writeMaskedOverlapMatch(
-        output: ByteArray, position: Int, copyLimit: Int, length: Int, initialReadPosition: Int
-    ): Int {
-        val window = window
-        val windowMask = windowMask
-        var readPosition = initialReadPosition
-        var writePosition = windowPosition
-        var outputPosition = position
-        val endPosition = position + copyLimit
-        while (outputPosition < endPosition) {
-            val byte = window[readPosition]
-            output[outputPosition++] = byte
-            window[writePosition] = byte
-            readPosition = (readPosition + 1) and windowMask
-            writePosition = (writePosition + 1) and windowMask
-        }
-
-        finishMatchWrite(writePosition, copyLimit, length)
-        return outputPosition
-    }
-
-    private fun writeWrappedOverlapMatch(
-        output: ByteArray, position: Int, copyLimit: Int, length: Int, initialReadPosition: Int
+    private fun writeOverlappingMatch(
+        output: ByteArray,
+        position: Int,
+        copyLimit: Int,
+        length: Int,
+        distance: Int,
+        initialReadPosition: Int
     ): Int {
         val window = window
         val windowSize = windowSize
         var readPosition = initialReadPosition
         var writePosition = windowPosition
-        var outputPosition = position
-        val endPosition = position + copyLimit
-        while (outputPosition < endPosition) {
-            val byte = window[readPosition]
-            output[outputPosition++] = byte
-            window[writePosition] = byte
-            readPosition++
-            if (readPosition == windowSize) {
-                readPosition = 0
+
+        if (copyLimit < 8) {
+            var outputPosition = position
+            val endPosition = position + copyLimit
+            if (windowMask != -1) {
+                val windowMask = windowMask
+                while (outputPosition < endPosition) {
+                    val byte = window[readPosition]
+                    output[outputPosition++] = byte
+                    window[writePosition] = byte
+                    readPosition = (readPosition + 1) and windowMask
+                    writePosition = (writePosition + 1) and windowMask
+                }
             }
-            writePosition++
+            else {
+                while (outputPosition < endPosition) {
+                    val byte = window[readPosition]
+                    output[outputPosition++] = byte
+                    window[writePosition] = byte
+                    readPosition++
+                    if (readPosition == windowSize) {
+                        readPosition = 0
+                    }
+                    writePosition++
+                    if (writePosition == windowSize) {
+                        writePosition = 0
+                    }
+                }
+            }
+
+            finishMatchWrite(writePosition, copyLimit, length)
+            return outputPosition
+        }
+
+        val firstChunk = minOf(distance, windowSize - readPosition)
+        window.copyInto(output, position, readPosition, readPosition + firstChunk)
+        var copied = firstChunk
+        if (copied < distance) {
+            val secondChunk = distance - copied
+            window.copyInto(output, position + copied, 0, secondChunk)
+            copied += secondChunk
+        }
+        while (copied < copyLimit) {
+            val copyChunk = minOf(copied, copyLimit - copied)
+            output.copyInto(output, position + copied, position, position + copyChunk)
+            copied += copyChunk
+        }
+        copied = 0
+        while (copied < copyLimit) {
+            val writeChunk = minOf(copyLimit - copied, windowSize - writePosition)
+            output.copyInto(window, writePosition, position + copied, position + copied + writeChunk)
+            copied += writeChunk
+            writePosition += writeChunk
             if (writePosition == windowSize) {
                 writePosition = 0
             }
         }
 
         finishMatchWrite(writePosition, copyLimit, length)
-        return outputPosition
+        return position + copyLimit
     }
 
     private fun finishMatchWrite(writePosition: Int, copied: Int, length: Int) {

@@ -34,7 +34,12 @@ internal class HuffmanTree(
 ) {
     private val encodeTable: LongArray? = if (buildEncodeTable) LongArray(size) else null
     private var maxBits: Int = 0
-    private val decodeTable: IntArray
+    private val fastBits: Int
+    private val fastDecodeTable: IntArray
+    private val bitLengthCounts: IntArray
+    private val firstCode: IntArray
+    private val firstSymbol: IntArray
+    private val symbolsByCode: IntArray
 
     init {
         for (index in 0 until size) {
@@ -42,36 +47,48 @@ internal class HuffmanTree(
         }
         // Determine how many symbols use each bit length.
         // See RFC1951 3.2.2, step 1.
-        val bitLengthCounts = IntArray(maxBits + 1)
+        bitLengthCounts = IntArray(maxBits + 1)
         for (index in 0 until size) {
             val length = lengths[offset + index]
             if (length == 0) continue
             bitLengthCounts[length]++
         }
-        decodeTable = IntArray(if (maxBits == 0) 0 else 1 shl maxBits) { NO_SYMBOL }
+        fastBits = maxBits.coerceAtMost(FAST_BITS)
+        fastDecodeTable = IntArray(if (fastBits == 0) 0 else 1 shl fastBits) { NO_SYMBOL }
+        firstCode = IntArray(maxBits + 1)
+        firstSymbol = IntArray(maxBits + 1)
+        symbolsByCode = IntArray(size)
         // Compute canonical next code table.
         // See RFC1951 3.2.2, step 2.
         val nextCode = IntArray(maxBits + 1)
         var code = 0
+        var symbolOffset = 0
         for (bit in 1..maxBits) {
             code = (code + bitLengthCounts[bit - 1]) shl 1
             nextCode[bit] = code
+            firstCode[bit] = code
+            firstSymbol[bit] = symbolOffset
+            symbolOffset += bitLengthCounts[bit]
         }
+        val nextSymbol = firstSymbol.copyOf()
         // Build decode- and encode-tables by assigning numerical values to all codes.
         // See RFC1951 3.2.2, step 3.
         for (symbol in 0 until size) {
             val bitLength = lengths[offset + symbol]
             if (bitLength == 0) continue // Skip any 0-length symbols
             val canonical = nextCode[bitLength]++
+            symbolsByCode[nextSymbol[bitLength]++] = symbol
             val code = HuffmanCode(canonical, bitLength)
             encodeTable?.set(symbol, code.value.toLong())
             val packed = packSymbol(symbol, bitLength)
-            val suffixBits = maxBits - bitLength
-            val endIndex = (canonical + 1) shl suffixBits
-            var index = canonical shl suffixBits
-            while (index < endIndex) {
-                decodeTable[index] = packed
-                index++
+            if (bitLength <= fastBits) {
+                val fastSuffixBits = fastBits - bitLength
+                val fastEndIndex = (canonical + 1) shl fastSuffixBits
+                var fastIndex = canonical shl fastSuffixBits
+                while (fastIndex < fastEndIndex) {
+                    fastDecodeTable[fastIndex] = packed
+                    fastIndex++
+                }
             }
         }
     }
@@ -79,6 +96,7 @@ internal class HuffmanTree(
     companion object {
         const val NO_SYMBOL: Int = -1
 
+        private const val FAST_BITS: Int = 9
         private const val LENGTH_BITS: Int = 4
         private const val LENGTH_MASK: Int = (1 shl LENGTH_BITS) - 1
 
@@ -198,19 +216,28 @@ internal class HuffmanTree(
     }
 
     private fun exactSymbolCode(bits: Int, length: Int): Int {
-        val code = decodeTable[bits shl (maxBits - length)]
-        if (code != NO_SYMBOL && unpackLength(code) == length) return code
-        return NO_SYMBOL
+        val symbolIndex = bits - firstCode[length]
+        if (symbolIndex < 0 || symbolIndex >= bitLengthCounts[length]) return NO_SYMBOL
+        return packSymbol(symbolsByCode[firstSymbol[length] + symbolIndex], length)
     }
 
     fun peekSymbolCode(source: BitSource): Int {
         if (maxBits == 0) throw NoSuchCodeException("No symbol in huffman tree")
-        if (source.requestBits(maxBits)) {
-            val code = decodeTable[source.peekBits(maxBits).toInt()]
+        var minLength = 1
+        if (source.requestBits(fastBits)) {
+            val code = fastDecodeTable[source.peekBits(fastBits).toInt()]
             if (code != NO_SYMBOL) return code
+            minLength = fastBits + 1
+        }
+        if (source.requestBits(maxBits)) {
+            val bits = source.peekBits(maxBits).toInt()
+            for (length in minLength..maxBits) {
+                val code = exactSymbolCode(bits ushr (maxBits - length), length)
+                if (code != NO_SYMBOL) return code
+            }
             throw NoSuchCodeException("No symbol in huffman tree")
         }
-        for (length in 1..maxBits) {
+        for (length in minLength..maxBits) {
             if (!source.requestBits(length)) return NO_SYMBOL
             val bits = source.peekBits(length).toInt()
             val code = exactSymbolCode(bits, length)
