@@ -11,7 +11,7 @@ kotlinxDateTime = "0.8.0" # https://github.com/Kotlin/kotlinx-datetime/releases
 kotlinBrowser = "2026.7.1" # https://github.com/JetBrains/kotlin-wrappers/releases
 dokka = "2.2.0" # https://github.com/Kotlin/dokka/releases
 karmaConventions = "1.18.3" # https://github.com/karmakrafts/karma-conventions/tags
-karbide = "1.10.7" # https://github.com/karmakrafts/Karbide/releases
+karbide = "1.10.8" # https://github.com/karmakrafts/Karbide/releases
 kplatform = "1.1.0" # https://github.com/karmakrafts/kPlatform/releases
 
 # kompress-benchmarks

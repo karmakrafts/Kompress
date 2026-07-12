@@ -34,9 +34,9 @@ abstract class AbstractJvmInflaterBenchmark(level: Int) {
     protected val buffer: Buffer = Buffer()
     protected val chunkBuffer: ByteArray = ByteArray(4096)
 
-    @JvmName("small")
+    @JvmName("random")
     @Benchmark
-    fun small(): ByteArray {
+    fun random(): ByteArray {
         inflater.reset()
         inflater.setInput(data)
         while (true) {
@@ -47,9 +47,9 @@ abstract class AbstractJvmInflaterBenchmark(level: Int) {
         return buffer.readByteArray()
     }
 
-    @JvmName("large")
+    @JvmName("text")
     @Benchmark
-    fun large(): ByteArray {
+    fun text(): ByteArray {
         inflater.reset()
         inflater.setInput(compressedAliceInWonderland)
         while (true) {

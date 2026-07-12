@@ -33,9 +33,9 @@ abstract class AbstractJvmDeflaterBenchmark(level: Int) {
     protected val buffer: Buffer = Buffer()
     protected val chunkBuffer: ByteArray = ByteArray(4096)
 
-    @JvmName("small")
+    @JvmName("random")
     @Benchmark
-    fun small(): ByteArray {
+    fun random(): ByteArray {
         deflater.reset()
         deflater.setInput(data)
         deflater.finish()
@@ -47,9 +47,9 @@ abstract class AbstractJvmDeflaterBenchmark(level: Int) {
         return buffer.readByteArray()
     }
 
-    @JvmName("large")
+    @JvmName("text")
     @Benchmark
-    fun large(): ByteArray {
+    fun text(): ByteArray {
         deflater.reset()
         deflater.setInput(aliceInWonderlandData)
         deflater.finish()
