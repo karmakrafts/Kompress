@@ -24,32 +24,32 @@ import kotlinx.datetime.number
 
 @InternalCompressionApi
 fun UShort.unpackTimeWord(): LocalTime {
-    val hours = ((toUInt() shr 11) and 0b1111U).toInt()
-    val minutes = ((toUInt() shr 5) and 0b1111U).toInt()
-    val seconds = ((toUInt() and 0b1111U) shl 1).toInt()
+    val hours = ((toUInt() shr 11) and 0b11111U).toInt()
+    val minutes = ((toUInt() shr 5) and 0b111111U).toInt()
+    val seconds = ((toUInt() and 0b11111U) shl 1).toInt()
     return LocalTime(hours, minutes, seconds)
 }
 
 @InternalCompressionApi
 fun UShort.unpackDateWord(): LocalDate {
-    val year = (((toUInt() shr 9) and 0b111111U) + 1980U).toInt()
-    val month = ((toUInt() shr 5) and 0b111U).toInt()
-    val day = (toUInt() and 0b1111U).toInt()
+    val year = (((toUInt() shr 9) and 0b1111111U) + 1980U).toInt()
+    val month = ((toUInt() shr 5) and 0b1111U).toInt()
+    val day = (toUInt() and 0b11111U).toInt()
     return LocalDate(year, month, day)
 }
 
 @InternalCompressionApi
 fun LocalDateTime.packTimeWord(): UShort {
-    val hours = (hour and 0b1111).toUInt()
-    val minutes = (minute and 0b1111).toUInt()
-    val seconds = ((second shr 1) and 0b1111).toUInt()
+    val hours = (hour and 0b11111).toUInt()
+    val minutes = (minute and 0b111111).toUInt()
+    val seconds = ((second shr 1) and 0b11111).toUInt()
     return ((hours shl 11) or (minutes shl 5) or seconds).toUShort()
 }
 
 @InternalCompressionApi
 fun LocalDateTime.packDateWord(): UShort {
-    val year = ((year - 1980) and 0b111111).toUInt()
-    val month = (month.number and 0b111).toUInt()
-    val day = (day and 0b1111).toUInt()
+    val year = ((year - 1980) and 0b1111111).toUInt()
+    val month = (month.number and 0b1111).toUInt()
+    val day = (day and 0b11111).toUInt()
     return ((year shl 9) or (month shl 5) or day).toUShort()
 }
