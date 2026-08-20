@@ -18,6 +18,7 @@ package dev.karmakrafts.kompress.huffman
 
 import dev.karmakrafts.karbide.BitSink
 import dev.karmakrafts.karbide.BitSource
+import dev.karmakrafts.karbide.peekBitsLsb
 import dev.karmakrafts.kompress.exception.NoSuchCodeException
 import dev.karmakrafts.kompress.exception.NoSuchSymbolException
 
@@ -33,7 +34,9 @@ internal class HuffmanTree(
     buildEncodeTable: Boolean = true
 ) {
     private val encodeTable: LongArray? = if (buildEncodeTable) LongArray(size) else null
-    private var maxBits: Int = 0
+    /** Width of the decode table index, i.e. the length of the longest codeword. */
+    var maxBits: Int = 0
+        private set
     private val decodeTable: IntArray
 
     init {
@@ -48,7 +51,8 @@ internal class HuffmanTree(
             if (length == 0) continue
             bitLengthCounts[length]++
         }
-        decodeTable = IntArray(if (maxBits == 0) 0 else 1 shl maxBits) { NO_SYMBOL }
+        val decodeTableSize = if (maxBits == 0) 0 else 1 shl maxBits
+        decodeTable = IntArray(decodeTableSize) { NO_SYMBOL }
         // Compute canonical next code table.
         // See RFC1951 3.2.2, step 2.
         val nextCode = IntArray(maxBits + 1)
@@ -66,12 +70,15 @@ internal class HuffmanTree(
             val code = HuffmanCode(canonical, bitLength)
             encodeTable?.set(symbol, code.value.toLong())
             val packed = packSymbol(symbol, bitLength)
-            val suffixBits = maxBits - bitLength
-            val endIndex = (canonical + 1) shl suffixBits
-            var index = canonical shl suffixBits
-            while (index < endIndex) {
+            // DEFLATE sends codeword bits most significant first inside an LSB-first stream, so the
+            // table is keyed by the reversed codeword. A decoder can then index it with the raw next
+            // bits of the stream, with the bits following the codeword landing in the high index
+            // bits, which every entry for this codeword covers.
+            var index = reverseCode(canonical, bitLength)
+            val stride = 1 shl bitLength
+            while (index < decodeTableSize) {
                 decodeTable[index] = packed
-                index++
+                index += stride
             }
         }
     }
@@ -82,13 +89,103 @@ internal class HuffmanTree(
         private const val LENGTH_BITS: Int = 4
         private const val LENGTH_MASK: Int = (1 shl LENGTH_BITS) - 1
 
+        /** The longest codeword RFC1951 3.2.7 permits. */
+        const val MAX_CODE_LENGTH: Int = 15
+
+        init {
+            // The packed representation stores the length in LENGTH_BITS bits. Widening the RFC
+            // limit without widening the packing would silently truncate lengths.
+            check(MAX_CODE_LENGTH <= LENGTH_MASK) {
+                "MAX_CODE_LENGTH $MAX_CODE_LENGTH does not fit in $LENGTH_BITS bits"
+            }
+        }
+
         fun packSymbol(symbol: Int, length: Int): Int = (symbol shl LENGTH_BITS) or length
 
         fun unpackSymbol(code: Int): Int = code ushr LENGTH_BITS
 
         fun unpackLength(code: Int): Int = code and LENGTH_MASK
 
-        fun fromFrequencies(frequencies: IntArray): HuffmanTree {
+        /** Reverses the low [length] bits of [value], mapping a canonical codeword to stream order. */
+        private fun reverseCode(value: Int, length: Int): Int {
+            var result = 0
+            var remaining = value
+            for (bit in 0 until length) {
+                result = (result shl 1) or (remaining and 1)
+                remaining = remaining shr 1
+            }
+            return result
+        }
+
+        /**
+         * Redistributes [lengths] so that none exceeds [maxCodeLength].
+         *
+         * An unconstrained Huffman tree can be far deeper than DEFLATE permits: skewed frequencies
+         * push the rarest symbols past 15 bits, which neither the code-length alphabet of RFC1951
+         * 3.2.7 nor the packed table representation used here can express. Over-long codes are
+         * clamped to the limit, which leaves the tree over-subscribed, and the surplus is worked off
+         * by lengthening codes until the Kraft sum is back at exactly one. Lengths are then handed
+         * back out in order of decreasing frequency, so the most common symbols keep the shortest
+         * codes. The result is a valid, marginally sub-optimal code.
+         */
+        private fun limitCodeLengths(lengths: IntArray, frequencies: IntArray, maxCodeLength: Int) {
+            var longest = 0
+            for (length in lengths) {
+                if (length > longest) longest = length
+            }
+            if (longest <= maxCodeLength) return
+
+            // Kraft sums are tracked scaled by 2^maxCodeLength so they stay exact in integers.
+            val scale = 1L shl maxCodeLength
+            val counts = IntArray(maxCodeLength + 1)
+            var kraft = 0L
+            for (length in lengths) {
+                if (length == 0) continue
+                val clamped = if (length > maxCodeLength) maxCodeLength else length
+                counts[clamped]++
+                kraft += 1L shl (maxCodeLength - clamped)
+            }
+
+            // Clamping over-subscribes the tree, so lengthen the longest codes that still have room
+            // until it fits. Each move frees exactly half of that code's share.
+            while (kraft > scale) {
+                var bits = maxCodeLength - 1
+                while (bits > 0 && counts[bits] == 0) bits--
+                // Only reachable if the alphabet cannot fit under maxCodeLength at all, which would
+                // mean more than 2^maxCodeLength used symbols. Failing here beats handing back an
+                // over-subscribed tree that corrupts the decode table later.
+                check(bits > 0) { "Cannot fit alphabet into $maxCodeLength bit codes" }
+                counts[bits]--
+                counts[bits + 1]++
+                kraft -= 1L shl (maxCodeLength - bits - 1)
+            }
+            // Lengthening can overshoot and leave capacity unused, which would make the code
+            // incomplete. Give it back to the deepest codes, smallest step first.
+            while (kraft < scale) {
+                var bits = maxCodeLength
+                while (bits > 1 && counts[bits] == 0) bits--
+                if (bits <= 1 || kraft + (1L shl (maxCodeLength - bits)) > scale) break
+                counts[bits]--
+                counts[bits - 1]++
+                kraft += 1L shl (maxCodeLength - bits)
+            }
+
+            val symbols = ArrayList<Int>()
+            for (symbol in lengths.indices) {
+                if (lengths[symbol] > 0) symbols.add(symbol)
+            }
+            symbols.sortWith(compareByDescending<Int> { frequencies[it] }.thenBy { it })
+            var index = 0
+            for (bits in 1..maxCodeLength) {
+                var remaining = counts[bits]
+                while (remaining > 0) {
+                    lengths[symbols[index++]] = bits
+                    remaining--
+                }
+            }
+        }
+
+        fun fromFrequencies(frequencies: IntArray, maxCodeLength: Int = MAX_CODE_LENGTH): HuffmanTree {
             var symbols = 0
             var onlySymbol = -1
             for (index in frequencies.indices) {
@@ -174,6 +271,7 @@ internal class HuffmanTree(
                 }
                 lengths[symbol] = length
             }
+            limitCodeLengths(lengths, frequencies, maxCodeLength)
 
             return HuffmanTree(lengths)
         }
@@ -198,21 +296,45 @@ internal class HuffmanTree(
     }
 
     private fun exactSymbolCode(bits: Int, length: Int): Int {
-        val code = decodeTable[bits shl (maxBits - length)]
+        // Reversed keying means the raw low bits address the entry directly.
+        val code = decodeTable[bits]
         if (code != NO_SYMBOL && unpackLength(code) == length) return code
+        return NO_SYMBOL
+    }
+
+    /**
+     * Decodes the codeword sitting at the low end of [bits], which must hold at least [maxBits]
+     * valid stream bits. Returns [NO_SYMBOL] only for a tree that has no codes at all.
+     */
+    fun symbolCodeAt(bits: Long): Int {
+        val table = decodeTable
+        if (table.isEmpty()) return NO_SYMBOL
+        return table[bits.toInt() and (table.size - 1)]
+    }
+
+    /**
+     * Decodes the codeword at the low end of [bits] when only [available] bits are known valid,
+     * which is the case at the very end of a stream. Returns [NO_SYMBOL] if no codeword fits.
+     */
+    fun symbolCodeWithin(bits: Long, available: Int): Int {
+        val limit = if (available < maxBits) available else maxBits
+        for (length in 1..limit) {
+            val code = decodeTable[bits.toInt() and ((1 shl length) - 1)]
+            if (code != NO_SYMBOL && unpackLength(code) == length) return code
+        }
         return NO_SYMBOL
     }
 
     fun peekSymbolCode(source: BitSource): Int {
         if (maxBits == 0) throw NoSuchCodeException("No symbol in huffman tree")
         if (source.requestBits(maxBits)) {
-            val code = decodeTable[source.peekBits(maxBits).toInt()]
+            val code = decodeTable[source.peekBitsLsb(maxBits).toInt()]
             if (code != NO_SYMBOL) return code
             throw NoSuchCodeException("No symbol in huffman tree")
         }
         for (length in 1..maxBits) {
             if (!source.requestBits(length)) return NO_SYMBOL
-            val bits = source.peekBits(length).toInt()
+            val bits = source.peekBitsLsb(length).toInt()
             val code = exactSymbolCode(bits, length)
             if (code != NO_SYMBOL) return code
         }

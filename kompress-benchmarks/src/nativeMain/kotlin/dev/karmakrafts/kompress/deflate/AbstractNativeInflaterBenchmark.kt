@@ -39,14 +39,15 @@ import platform.zlib.inflateReset
 import platform.zlib.z_stream
 
 @OptIn(ExperimentalForeignApi::class)
-abstract class AbstractNativeInflaterBenchmark(level: Int) {
+abstract class AbstractNativeInflaterBenchmark(protected val data: ByteArray) {
     private companion object {
         private const val DATA_SIZE: Int = 1024 * 1024 // 1MiB
         private const val RAW_WINDOW_BITS: Int = -15
     }
 
+    constructor(level: Int) : this(Deflater.compress(ByteArray(DATA_SIZE) { 1 }, level = level))
+
     protected val stream: z_stream = nativeHeap.alloc()
-    protected val data: ByteArray = Deflater.compress(ByteArray(DATA_SIZE) { 1 }, level = level)
     protected val buffer: Buffer = Buffer()
     protected val chunkBuffer: ByteArray = ByteArray(4096)
 
