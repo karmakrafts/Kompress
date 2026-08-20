@@ -16,6 +16,8 @@
 
 package dev.karmakrafts.kompress.deflate
 
+import dev.karmakrafts.kompress.huffman.HuffmanTree
+
 import kotlin.jvm.JvmField
 import kotlin.jvm.JvmStatic
 
@@ -37,8 +39,11 @@ internal object DeflateConstants {
     const val DISTANCE_ALPHABET_SIZE: Int = 30
     const val CODE_LENGTH_ALPHABET_SIZE: Int = 19
 
-    const val MAX_CODE_LENGTH: Int = 15
+    const val MAX_CODE_LENGTH: Int = HuffmanTree.MAX_CODE_LENGTH
     const val CL_CODE_LENGTH_SIZE: Int = 3
+
+    /** Code-length codes are written as [CL_CODE_LENGTH_SIZE] bit values, so they cannot exceed this. */
+    const val MAX_CL_CODE_LENGTH: Int = (1 shl CL_CODE_LENGTH_SIZE) - 1
 
     const val BTYPE_SIZE: Int = 2
     const val BTYPE_STORED: ULong = 0b00UL

@@ -82,13 +82,92 @@ internal class HuffmanTree(
         private const val LENGTH_BITS: Int = 4
         private const val LENGTH_MASK: Int = (1 shl LENGTH_BITS) - 1
 
+        /** The longest codeword RFC1951 3.2.7 permits. */
+        const val MAX_CODE_LENGTH: Int = 15
+
+        init {
+            // The packed representation stores the length in LENGTH_BITS bits. Widening the RFC
+            // limit without widening the packing would silently truncate lengths.
+            check(MAX_CODE_LENGTH <= LENGTH_MASK) {
+                "MAX_CODE_LENGTH $MAX_CODE_LENGTH does not fit in $LENGTH_BITS bits"
+            }
+        }
+
         fun packSymbol(symbol: Int, length: Int): Int = (symbol shl LENGTH_BITS) or length
 
         fun unpackSymbol(code: Int): Int = code ushr LENGTH_BITS
 
         fun unpackLength(code: Int): Int = code and LENGTH_MASK
 
-        fun fromFrequencies(frequencies: IntArray): HuffmanTree {
+        /**
+         * Redistributes [lengths] so that none exceeds [maxCodeLength].
+         *
+         * An unconstrained Huffman tree can be far deeper than DEFLATE permits: skewed frequencies
+         * push the rarest symbols past 15 bits, which neither the code-length alphabet of RFC1951
+         * 3.2.7 nor the packed table representation used here can express. Over-long codes are
+         * clamped to the limit, which leaves the tree over-subscribed, and the surplus is worked off
+         * by lengthening codes until the Kraft sum is back at exactly one. Lengths are then handed
+         * back out in order of decreasing frequency, so the most common symbols keep the shortest
+         * codes. The result is a valid, marginally sub-optimal code.
+         */
+        private fun limitCodeLengths(lengths: IntArray, frequencies: IntArray, maxCodeLength: Int) {
+            var longest = 0
+            for (length in lengths) {
+                if (length > longest) longest = length
+            }
+            if (longest <= maxCodeLength) return
+
+            // Kraft sums are tracked scaled by 2^maxCodeLength so they stay exact in integers.
+            val scale = 1L shl maxCodeLength
+            val counts = IntArray(maxCodeLength + 1)
+            var kraft = 0L
+            for (length in lengths) {
+                if (length == 0) continue
+                val clamped = if (length > maxCodeLength) maxCodeLength else length
+                counts[clamped]++
+                kraft += 1L shl (maxCodeLength - clamped)
+            }
+
+            // Clamping over-subscribes the tree, so lengthen the longest codes that still have room
+            // until it fits. Each move frees exactly half of that code's share.
+            while (kraft > scale) {
+                var bits = maxCodeLength - 1
+                while (bits > 0 && counts[bits] == 0) bits--
+                // Only reachable if the alphabet cannot fit under maxCodeLength at all, which would
+                // mean more than 2^maxCodeLength used symbols. Failing here beats handing back an
+                // over-subscribed tree that corrupts the decode table later.
+                check(bits > 0) { "Cannot fit alphabet into $maxCodeLength bit codes" }
+                counts[bits]--
+                counts[bits + 1]++
+                kraft -= 1L shl (maxCodeLength - bits - 1)
+            }
+            // Lengthening can overshoot and leave capacity unused, which would make the code
+            // incomplete. Give it back to the deepest codes, smallest step first.
+            while (kraft < scale) {
+                var bits = maxCodeLength
+                while (bits > 1 && counts[bits] == 0) bits--
+                if (bits <= 1 || kraft + (1L shl (maxCodeLength - bits)) > scale) break
+                counts[bits]--
+                counts[bits - 1]++
+                kraft += 1L shl (maxCodeLength - bits)
+            }
+
+            val symbols = ArrayList<Int>()
+            for (symbol in lengths.indices) {
+                if (lengths[symbol] > 0) symbols.add(symbol)
+            }
+            symbols.sortWith(compareByDescending<Int> { frequencies[it] }.thenBy { it })
+            var index = 0
+            for (bits in 1..maxCodeLength) {
+                var remaining = counts[bits]
+                while (remaining > 0) {
+                    lengths[symbols[index++]] = bits
+                    remaining--
+                }
+            }
+        }
+
+        fun fromFrequencies(frequencies: IntArray, maxCodeLength: Int = MAX_CODE_LENGTH): HuffmanTree {
             var symbols = 0
             var onlySymbol = -1
             for (index in frequencies.indices) {
@@ -174,6 +253,7 @@ internal class HuffmanTree(
                 }
                 lengths[symbol] = length
             }
+            limitCodeLengths(lengths, frequencies, maxCodeLength)
 
             return HuffmanTree(lengths)
         }

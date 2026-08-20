@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+### Fixed
+
+- `Deflater` emitting streams that could not be read back when Huffman code lengths exceeded the 15 bits RFC1951 allows, which affected sufficiently large or skewed inputs
+
 ## [2.3.1]
 
 ### Fixed
