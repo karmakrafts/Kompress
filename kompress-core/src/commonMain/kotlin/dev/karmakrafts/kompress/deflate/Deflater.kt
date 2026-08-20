@@ -284,7 +284,8 @@ internal class DeflaterImpl( // @formatter:off
         collectDynamicTreeSymbols(distanceLengths, distanceCodesCount)
 
         // RFC1951 3.2.7: derive the code-length tree from frequencies of lengths and repeat symbols.
-        val lengthTree = HuffmanTree.fromFrequencies(lengthFrequencies)
+        // Its own code lengths ship as three bit values, so they are capped tighter than the rest.
+        val lengthTree = HuffmanTree.fromFrequencies(lengthFrequencies, DeflateConstants.MAX_CL_CODE_LENGTH)
         val lengthTreeLengths = lengthTree.codeLengths()
         // RFC1951 3.2.7: HCLEN stores the number of code-length codes minus four.
         val codeLengthCodesCount = computeCodeLengthCodesCount(lengthTreeLengths)
