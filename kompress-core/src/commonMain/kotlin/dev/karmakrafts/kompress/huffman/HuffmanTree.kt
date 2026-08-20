@@ -82,8 +82,16 @@ internal class HuffmanTree(
         private const val LENGTH_BITS: Int = 4
         private const val LENGTH_MASK: Int = (1 shl LENGTH_BITS) - 1
 
-        /** The longest code RFC1951 permits, which is also all the packed representation can hold. */
-        const val MAX_CODE_LENGTH: Int = LENGTH_MASK
+        /** The longest codeword RFC1951 3.2.7 permits. */
+        const val MAX_CODE_LENGTH: Int = 15
+
+        init {
+            // The packed representation stores the length in LENGTH_BITS bits. Widening the RFC
+            // limit without widening the packing would silently truncate lengths.
+            check(MAX_CODE_LENGTH <= LENGTH_MASK) {
+                "MAX_CODE_LENGTH $MAX_CODE_LENGTH does not fit in $LENGTH_BITS bits"
+            }
+        }
 
         fun packSymbol(symbol: Int, length: Int): Int = (symbol shl LENGTH_BITS) or length
 
@@ -125,7 +133,10 @@ internal class HuffmanTree(
             while (kraft > scale) {
                 var bits = maxCodeLength - 1
                 while (bits > 0 && counts[bits] == 0) bits--
-                if (bits == 0) break // Unreachable: an over-subscribed tree always has a short code.
+                // Only reachable if the alphabet cannot fit under maxCodeLength at all, which would
+                // mean more than 2^maxCodeLength used symbols. Failing here beats handing back an
+                // over-subscribed tree that corrupts the decode table later.
+                check(bits > 0) { "Cannot fit alphabet into $maxCodeLength bit codes" }
                 counts[bits]--
                 counts[bits + 1]++
                 kraft -= 1L shl (maxCodeLength - bits - 1)
