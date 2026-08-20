@@ -16,16 +16,12 @@
 
 package dev.karmakrafts.kompress.deflate
 
-import dev.karmakrafts.karbide.BitOrder
-import dev.karmakrafts.karbide.BitSource
-import dev.karmakrafts.karbide.bitSource
-import dev.karmakrafts.karbide.readBitsLsb
-import dev.karmakrafts.karbide.source
 import dev.karmakrafts.kompress.Decompressor
 import dev.karmakrafts.kompress.InternalCompressionApi
 import dev.karmakrafts.kompress.decompressingSink
 import dev.karmakrafts.kompress.decompressingSource
 import dev.karmakrafts.kompress.exception.DataFormatException
+import dev.karmakrafts.kompress.exception.NoSuchCodeException
 import dev.karmakrafts.kompress.huffman.HuffmanTree
 import dev.karmakrafts.kompress.lz77.LZ77
 import kotlinx.io.Buffer
@@ -147,7 +143,8 @@ internal class InflaterImpl(
 
     override val remaining: Int get() = (inputSize - bytesReadInCurrentInput()).coerceIn(0, inputSize)
 
-    override val bytesRead: Long get() = bitSource.byte + if (bitSource.bit > 0) 1 else 0
+    // Bits already pulled into bitBuffer but not yet consumed do not count as read yet.
+    override val bytesRead: Long get() = ((bytesPulled shl 3) - bitCount + 7) ushr 3
     override var bytesWritten: Long = 0L
         private set
     override val needsInput: Boolean get() = !finished && isInputNeeded
@@ -157,8 +154,14 @@ internal class InflaterImpl(
     private val windowSize: Int = window.size
     private val windowMask: Int = if (windowSize > 0 && windowSize and (windowSize - 1) == 0) windowSize - 1 else -1
     private val codeLengthLengths: IntArray = IntArray(DeflateConstants.CODE_LENGTH_ALPHABET_SIZE)
-    private val inputSource = input.source()
-    private val bitSource: BitSource = inputSource.buffered().bitSource(bitOrder = BitOrder.LSB_FIRST)
+    // DEFLATE is read as a little endian bit stream, so the next bit is always the low bit of
+    // bitBuffer. Holding it in fields and refilling a word at a time keeps symbol decoding down to
+    // plain arithmetic, instead of a call into a layered reader for every few bits.
+    private var bitBuffer: Long = 0L
+    private var bitCount: Int = 0
+    private var inputPosition: Int = 0
+    private var inputLimit: Int = 0
+    private var bytesPulled: Long = 0L
 
     private var isClosed: Boolean = false
     private var inputStart: Long = 0L
@@ -197,28 +200,69 @@ internal class InflaterImpl(
         inputOffset = offset
         inputSize = size
         inputStart = bytesRead
-        inputSource.array = data
-        inputSource.offset = offset
-        inputSource.size = size
-        inputSource.reset()
+        inputPosition = offset
+        inputLimit = offset + size
+        // Any bits still buffered belong to the previous chunk and stay put: a codeword is allowed
+        // to straddle the boundary between two calls.
         if (size > 0) {
             isInputNeeded = false
         }
     }
 
+    /** Tops the bit buffer up to at least 57 bits, or to whatever the current input can supply. */
+    private fun fillBits() {
+        var buffer = bitBuffer
+        var count = bitCount
+        var position = inputPosition
+        val limit = inputLimit
+        val input = input
+        while (count <= 56 && position < limit) {
+            buffer = buffer or ((input[position++].toLong() and 0xFF) shl count)
+            count += 8
+        }
+        bytesPulled += (position - inputPosition).toLong()
+        bitBuffer = buffer
+        bitCount = count
+        inputPosition = position
+    }
+
     private fun needBits(count: Int): Boolean {
-        if (bitSource.requestBits(count)) return true
+        if (bitCount >= count) return true
+        fillBits()
+        if (bitCount >= count) return true
         if (finishing) throw DataFormatException("Unexpected end of DEFLATE stream")
         isInputNeeded = true
         return false
     }
 
+    /** Reads [count] bits, which the caller must already have ensured are buffered. */
+    private fun readBits(count: Int): Int {
+        val value = (bitBuffer and ((1L shl count) - 1L)).toInt()
+        bitBuffer = bitBuffer ushr count
+        bitCount -= count
+        return value
+    }
+
+    private fun skipBits(count: Int) {
+        bitBuffer = bitBuffer ushr count
+        bitCount -= count
+    }
+
     private fun peekSymbol(tree: HuffmanTree): Int {
-        val code = tree.peekSymbolCode(bitSource)
+        if (bitCount < tree.maxBits) {
+            fillBits()
+            if (bitCount < tree.maxBits) {
+                // Near the end of the stream a short codeword may still be complete.
+                val partial = tree.symbolCodeWithin(bitBuffer, bitCount)
+                if (partial != HuffmanTree.NO_SYMBOL) return partial
+                if (finishing) throw DataFormatException("Unexpected end of DEFLATE stream")
+                isInputNeeded = true
+                return HuffmanTree.NO_SYMBOL
+            }
+        }
+        val code = tree.symbolCodeAt(bitBuffer)
         if (code != HuffmanTree.NO_SYMBOL) return code
-        if (finishing) throw DataFormatException("Unexpected end of DEFLATE stream")
-        isInputNeeded = true
-        return HuffmanTree.NO_SYMBOL
+        throw NoSuchCodeException("No symbol in huffman tree")
     }
 
     private fun writeLiteral(output: ByteArray, position: Int, value: Int): Int {
@@ -295,6 +339,18 @@ internal class InflaterImpl(
         val windowSize = windowSize
         var readPosition = initialReadPosition
         var writePosition = windowPosition
+        // Overwhelmingly the common case: the match clears both ends of the ring, so it moves in
+        // exactly two copies and skips all of the chunking the wrapping loop below has to do.
+        if (readPosition + copyLimit <= windowSize && writePosition + copyLimit <= windowSize) {
+            window.copyInto(output, position, readPosition, readPosition + copyLimit)
+            output.copyInto(window, writePosition, position, position + copyLimit)
+            var nextWritePosition = writePosition + copyLimit
+            if (nextWritePosition == windowSize) {
+                nextWritePosition = 0
+            }
+            finishMatchWrite(nextWritePosition, copyLimit, length)
+            return position + copyLimit
+        }
         var outputPosition = position
         var copied = 0
         while (copied < copyLimit) {
@@ -406,7 +462,7 @@ internal class InflaterImpl(
      */
     private fun decodeBlockHeader(): Boolean {
         if (!needBits(1 + DeflateConstants.BTYPE_SIZE)) return false
-        val header = bitSource.readBitsLsb(1 + DeflateConstants.BTYPE_SIZE).toInt()
+        val header = readBits(1 + DeflateConstants.BTYPE_SIZE)
         // RFC1951 3.2.3: BFINAL marks the last block, followed by two BTYPE bits.
         isFinalBlock = (header and 1) != 0
         when (header ushr 1) {
@@ -431,14 +487,16 @@ internal class InflaterImpl(
      * See [RFC1951](https://datatracker.ietf.org/doc/html/rfc1951) section 3.2.4.
      */
     private fun decodeStoredHeader(): Boolean {
-        val padding = (Byte.SIZE_BITS - bitSource.bit) and 7
+        // Consumed bits are the complement of what is still buffered, so the distance to the next
+        // byte boundary is simply the buffered remainder.
+        val padding = bitCount and 7
         if (!needBits(padding)) return false
         if (padding > 0) {
-            bitSource.skipBits(padding)
+            skipBits(padding)
         }
         if (!needBits(Short.SIZE_BITS * 2)) return false
-        val length = bitSource.readBitsLsb(Short.SIZE_BITS).toInt()
-        val inverseLength = bitSource.readBitsLsb(Short.SIZE_BITS).toInt()
+        val length = readBits(Short.SIZE_BITS)
+        val inverseLength = readBits(Short.SIZE_BITS)
         // RFC1951 3.2.4: NLEN is the one's-complement of LEN.
         if ((length xor 0xFFFF) != inverseLength) {
             throw DataFormatException("Invalid stored block length check")
@@ -451,43 +509,84 @@ internal class InflaterImpl(
     /**
      * Copies the uncompressed bytes from a stored block.
      *
+     * Stored blocks are byte aligned and carry no coding, so the payload is pulled out of the bit
+     * source a word at a time and mirrored into the sliding window in bulk once the output region
+     * is complete. Nothing inside a stored block can back-reference the window, so deferring that
+     * copy until the end of the call is safe.
+     *
      * See [RFC1951](https://datatracker.ietf.org/doc/html/rfc1951) section 3.2.4.
      */
     private fun inflateStoredBlock(output: ByteArray, position: Int, limit: Int): Int {
+        // The header left the stream byte aligned, so hand whole buffered bytes back to the input
+        // cursor. The payload can then be copied straight out of the caller's array.
+        val bufferedBytes = bitCount ushr 3
+        if (bufferedBytes > 0) {
+            inputPosition -= bufferedBytes
+            bytesPulled -= bufferedBytes.toLong()
+            bitBuffer = 0L
+            bitCount = 0
+        }
         var outputPosition = position
         var remaining = storedRemaining
-        val window = window
-        val windowSize = windowSize
-        val windowMask = windowMask
-        var writePosition = windowPosition
         val startPosition = outputPosition
-        while (remaining > 0 && outputPosition < limit) {
-            if (!needBits(Byte.SIZE_BITS)) break
-            val byte = bitSource.readBitsLsb(Byte.SIZE_BITS).toByte()
-            output[outputPosition++] = byte
-            window[writePosition] = byte
-            if (windowMask != -1) {
-                writePosition = (writePosition + 1) and windowMask
-            }
-            else {
-                writePosition++
-                if (writePosition == windowSize) {
-                    writePosition = 0
-                }
-            }
-            remaining--
+        val available = inputLimit - inputPosition
+        var count = if (remaining < available) remaining else available
+        val space = limit - outputPosition
+        if (count > space) count = space
+        if (count > 0) {
+            input.copyInto(output, outputPosition, inputPosition, inputPosition + count)
+            inputPosition += count
+            bytesPulled += count.toLong()
+            outputPosition += count
+            remaining -= count
         }
         storedRemaining = remaining
-        windowPosition = writePosition
         val copied = outputPosition - startPosition
         if (copied > 0) {
-            val filled = windowFilled
-            windowFilled = if (windowSize - filled > copied) filled + copied else windowSize
+            writeToWindow(output, startPosition, copied)
         }
         if (remaining == 0) {
             finishBlock()
         }
+        else if (available == count && outputPosition < limit) {
+            // Ran the current input dry mid block rather than filling the output.
+            if (finishing) throw DataFormatException("Unexpected end of DEFLATE stream")
+            isInputNeeded = true
+        }
         return outputPosition
+    }
+
+    /**
+     * Mirrors [count] freshly written output bytes into the sliding history window.
+     */
+    private fun writeToWindow(output: ByteArray, position: Int, count: Int) {
+        val window = window
+        val windowSize = windowSize
+        var sourcePosition = position
+        var pending = count
+        var writePosition = windowPosition
+        if (pending >= windowSize) {
+            // Only the trailing window worth of bytes stays reachable, and it fills the window
+            // exactly once, so the write position ends up right back where this copy starts.
+            val skipped = pending - windowSize
+            sourcePosition += skipped
+            pending = windowSize
+            writePosition = if (windowMask != -1) (writePosition + skipped) and windowMask
+            else ((writePosition.toLong() + skipped) % windowSize).toInt()
+        }
+        while (pending > 0) {
+            val chunk = minOf(pending, windowSize - writePosition)
+            output.copyInto(window, writePosition, sourcePosition, sourcePosition + chunk)
+            sourcePosition += chunk
+            writePosition += chunk
+            if (writePosition == windowSize) {
+                writePosition = 0
+            }
+            pending -= chunk
+        }
+        windowPosition = writePosition
+        val filled = windowFilled
+        windowFilled = if (windowSize - filled > count) filled + count else windowSize
     }
 
     /**
@@ -500,7 +599,7 @@ internal class InflaterImpl(
             if (!needBits(DeflateConstants.CL_CODE_LENGTH_SIZE)) return false
             // RFC1951 3.2.7: code-length code lengths are serialized in CODE_LENGTH_ORDER.
             val index = DeflateConstants.CODE_LENGTH_ORDER[dynamicCodeLengthIndex++]
-            codeLengthLengths[index] = bitSource.readBitsLsb(DeflateConstants.CL_CODE_LENGTH_SIZE).toInt()
+            codeLengthLengths[index] = readBits(DeflateConstants.CL_CODE_LENGTH_SIZE)
         }
         // RFC1951 3.2.7: this tree decodes the literal/length and distance code lengths.
         dynamicLengthTree = HuffmanTree(codeLengthLengths, buildEncodeTable = false)
@@ -528,7 +627,7 @@ internal class InflaterImpl(
                 else -> throw DataFormatException("Invalid code length symbol: $symbol")
             }
             if (extraBits > 0 && !needBits(codeLength + extraBits)) return false
-            bitSource.skipBits(codeLength)
+            skipBits(codeLength)
             when (symbol) {
                 in 0..DeflateConstants.MAX_CODE_LENGTH -> {
                     dynamicLengths[dynamicLengthIndex++] = symbol
@@ -542,7 +641,7 @@ internal class InflaterImpl(
                     // RFC1951 3.2.7: code 16 repeats the previous non-zero length 3-6 times using
                     // 2 extra bits.
                     val repeatCount =
-                        DeflateConstants.SYM_REPEAT_PREVIOUS_MIN + bitSource.readBitsLsb(extraBits).toInt()
+                        DeflateConstants.SYM_REPEAT_PREVIOUS_MIN + readBits(extraBits)
                     if (dynamicLengthIndex + repeatCount > dynamicLengthsCount) {
                         throw DataFormatException("Code length repeat exceeds dynamic tree size")
                     }
@@ -554,7 +653,7 @@ internal class InflaterImpl(
                 DeflateConstants.SYM_REPEAT_ZERO_LENGTH -> {
                     // RFC1951 3.2.7: code 17 repeats zero lengths 3-10 times using 3 extra bits.
                     val repeatCount =
-                        DeflateConstants.SYM_REPEAT_ZERO_LENGTH_MIN + bitSource.readBitsLsb(extraBits).toInt()
+                        DeflateConstants.SYM_REPEAT_ZERO_LENGTH_MIN + readBits(extraBits)
                     if (dynamicLengthIndex + repeatCount > dynamicLengthsCount) {
                         throw DataFormatException("Code length repeat exceeds dynamic tree size")
                     }
@@ -566,7 +665,7 @@ internal class InflaterImpl(
                 DeflateConstants.SYM_LONG_ZERO_LENGTH_RUN -> {
                     // RFC1951 3.2.7: code 18 repeats zero lengths 11-138 times using 7 extra bits.
                     val repeatCount =
-                        DeflateConstants.SYM_LONG_ZERO_LENGTH_RUN_MIN + bitSource.readBitsLsb(extraBits).toInt()
+                        DeflateConstants.SYM_LONG_ZERO_LENGTH_RUN_MIN + readBits(extraBits)
                     if (dynamicLengthIndex + repeatCount > dynamicLengthsCount) {
                         throw DataFormatException("Code length repeat exceeds dynamic tree size")
                     }
@@ -599,11 +698,11 @@ internal class InflaterImpl(
             // RFC1951 3.2.7: HLIT, HDIST and HCLEN store count values minus their RFC-defined
             // offsets.
             dynamicLiteralCodesCount =
-                DeflateConstants.HLIT_OFFSET + bitSource.readBitsLsb(DeflateConstants.HLIT_SIZE).toInt()
+                DeflateConstants.HLIT_OFFSET + readBits(DeflateConstants.HLIT_SIZE)
             dynamicDistanceCodesCount =
-                DeflateConstants.HDIST_OFFSET + bitSource.readBitsLsb(DeflateConstants.HDIST_SIZE).toInt()
+                DeflateConstants.HDIST_OFFSET + readBits(DeflateConstants.HDIST_SIZE)
             dynamicCodeLengthCodesCount =
-                DeflateConstants.HCLEN_OFFSET + bitSource.readBitsLsb(DeflateConstants.HCLEN_SIZE).toInt()
+                DeflateConstants.HCLEN_OFFSET + readBits(DeflateConstants.HCLEN_SIZE)
             dynamicLengthsCount = dynamicLiteralCodesCount + dynamicDistanceCodesCount
             if (dynamicLengthsCount > dynamicLengths.size) {
                 throw DataFormatException("Dynamic tree size exceeds maximum")
@@ -631,10 +730,18 @@ internal class InflaterImpl(
         // RFC1951 3.2.5: distance symbols may be followed by extra bits added to the base
         // distance.
         val extraBits = DeflateConstants.DIST_EXTRA_BITS[distanceSymbol]
-        if (extraBits > 0 && !needBits(codeLength + extraBits)) return position
-        bitSource.skipBits(codeLength)
-        val distance = DeflateConstants.DIST_BASE[distanceSymbol] + if (extraBits == 0) 0
-        else bitSource.readBitsLsb(extraBits).toInt()
+        val distance: Int
+        if (extraBits == 0) {
+            skipBits(codeLength)
+            distance = DeflateConstants.DIST_BASE[distanceSymbol]
+        }
+        else {
+            if (!needBits(codeLength + extraBits)) return position
+            // The code and its extra bits are adjacent in the stream, so one read covers both:
+            // LSB-first puts the code in the low bits and the extra bits directly above it.
+            val bits = readBits(codeLength + extraBits).toLong()
+            distance = DeflateConstants.DIST_BASE[distanceSymbol] + (bits ushr codeLength).toInt()
+        }
         return writeMatch(output, position, limit, pendingLength, distance)
     }
 
@@ -658,13 +765,13 @@ internal class InflaterImpl(
             val codeLength = HuffmanTree.unpackLength(code)
             when {
                 symbol < DeflateConstants.SYM_EOF -> {
-                    bitSource.skipBits(codeLength)
+                    skipBits(codeLength)
                     outputPosition = writeLiteral(output, outputPosition, symbol)
                 }
 
                 symbol == DeflateConstants.SYM_EOF -> {
                     // RFC1951 3.2.3: literal/length symbol 256 marks the end of the block.
-                    bitSource.skipBits(codeLength)
+                    skipBits(codeLength)
                     finishBlock()
                     return outputPosition
                 }
@@ -674,10 +781,16 @@ internal class InflaterImpl(
                     // RFC1951 3.2.5: length symbols may be followed by extra bits added to the
                     // base length.
                     val extraBits = DeflateConstants.LENGTH_EXTRA_BITS[index]
-                    if (extraBits > 0 && !needBits(codeLength + extraBits)) return outputPosition
-                    bitSource.skipBits(codeLength)
-                    pendingLength = DeflateConstants.LENGTH_BASE[index] + if (extraBits == 0) 0
-                    else bitSource.readBitsLsb(extraBits).toInt()
+                    if (extraBits == 0) {
+                        skipBits(codeLength)
+                        pendingLength = DeflateConstants.LENGTH_BASE[index]
+                    }
+                    else {
+                        if (!needBits(codeLength + extraBits)) return outputPosition
+                        // One read covers the code and its extra bits, which sit directly above it.
+                        val bits = readBits(codeLength + extraBits).toLong()
+                        pendingLength = DeflateConstants.LENGTH_BASE[index] + (bits ushr codeLength).toInt()
+                    }
                     outputPosition = decodeMatch(output, outputPosition, limit)
                     if (pendingLength > 0) return outputPosition
                 }
@@ -733,11 +846,11 @@ internal class InflaterImpl(
         input = ByteArray(0)
         inputOffset = 0
         inputSize = 0
-        inputSource.array = input
-        inputSource.offset = 0
-        inputSource.size = 0
-        inputSource.reset()
-        bitSource.reset()
+        bitBuffer = 0L
+        bitCount = 0
+        inputPosition = 0
+        inputLimit = 0
+        bytesPulled = 0L
         inputStart = 0L
         window.fill(0)
         windowPosition = 0
@@ -759,7 +872,6 @@ internal class InflaterImpl(
 
     override fun close() {
         if (isClosed) return
-        bitSource.close()
         isClosed = true
     }
 }
