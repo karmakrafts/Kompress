@@ -73,11 +73,11 @@ value class ZipGPBF(val value: UShort) {
         languageEncoding: Boolean = true,
         maskedHeaderValues: Boolean = false
     ) : this( // @formatter:off
-        if(omitChecksumAndSizes) OMIT_CHECKSUM_AND_SIZES else 0U.toUShort()
-            or if(isPatchedData) PATCHED_DATA else 0U.toUShort()
-            or if(hasStrongEncryption) STRONG_ENCRYPTION else 0U.toUShort()
-            or if(languageEncoding) LANGUAGE_ENCODING else 0U.toUShort()
-            or if(maskedHeaderValues) MASKED_HEADER_VALUES else 0U.toUShort()
+        (if(omitChecksumAndSizes) OMIT_CHECKSUM_AND_SIZES else 0U.toUShort())
+            or (if(isPatchedData) PATCHED_DATA else 0U.toUShort())
+            or (if(hasStrongEncryption) STRONG_ENCRYPTION else 0U.toUShort())
+            or (if(languageEncoding) LANGUAGE_ENCODING else 0U.toUShort())
+            or (if(maskedHeaderValues) MASKED_HEADER_VALUES else 0U.toUShort())
     ) // @formatter:on
 
     /**

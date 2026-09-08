@@ -43,6 +43,27 @@ class ZipGPBFTest {
     }
 
     @Test
+    fun `Boolean constructor combines multiple true flags`() {
+        // Regression test: chaining `if(a) A else 0 or if(b) B else 0 or ...` without parentheses
+        // let each `else` branch swallow the rest of the `or` chain — so whenever the *first*
+        // condition was true, every subsequent flag was silently dropped instead of combined.
+        val gpbf = ZipGPBF(omitChecksumAndSizes = true, languageEncoding = true)
+
+        assertEquals(ZipGPBF.OMIT_CHECKSUM_AND_SIZES or ZipGPBF.LANGUAGE_ENCODING, gpbf.value)
+        assertTrue(gpbf.omitChecksumAndSizes)
+        assertTrue(gpbf.languageEncoding)
+    }
+
+    @Test
+    fun `Boolean constructor defaults combine omitChecksumAndSizes and languageEncoding`() {
+        // Both boolean parameter defaults are `true` — this is what a bare `ZipGPBF()` produces,
+        // and exactly the case the bug above silently broke (dropped LANGUAGE_ENCODING).
+        val gpbf = ZipGPBF()
+
+        assertEquals(ZipGPBF.OMIT_CHECKSUM_AND_SIZES or ZipGPBF.LANGUAGE_ENCODING, gpbf.value)
+    }
+
+    @Test
     fun `Raw mask accessors expose all GPBF bits`() {
         val gpbf = ZipGPBF(ZipGPBF.STRONG_ENCRYPTION or ZipGPBF.LANGUAGE_ENCODING)
 

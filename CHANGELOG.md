@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+### Fixed
+
+- `ZipGPBF`'s boolean-parameter constructor silently dropping every flag after the first `true` condition, due to an unparenthesized `if`/`else` chain inside an `or` expression (each `else` branch greedily absorbed the rest of the chain). In particular, the common case of only the two `true`-by-default parameters (`omitChecksumAndSizes`, `languageEncoding`) — e.g. a bare `ZipGPBF()` — produced a value with `LANGUAGE_ENCODING` missing entirely.
+
 ## [2.3.1]
 
 ### Fixed
