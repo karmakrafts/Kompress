@@ -25,27 +25,28 @@ import kotlinx.io.Source
  * @property encodedValue Encoded extra field header identifier.
  */
 @ExperimentalCompressionApi
-enum class ZipExtraFieldEntryHeaderId( // @formatter:off
-    val encodedValue: UShort,
-    private val parser: (Source) -> ZipExtraFieldEntryData
-) { // @formatter:on
-    // @formatter:off
-    /** ZIP64 extended information field. */
-    ZIP64_EXTENDED_INFORMATION(0x0001U, ZipExtraFieldEntryData.Zip64::decode);
-    // @formatter:on
+sealed class ZipExtraFieldEntryHeaderId(val encodedValue: UShort, private val parser: (Source, UShort) -> ZipExtraFieldEntryData) {
+    constructor(encodedValue: UShort, parser: (Source) -> ZipExtraFieldEntryData) : this(encodedValue, { source, _ -> parser(source) })
 
     /**
      * Parses this extra field payload from [source].
      *
      * @param source Source positioned at the start of the extra field payload.
+     * @param size   The size of the extra field's content in bytes.
      * @return Parsed extra field payload data.
      */
-    fun parse(source: Source): ZipExtraFieldEntryData = parser(source)
+    fun parse(source: Source, size: UShort): ZipExtraFieldEntryData = parser(source, size)
 
-    /**
-     * Utilities for resolving encoded extra field header identifiers.
-     */
+    /** ZIP64 extended information field. */
+    @ExperimentalCompressionApi
+    object Zip64ExtendedInformation : ZipExtraFieldEntryHeaderId(0x00001U, ZipExtraFieldEntryData.Zip64::decode)
+
+    @ExperimentalCompressionApi
+    data class Other(val value: UShort) : ZipExtraFieldEntryHeaderId(value, ZipExtraFieldEntryData.Other::decode)
+
     companion object {
+        val entries: Array<ZipExtraFieldEntryHeaderId> by lazy { arrayOf(Zip64ExtendedInformation) }
+
         /**
          * Resolves an extra field header identifier by its encoded value.
          *
@@ -53,6 +54,6 @@ enum class ZipExtraFieldEntryHeaderId( // @formatter:off
          * @return Header identifier matching [encodedValue].
          */
         fun byEncodedValue(encodedValue: UShort): ZipExtraFieldEntryHeaderId =
-            entries.first { id -> id.encodedValue == encodedValue }
+            entries.firstOrNull { it.encodedValue == encodedValue } ?: Other(encodedValue)
     }
 }

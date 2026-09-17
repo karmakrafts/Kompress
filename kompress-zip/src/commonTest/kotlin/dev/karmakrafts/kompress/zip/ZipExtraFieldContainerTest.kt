@@ -37,10 +37,10 @@ class ZipExtraFieldContainerTest {
     @Test
     fun `byteSize sums sizes of all contained entries`() {
         val entryA = ZipExtraFieldEntry(
-            ZipExtraFieldEntryHeaderId.ZIP64_EXTENDED_INFORMATION, ZipExtraFieldEntryData.Zip64(1UL, 1UL, 1UL, 0U)
+            ZipExtraFieldEntryHeaderId.Zip64ExtendedInformation, ZipExtraFieldEntryData.Zip64(1UL, 1UL, 1UL, 0U)
         )
         val entryB = ZipExtraFieldEntry(
-            ZipExtraFieldEntryHeaderId.ZIP64_EXTENDED_INFORMATION, ZipExtraFieldEntryData.Zip64(2UL, 2UL, 2UL, 0U)
+            ZipExtraFieldEntryHeaderId.Zip64ExtendedInformation, ZipExtraFieldEntryData.Zip64(2UL, 2UL, 2UL, 0U)
         )
         val container = ZipExtraFieldContainer.empty().apply {
             add(entryA)
@@ -53,10 +53,10 @@ class ZipExtraFieldContainerTest {
     @Test
     fun `encode writes all entries in insertion order`() {
         val first = ZipExtraFieldEntry(
-            ZipExtraFieldEntryHeaderId.ZIP64_EXTENDED_INFORMATION, ZipExtraFieldEntryData.Zip64(10UL, 9UL, 8UL, 0U)
+            ZipExtraFieldEntryHeaderId.Zip64ExtendedInformation, ZipExtraFieldEntryData.Zip64(10UL, 9UL, 8UL, 0U)
         )
         val second = ZipExtraFieldEntry(
-            ZipExtraFieldEntryHeaderId.ZIP64_EXTENDED_INFORMATION, ZipExtraFieldEntryData.Zip64(7UL, 6UL, 5UL, 1U)
+            ZipExtraFieldEntryHeaderId.Zip64ExtendedInformation, ZipExtraFieldEntryData.Zip64(7UL, 6UL, 5UL, 1U)
         )
         val container = ZipExtraFieldContainer.empty().apply {
             add(first)

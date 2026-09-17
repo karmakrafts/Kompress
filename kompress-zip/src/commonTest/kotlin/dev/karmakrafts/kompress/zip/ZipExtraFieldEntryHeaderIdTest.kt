@@ -29,14 +29,13 @@ class ZipExtraFieldEntryHeaderIdTest {
     fun `byEncodedValue resolves ZIP64 extended information header`() {
         val headerId = ZipExtraFieldEntryHeaderId.byEncodedValue(0x0001U)
 
-        assertEquals(ZipExtraFieldEntryHeaderId.ZIP64_EXTENDED_INFORMATION, headerId)
+        assertEquals(ZipExtraFieldEntryHeaderId.Zip64ExtendedInformation, headerId)
     }
 
     @Test
-    fun `byEncodedValue fails for unsupported header ids`() {
-        assertFailsWith<NoSuchElementException> {
-            ZipExtraFieldEntryHeaderId.byEncodedValue(0x0002U)
-        }
+    fun `byEncodedValue resolves into Other header ID is unsupported`() {
+        val headerId = ZipExtraFieldEntryHeaderId.byEncodedValue(0x0002U)
+        assertEquals(headerId, ZipExtraFieldEntryHeaderId.Other(0x0002U))
     }
 
     @Test
@@ -47,7 +46,7 @@ class ZipExtraFieldEntryHeaderIdTest {
         val buffer = Buffer()
         expected.encode(buffer)
 
-        val parsed = ZipExtraFieldEntryHeaderId.ZIP64_EXTENDED_INFORMATION.parse(buffer)
+        val parsed = ZipExtraFieldEntryHeaderId.Zip64ExtendedInformation.parse(buffer, buffer.size.toUShort())
 
         assertIs<ZipExtraFieldEntryData.Zip64>(parsed)
         assertEquals(expected, parsed)

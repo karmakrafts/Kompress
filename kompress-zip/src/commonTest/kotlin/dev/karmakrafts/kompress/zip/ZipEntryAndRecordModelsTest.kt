@@ -41,7 +41,7 @@ class ZipEntryAndRecordModelsTest {
     @Test
     fun `ZipEntry isZip64 is true when ZIP64 extra field is present`() {
         val zip64Field = ZipExtraFieldEntry(
-            headerId = ZipExtraFieldEntryHeaderId.ZIP64_EXTENDED_INFORMATION, data = ZipExtraFieldEntryData.Zip64(
+            headerId = ZipExtraFieldEntryHeaderId.Zip64ExtendedInformation, data = ZipExtraFieldEntryData.Zip64(
                 uncompressedSize = 100UL, compressedSize = 80UL, lhrOffset = 7UL, startDiskIndex = 0U
             )
         )

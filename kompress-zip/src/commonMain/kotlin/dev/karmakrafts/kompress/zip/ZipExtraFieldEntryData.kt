@@ -19,10 +19,13 @@ package dev.karmakrafts.kompress.zip
 import dev.karmakrafts.kompress.ExperimentalCompressionApi
 import kotlinx.io.Sink
 import kotlinx.io.Source
+import kotlinx.io.readByteArray
 import kotlinx.io.readUIntLe
 import kotlinx.io.readULongLe
+import kotlinx.io.readUShortLe
 import kotlinx.io.writeUIntLe
 import kotlinx.io.writeULongLe
+import kotlinx.io.writeUShortLe
 
 /**
  * See [PKWARE APPNOTE](https://pkware.cachefly.net/webdocs/casestudies/APPNOTE.TXT) 4.5.2.
@@ -82,6 +85,38 @@ sealed interface ZipExtraFieldEntryData {
             sink.writeULongLe(compressedSize)
             sink.writeULongLe(lhrOffset)
             sink.writeUIntLe(startDiskIndex)
+        }
+    }
+
+    data class Other(val data: ByteArray) : ZipExtraFieldEntryData {
+        override val size: Long = data.size.toLong()
+
+        companion object {
+            fun decode(source: Source): Other {
+                val dataSize = source.readUShortLe().toInt()
+                val data = source.readByteArray(dataSize)
+                return Other(data)
+            }
+        }
+
+        override fun encode(sink: Sink) {
+            sink.writeUShortLe(data.size.toUShort())
+            sink.write(data)
+        }
+
+        override fun equals(other: Any?): Boolean {
+            if (this === other) return true
+            if (other == null || this::class != other::class) return false
+
+            other as Other
+
+            if (!data.contentEquals(other.data)) return false
+
+            return true
+        }
+
+        override fun hashCode(): Int {
+            return data.contentHashCode()
         }
     }
 }

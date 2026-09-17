@@ -27,7 +27,7 @@ class ZipExtraFieldEntryTest {
     @Test
     fun `size includes header id size field and payload`() {
         val entry = ZipExtraFieldEntry(
-            headerId = ZipExtraFieldEntryHeaderId.ZIP64_EXTENDED_INFORMATION, data = ZipExtraFieldEntryData.Zip64(
+            headerId = ZipExtraFieldEntryHeaderId.Zip64ExtendedInformation, data = ZipExtraFieldEntryData.Zip64(
                 uncompressedSize = 1UL, compressedSize = 1UL, lhrOffset = 1UL, startDiskIndex = 0U
             )
         )
@@ -38,7 +38,7 @@ class ZipExtraFieldEntryTest {
     @Test
     fun `encode and decode roundtrip keeps header id and payload`() {
         val expected = ZipExtraFieldEntry(
-            headerId = ZipExtraFieldEntryHeaderId.ZIP64_EXTENDED_INFORMATION, data = ZipExtraFieldEntryData.Zip64(
+            headerId = ZipExtraFieldEntryHeaderId.Zip64ExtendedInformation, data = ZipExtraFieldEntryData.Zip64(
                 uncompressedSize = 12UL, compressedSize = 11UL, lhrOffset = 10UL, startDiskIndex = 9U
             )
         )
@@ -56,13 +56,13 @@ class ZipExtraFieldEntryTest {
             uncompressedSize = 9UL, compressedSize = 8UL, lhrOffset = 7UL, startDiskIndex = 6U
         )
         val buffer = Buffer()
-        buffer.writeUShortLe(ZipExtraFieldEntryHeaderId.ZIP64_EXTENDED_INFORMATION.encodedValue)
+        buffer.writeUShortLe(ZipExtraFieldEntryHeaderId.Zip64ExtendedInformation.encodedValue)
         buffer.writeUShortLe(0U) // Declared size is intentionally mismatched.
         expectedData.encode(buffer)
 
         val decoded = ZipExtraFieldEntry.decode(buffer)
 
-        assertEquals(ZipExtraFieldEntryHeaderId.ZIP64_EXTENDED_INFORMATION, decoded.headerId)
+        assertEquals(ZipExtraFieldEntryHeaderId.Zip64ExtendedInformation, decoded.headerId)
         assertEquals(expectedData, decoded.data)
     }
 }

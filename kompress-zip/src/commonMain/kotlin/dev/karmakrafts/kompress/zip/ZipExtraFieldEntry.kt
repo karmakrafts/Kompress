@@ -44,9 +44,10 @@ data class ZipExtraFieldEntry( // @formatter:off
          * @return Decoded extra field entry.
          */
         fun decode(source: Source): ZipExtraFieldEntry {
-            val headerId = ZipExtraFieldEntryHeaderId.byEncodedValue(source.readUShortLe())
-            source.skip(UShort.SIZE_BYTES.toLong()) // We don't care about the data size
-            val data = headerId.parse(source)
+            val rawHeaderId = source.readUShortLe()
+            val headerId = ZipExtraFieldEntryHeaderId.byEncodedValue(rawHeaderId)
+            val length = source.readUShortLe()
+            val data = headerId.parse(source, length)
             return ZipExtraFieldEntry(headerId, data)
         }
     }

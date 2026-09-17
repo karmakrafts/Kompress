@@ -42,5 +42,5 @@ data class ZipEntry(
      * Whether this entry includes ZIP64 extended information in its extra fields.
      */
     val isZip64: Boolean
-        get() = extraFields.any { entry -> entry.headerId == ZipExtraFieldEntryHeaderId.ZIP64_EXTENDED_INFORMATION }
+        get() = extraFields.any { entry -> entry.headerId is ZipExtraFieldEntryHeaderId.Zip64ExtendedInformation }
 }
