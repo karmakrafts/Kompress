@@ -3,20 +3,20 @@
 javaCompile = "25"
 javaTarget = "17"
 
-androidGradle = "9.2.1" # https://developer.android.com/reference/tools/gradle-api
-kompress = "2.3.2"
-kotlin = "2.4.0" # https://github.com/JetBrains/kotlin/releases
+androidGradle = "9.4.1" # https://developer.android.com/reference/tools/gradle-api
+kompress = "2.4.0"
+kotlin = "2.5.0-Beta2" # https://github.com/JetBrains/kotlin/releases
 kotlinxIo = "0.9.1" # https://github.com/Kotlin/kotlinx-io/releases
 kotlinxDateTime = "0.8.0" # https://github.com/Kotlin/kotlinx-datetime/releases
-kotlinBrowser = "2026.7.1" # https://github.com/JetBrains/kotlin-wrappers/releases
+kotlinBrowser = "2026.10.1" # https://github.com/JetBrains/kotlin-wrappers/releases
 dokka = "2.2.0" # https://github.com/Kotlin/dokka/releases
-karmaConventions = "1.18.3" # https://github.com/karmakrafts/karma-conventions/tags
-karbide = "1.10.8" # https://github.com/karmakrafts/Karbide/releases
-kplatform = "1.1.0" # https://github.com/karmakrafts/kPlatform/releases
+karmaConventions = "1.23.0.315-SNAPSHOT" # https://github.com/karmakrafts/karma-conventions/tags
+karbide = "1.14.0.121-SNAPSHOT" # https://github.com/karmakrafts/Karbide/releases
+kplatform = "1.3.0.29-SNAPSHOT" # https://github.com/karmakrafts/kPlatform/releases
 
 # kompress-benchmarks
 
-kotlinxBenchmark = "0.4.17" # https://github.com/Kotlin/kotlinx-benchmark/releases
+kotlinxBenchmark = "0.5.0" # https://github.com/Kotlin/kotlinx-benchmark/releases
 jmh = "1.37" # https://github.com/openjdk/jmh/tags
 
 [libraries]

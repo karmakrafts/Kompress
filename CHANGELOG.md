@@ -6,9 +6,14 @@
 - Optimized header checksum computation for `GZipUnarchiver`
 - `GZipOs` now uses [kPlatform](https://github.com/karmakrafts/kPlatform) for host detection
 - Updated to Gradle 9.8.2
-- Updated to Karma Conventions 1.18.3
-- Updated to Karbide 1.10.8
-- Updated to Kotlin Wrappers 2026.7.1
+- Updated to AGP 9.4.1
+- Updated to Karma Conventions 1.23.0.315-SNAPSHOT
+- Updated to Karbide 1.14.0.121-SNAPSHOT
+- Updated to kPlatform 1.3.0.29-SNAPSHOT
+- Updated to Kotlin 2.5.0-Beta2
+- Updated to Kotlin Wrappers 2026.10.1
+- Updated to kotlinx.benchmark 0.5.0
+- Updated to NMCP 1.6.2
 
 ## [2.3.1]
 

@@ -40,7 +40,7 @@ dependencyResolutionManagement {
 
 plugins {
     id("org.gradle.toolchains.foojay-resolver") version "1.0.0"
-    id("com.gradleup.nmcp.settings") version "1.6.1"
+    id("com.gradleup.nmcp.settings") version "1.6.2"
 }
 
 nmcpSettings {
