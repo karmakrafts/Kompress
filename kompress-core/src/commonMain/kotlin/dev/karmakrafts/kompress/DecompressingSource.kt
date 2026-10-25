@@ -89,7 +89,7 @@ private class DecompressingSource( // @formatter:off
  *  This will automatically close the wrapped decompressor when the wrapper is closed.
  * @return A decompressing [RawSource].
  */
-fun RawSource.decompressingSource( // @formatter:off
+public fun RawSource.decompressingSource( // @formatter:off
     decompressor: Decompressor,
     bufferSize: Int = Decompressor.DEFAULT_BUFFER_SIZE,
     isSourceOwned: Boolean = true,

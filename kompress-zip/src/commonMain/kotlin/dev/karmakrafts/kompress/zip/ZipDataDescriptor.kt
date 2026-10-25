@@ -28,7 +28,7 @@ import dev.karmakrafts.kompress.ExperimentalCompressionApi
  * @property uncompressedSize Number of bytes produced after decompression.
  */
 @ExperimentalCompressionApi
-data class ZipDataDescriptor( // @formatter:off
+public data class ZipDataDescriptor( // @formatter:off
     val checksum: UInt,
     val compressedSize: Long,
     val uncompressedSize: Long

@@ -17,8 +17,8 @@
 package dev.karmakrafts.kompress.zlib
 
 import dev.karmakrafts.kompress.Decompressor
-import dev.karmakrafts.kompress.InternalCompressionApi
 import dev.karmakrafts.kompress.FramingDecompressor
+import dev.karmakrafts.kompress.InternalCompressionApi
 import dev.karmakrafts.kompress.decompressingSink
 import dev.karmakrafts.kompress.decompressingSource
 import dev.karmakrafts.kompress.deflate.Inflater
@@ -34,8 +34,8 @@ import kotlinx.io.readUInt
  * Decompresses data from the Zlib format.
  */
 @OptIn(InternalCompressionApi::class)
-class ZlibDecompressor : FramingDecompressor(Inflater()) {
-    companion object {
+public class ZlibDecompressor : FramingDecompressor(Inflater()) {
+    public companion object {
         /**
          * Decompresses the given data in one go using the given
          * buffer size.
@@ -46,7 +46,7 @@ class ZlibDecompressor : FramingDecompressor(Inflater()) {
          * @throws dev.karmakrafts.kompress.exception.DataFormatException when the decompressor encounters invalid data.
          * @throws dev.karmakrafts.kompress.exception.InvalidChecksumException when the trailing Adler-32 checksum does not match.
          */
-        fun decompress( // @formatter:off
+        public fun decompress( // @formatter:off
             data: ByteArray,
             bufferSize: Int = Decompressor.DEFAULT_BUFFER_SIZE
         ): ByteArray = ZlibDecompressor().use { decompressor -> // @formatter:on
@@ -111,7 +111,7 @@ class ZlibDecompressor : FramingDecompressor(Inflater()) {
  *  decompression.
  * @return A [RawSource] that produces decompressed data.
  */
-fun RawSource.unzlibSource( // @formatter:off
+public fun RawSource.unzlibSource( // @formatter:off
     bufferSize: Int = Decompressor.DEFAULT_BUFFER_SIZE
 ): RawSource = decompressingSource(ZlibDecompressor(), bufferSize) // @formatter:on
 
@@ -127,6 +127,6 @@ fun RawSource.unzlibSource( // @formatter:off
  *  decompression.
  * @return A [RawSink] that accepts compressed data and writes decompressed data.
  */
-fun RawSink.unzlibSink( // @formatter:off
+public fun RawSink.unzlibSink( // @formatter:off
     bufferSize: Int = Decompressor.DEFAULT_BUFFER_SIZE
 ): RawSink = decompressingSink(ZlibDecompressor(), bufferSize) // @formatter:on

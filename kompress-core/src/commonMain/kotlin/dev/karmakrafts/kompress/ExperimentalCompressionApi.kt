@@ -18,4 +18,4 @@ package dev.karmakrafts.kompress
 
 @RequiresOptIn(message = "The API you are trying to use is still actively being developed and may change in the future")
 @Retention(AnnotationRetention.BINARY)
-annotation class ExperimentalCompressionApi
+public annotation class ExperimentalCompressionApi

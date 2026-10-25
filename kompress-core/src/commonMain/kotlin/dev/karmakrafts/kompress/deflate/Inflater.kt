@@ -37,8 +37,8 @@ import kotlinx.io.readByteArray
 /**
  * Streaming decompression interface that supports inflate and inflate-raw decompression.
  */
-interface Inflater : Decompressor {
-    companion object {
+public interface Inflater : Decompressor {
+    public companion object {
         /**
          * Decompresses the given data in one go using the given
          * buffer size.
@@ -48,7 +48,7 @@ interface Inflater : Decompressor {
          * @return The decompressed data.
          * @throws dev.karmakrafts.kompress.exception.DataFormatException when the decompressor encounters invalid data.
          */
-        fun decompress( // @formatter:off
+        public fun decompress( // @formatter:off
             data: ByteArray,
             bufferSize: Int = Decompressor.DEFAULT_BUFFER_SIZE
         ): ByteArray = Inflater().use { inflater -> // @formatter:on
@@ -64,7 +64,7 @@ interface Inflater : Decompressor {
          * @return The size of the compressed data that was actually consumed.
          * @throws dev.karmakrafts.kompress.exception.DataFormatException when the decompressor encounters invalid data.
          */
-        fun computeCompressedSize( // @formatter:off
+        public fun computeCompressedSize( // @formatter:off
             data: ByteArray,
             bufferSize: Int = Decompressor.DEFAULT_BUFFER_SIZE
         ): Int = Inflater().use { inflater -> // @formatter:on
@@ -86,7 +86,7 @@ interface Inflater : Decompressor {
          * @return The size of the compressed data that was actually consumed from the source.
          * @throws dev.karmakrafts.kompress.exception.DataFormatException when the decompressor encounters invalid data.
          */
-        fun computeCompressedSize( // @formatter:off
+        public fun computeCompressedSize( // @formatter:off
             source: RawSource,
             bufferSize: Int = Decompressor.DEFAULT_BUFFER_SIZE
         ): Long = Inflater().use { inflater -> // @formatter:on
@@ -321,12 +321,7 @@ internal class InflaterImpl(
     }
 
     private fun writeOverlappingMatch(
-        output: ByteArray,
-        position: Int,
-        copyLimit: Int,
-        length: Int,
-        distance: Int,
-        initialReadPosition: Int
+        output: ByteArray, position: Int, copyLimit: Int, length: Int, distance: Int, initialReadPosition: Int
     ): Int {
         val window = window
         val windowSize = windowSize
@@ -795,7 +790,7 @@ internal class InflaterImpl(
  *
  * @return A new [Inflater] instance with the given parameters.
  */
-fun Inflater(): Inflater = InflaterImpl()
+public fun Inflater(): Inflater = InflaterImpl()
 
 /**
  * Returns a [RawSource] that reads DEFLATE-compressed bytes from this source
@@ -809,7 +804,7 @@ fun Inflater(): Inflater = InflaterImpl()
  *  decompression.
  * @return A [RawSource] that produces decompressed data.
  */
-fun RawSource.inflatingSource( // @formatter:off
+public fun RawSource.inflatingSource( // @formatter:off
     bufferSize: Int = Decompressor.DEFAULT_BUFFER_SIZE
 ): RawSource = decompressingSource(Inflater(), bufferSize) // @formatter:on
 
@@ -825,6 +820,6 @@ fun RawSource.inflatingSource( // @formatter:off
  *  decompression.
  * @return A [RawSink] that accepts compressed data and writes decompressed data.
  */
-fun RawSink.inflatingSink( // @formatter:off
+public fun RawSink.inflatingSink( // @formatter:off
     bufferSize: Int = Decompressor.DEFAULT_BUFFER_SIZE
 ): RawSink = decompressingSink(Inflater(), bufferSize) // @formatter:on

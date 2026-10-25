@@ -137,7 +137,7 @@ private class GZipArchiver( // @formatter:off
         deflater.reset()
         val flags = entry.computeFlags()
         appendHeader(entry, flags)
-        val (crc32, uncompressedSize) = appendData(callback)
+        val [crc32, uncompressedSize] = appendData(callback)
         appendTrailer(crc32, uncompressedSize)
     }
 
@@ -160,7 +160,7 @@ private class GZipArchiver( // @formatter:off
  * @param isText Whether the entry is a text file.
  */
 @OptIn(InternalCompressionApi::class)
-fun Archiver<in GZipEntry, *>.appendEntry( // @formatter:off
+public fun Archiver<in GZipEntry, *>.appendEntry( // @formatter:off
     path: Path,
     modificationTime: Instant = FileUtils.getModificationTime(path) ?: Clock.System.now(),
     comment: String? = null,
@@ -187,13 +187,13 @@ fun Archiver<in GZipEntry, *>.appendEntry( // @formatter:off
  * @param isText Whether the entry is a text file.
  * @param callback A callback that writes data to the provided [Sink] and returns `true` while more data is available.
  */
-fun Archiver<in GZipEntry, *>.appendEntry( // @formatter:off
+public fun Archiver<in GZipEntry, *>.appendEntry( // @formatter:off
     name: String,
     modificationTime: Instant = Clock.System.now(),
     comment: String? = null,
     isText: Boolean = false,
     callback: (Sink) -> Boolean
-) = appendEntry(GZipEntry(
+): Unit = appendEntry(GZipEntry(
     modificationTime = modificationTime,
     os = GZipOs.guessCurrent(),
     isText = isText,
@@ -212,13 +212,13 @@ fun Archiver<in GZipEntry, *>.appendEntry( // @formatter:off
  * @param comment An optional comment for the entry.
  * @param isText Whether the entry is a text file.
  */
-fun Archiver<in GZipEntry, *>.appendEntry( // @formatter:off
+public fun Archiver<in GZipEntry, *>.appendEntry( // @formatter:off
     name: String,
     source: RawSource,
     modificationTime: Instant = Clock.System.now(),
     comment: String? = null,
     isText: Boolean = false,
-) = appendEntry(GZipEntry(
+): Unit = appendEntry(GZipEntry(
     modificationTime = modificationTime,
     os = GZipOs.guessCurrent(),
     isText = isText,
@@ -238,7 +238,7 @@ fun Archiver<in GZipEntry, *>.appendEntry( // @formatter:off
  * @param isCompressorOwned Whether the [deflater] is owned by the archiver and should be closed when the archiver is closed.
  * @return A GZip [Archiver] for [GZipEntry]s.
  */
-fun RawSink.gzip( // @formatter:off
+public fun RawSink.gzip( // @formatter:off
     deflater: Deflater = Deflater(),
     isSinkOwned: Boolean = true,
     isCompressorOwned: Boolean = true

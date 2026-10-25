@@ -28,7 +28,7 @@ import kotlinx.io.Source
  *  the unarchivers underlying source if needed.
  *  Returns true if more data was available, false otherwise.
  */
-typealias UnarchiverEntryCallback<E> = ( // @formatter:off
+public typealias UnarchiverEntryCallback<E> = ( // @formatter:off
     entry: E,
     source: Buffer,
     fetchMore: () -> Boolean
@@ -39,16 +39,16 @@ typealias UnarchiverEntryCallback<E> = ( // @formatter:off
  * Provides access to the source [Source], the [Decompressor] used to decompress entries,
  * and functions to read entries from the archive.
  */
-interface Unarchiver<E, M : Enum<M>> : AutoCloseable {
+public interface Unarchiver<E, M : Enum<M>> : AutoCloseable {
     /**
      * The source being read from.
      */
-    val source: Source
+    public val source: Source
 
     /**
      * The decompressors used for decompressing entry data blocks.
      */
-    val decompressors: Map<M, Decompressor>
+    public val decompressors: Map<M, Decompressor>
 
     /**
      * Iterates over all entries in the current archive in a streaming
@@ -58,7 +58,7 @@ interface Unarchiver<E, M : Enum<M>> : AutoCloseable {
      * @param callback The callback to invoke for each entry.
      * @throws dev.karmakrafts.kompress.exception.InvalidChecksumException when a checksum validation fails for the current entry.
      */
-    fun forEachEntry(callback: UnarchiverEntryCallback<E>)
+    public fun forEachEntry(callback: UnarchiverEntryCallback<E>)
 }
 
 /**
@@ -73,7 +73,7 @@ interface Unarchiver<E, M : Enum<M>> : AutoCloseable {
  * @return A new list containing all extracted entries which matched the given predicate.
  * @throws dev.karmakrafts.kompress.exception.InvalidChecksumException when a checksum validation fails for the current entry.
  */
-inline fun <E, M : Enum<M>> Unarchiver<E, M>.extract( // @formatter:off
+public inline fun <E, M : Enum<M>> Unarchiver<E, M>.extract( // @formatter:off
     chunkSize: Int = 4096,
     crossinline filter: (E, Buffer) -> Boolean = { _, _ -> true }
 ): List<Pair<E, Buffer>> { // @formatter:on

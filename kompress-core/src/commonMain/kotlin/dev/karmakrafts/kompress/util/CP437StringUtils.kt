@@ -63,7 +63,7 @@ private val reverseLookup: Map<Char, Byte> = buildMap {
  *  outside the valid CP437 range.
  */
 @InternalCompressionApi
-fun String.encodeToCP437(): ByteArray {
+public fun String.encodeToCP437(): ByteArray {
     val result = ByteArray(length)
     for (index in indices) {
         val codepoint = this[index]
@@ -74,4 +74,4 @@ fun String.encodeToCP437(): ByteArray {
 }
 
 @InternalCompressionApi
-fun Sink.writeCP437String(value: String) = write(value.encodeToCP437())
+public fun Sink.writeCP437String(value: String): Unit = write(value.encodeToCP437())

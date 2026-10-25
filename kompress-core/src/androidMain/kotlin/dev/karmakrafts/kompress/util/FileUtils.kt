@@ -21,8 +21,8 @@ import kotlinx.io.files.Path
 import kotlin.time.Instant
 
 @InternalCompressionApi
-actual object FileUtils {
-    actual fun getModificationTime(path: Path): Instant? {
+public actual object FileUtils {
+    public actual fun getModificationTime(path: Path): Instant? {
         return null
     }
 }

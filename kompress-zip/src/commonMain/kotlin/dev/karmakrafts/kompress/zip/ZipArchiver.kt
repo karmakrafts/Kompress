@@ -307,7 +307,7 @@ private class ZipArchiver(
  * @return ZIP archiver writing to this sink.
  */
 @ExperimentalCompressionApi
-fun RawSink.zip( // @formatter:off
+public fun RawSink.zip( // @formatter:off
     compressors: Map<ZipCompressionMethod, Compressor> = mapOf(ZipCompressionMethod.DEFLATE to Deflater()),
     isSinkOwned: Boolean = true,
     isCompressorOwned: Boolean = true
@@ -323,12 +323,12 @@ fun RawSink.zip( // @formatter:off
  * @param callback Callback that writes uncompressed entry bytes to the provided sink.
  */
 @ExperimentalCompressionApi
-fun Archiver<in ZipEntry, *>.appendEntry( // @formatter:off
+public fun Archiver<in ZipEntry, *>.appendEntry( // @formatter:off
     name: String,
     modificationTime: Instant = Clock.System.now(),
     comment: String? = null,
     callback: (Sink) -> Boolean
-) = appendEntry(ZipEntry(
+): Unit = appendEntry(ZipEntry(
     modificationTime = modificationTime,
     name = name,
     comment = comment
@@ -344,12 +344,12 @@ fun Archiver<in ZipEntry, *>.appendEntry( // @formatter:off
  * @param comment Optional entry comment.
  */
 @ExperimentalCompressionApi
-fun Archiver<in ZipEntry, *>.appendEntry( // @formatter:off
+public fun Archiver<in ZipEntry, *>.appendEntry( // @formatter:off
     name: String,
     source: RawSource,
     modificationTime: Instant = Clock.System.now(),
     comment: String? = null
-) = appendEntry(ZipEntry(
+): Unit = appendEntry(ZipEntry(
     modificationTime = modificationTime,
     name = name,
     comment = comment

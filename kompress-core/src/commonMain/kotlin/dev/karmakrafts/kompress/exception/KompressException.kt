@@ -20,4 +20,4 @@ package dev.karmakrafts.kompress.exception
  * Base type for all Kompress exceptions that may be raised by instances of
  * [dev.karmakrafts.kompress.Compressor], [dev.karmakrafts.kompress.Decompressor], [dev.karmakrafts.kompress.archive.Archiver] or [dev.karmakrafts.kompress.archive.Unarchiver].
  */
-open class KompressException(message: String?, cause: Throwable?) : RuntimeException(message, cause)
+public open class KompressException(message: String?, cause: Throwable?) : RuntimeException(message, cause)

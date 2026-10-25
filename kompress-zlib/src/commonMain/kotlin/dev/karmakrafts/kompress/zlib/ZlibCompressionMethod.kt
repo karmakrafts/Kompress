@@ -21,18 +21,18 @@ package dev.karmakrafts.kompress.zlib
  *
  * @property encodedValue The method identifier stored in the CMF header byte.
  */
-enum class ZlibCompressionMethod(val encodedValue: UByte) {
+public enum class ZlibCompressionMethod(public val encodedValue: UByte) {
     /** DEFLATE compression method. */
     DEFLATE(0x08U);
 
-    companion object {
+    public companion object {
         /**
          * Resolves a compression method by its encoded identifier.
          *
          * @param encodedValue The encoded method identifier.
          * @return The matching compression method.
          */
-        fun byEncodedValue(encodedValue: UByte): ZlibCompressionMethod = entries.first { method ->
+        public fun byEncodedValue(encodedValue: UByte): ZlibCompressionMethod = entries.first { method ->
             method.encodedValue == encodedValue
         }
     }

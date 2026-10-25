@@ -28,7 +28,7 @@ import kotlin.time.Instant
  * @property comment Optional entry comment.
  * @property extraField Optional extra metadata field stored in the header.
  */
-data class GZipEntry( // @formatter:off
+public data class GZipEntry( // @formatter:off
     val modificationTime: Instant,
     val os: GZipOs,
     val isText: Boolean = false,
@@ -56,8 +56,8 @@ data class GZipEntry( // @formatter:off
         var result = isText.hashCode()
         result = 31 * result + modificationTime.hashCode()
         result = 31 * result + os.hashCode()
-        result = 31 * result + (name?.hashCode() ?: 0)
-        result = 31 * result + (comment?.hashCode() ?: 0)
+        result = 31 * result + name.hashCode()
+        result = 31 * result + comment.hashCode()
         result = 31 * result + (extraField?.contentHashCode() ?: 0)
         return result
     }

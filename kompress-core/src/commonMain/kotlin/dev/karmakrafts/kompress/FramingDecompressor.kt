@@ -27,8 +27,8 @@ import kotlinx.io.readByteArray
  *
  * @property decompressor The underlying decompressor for payload data.
  */
-abstract class FramingDecompressor(
-    val decompressor: Decompressor
+public abstract class FramingDecompressor(
+    public val decompressor: Decompressor
 ) : Decompressor by decompressor {
     /**
      * Internal buffer containing wrapped input bytes pending processing.
@@ -57,7 +57,7 @@ abstract class FramingDecompressor(
      * @param offset The start offset in [output] of the produced bytes.
      * @param size The number of produced payload bytes.
      */
-    protected open fun onDataWritten(output: ByteArray, offset: Int, size: Int) = Unit
+    protected open fun onDataWritten(output: ByteArray, offset: Int, size: Int): Unit = Unit
 
     /**
      * Consumes wrapper epilogue bytes from [buffer].

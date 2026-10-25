@@ -25,8 +25,8 @@ import kotlinx.io.Source
  * @property encodedValue Encoded extra field header identifier.
  */
 @ExperimentalCompressionApi
-enum class ZipExtraFieldEntryHeaderId( // @formatter:off
-    val encodedValue: UShort,
+public enum class ZipExtraFieldEntryHeaderId( // @formatter:off
+    public val encodedValue: UShort,
     private val parser: (Source) -> ZipExtraFieldEntryData
 ) { // @formatter:on
     // @formatter:off
@@ -40,19 +40,19 @@ enum class ZipExtraFieldEntryHeaderId( // @formatter:off
      * @param source Source positioned at the start of the extra field payload.
      * @return Parsed extra field payload data.
      */
-    fun parse(source: Source): ZipExtraFieldEntryData = parser(source)
+    public fun parse(source: Source): ZipExtraFieldEntryData = parser(source)
 
     /**
      * Utilities for resolving encoded extra field header identifiers.
      */
-    companion object {
+    public companion object {
         /**
          * Resolves an extra field header identifier by its encoded value.
          *
          * @param encodedValue Encoded extra field header identifier.
          * @return Header identifier matching [encodedValue].
          */
-        fun byEncodedValue(encodedValue: UShort): ZipExtraFieldEntryHeaderId =
+        public fun byEncodedValue(encodedValue: UShort): ZipExtraFieldEntryHeaderId =
             entries.first { id -> id.encodedValue == encodedValue }
     }
 }

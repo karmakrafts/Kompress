@@ -26,7 +26,7 @@ import kotlinx.io.Source
  *  outside the valid LATIN-1 range.
  */
 @InternalCompressionApi
-fun String.encodeToLatin1(): ByteArray {
+public fun String.encodeToLatin1(): ByteArray {
     val result = ByteArray(length)
     for (index in indices) {
         val codepoint = this[index].code
@@ -41,10 +41,10 @@ fun String.encodeToLatin1(): ByteArray {
  *  outside the valid LATIN-1 range.
  */
 @InternalCompressionApi
-fun Sink.writeLatin1String(value: String) = write(value.encodeToLatin1())
+public fun Sink.writeLatin1String(value: String): Unit = write(value.encodeToLatin1())
 
 @InternalCompressionApi
-fun ByteArray.decodeFromLatin1(): String {
+public fun ByteArray.decodeFromLatin1(): String {
     val chars = CharArray(size)
     for (index in indices) {
         chars[index] = (this[index].toInt() and 0xFF).toChar()
@@ -53,7 +53,7 @@ fun ByteArray.decodeFromLatin1(): String {
 }
 
 @InternalCompressionApi
-fun Source.readLatin1String(size: Int = peek().bytesUntilZeroTerminator().toInt()): String {
+public fun Source.readLatin1String(size: Int = peek().bytesUntilZeroTerminator().toInt()): String {
     val result = CharArray(size)
     var byte = readByte()
     var index = 0

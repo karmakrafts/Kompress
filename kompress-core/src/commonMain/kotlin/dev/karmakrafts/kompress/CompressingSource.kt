@@ -88,7 +88,7 @@ private class CompressingSource( // @formatter:off
  *  This will automatically close the wrapped compressor when the wrapper is closed.
  * @return A compressing [RawSource].
  */
-fun RawSource.compressingSource( // @formatter:off
+public fun RawSource.compressingSource( // @formatter:off
     compressor: Compressor,
     bufferSize: Int = Compressor.DEFAULT_BUFFER_SIZE,
     isSourceOwned: Boolean = true,

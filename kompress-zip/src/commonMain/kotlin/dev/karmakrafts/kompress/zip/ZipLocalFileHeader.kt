@@ -27,7 +27,7 @@ import dev.karmakrafts.kompress.ExperimentalCompressionApi
  * @property uncompressedSize Number of bytes expected after decompression.
  */
 @ExperimentalCompressionApi
-data class ZipLocalFileHeader( // @formatter:off
+public data class ZipLocalFileHeader( // @formatter:off
     val entry: ZipEntry,
     val checksum: UInt,
     val compressedSize: Long,

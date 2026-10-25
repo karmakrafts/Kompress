@@ -26,35 +26,35 @@ import kotlin.jvm.JvmInline
  */
 @ExperimentalCompressionApi
 @JvmInline
-value class ZipGPBF(val value: UShort) {
+public value class ZipGPBF(public val value: UShort) {
     /**
      * Bit masks for ZIP general purpose bit flags.
      */
-    companion object {
+    public companion object {
         /**
          * Indicates that checksum and size fields are deferred to a data descriptor.
          */
-        const val OMIT_CHECKSUM_AND_SIZES: UShort = 0b00000000_00001000U
+        public const val OMIT_CHECKSUM_AND_SIZES: UShort = 0b00000000_00001000U
 
         /**
          * Indicates that the entry data was patched.
          */
-        const val PATCHED_DATA: UShort = 0b00000000_00010000U
+        public const val PATCHED_DATA: UShort = 0b00000000_00010000U
 
         /**
          * Indicates that strong encryption is used.
          */
-        const val STRONG_ENCRYPTION: UShort = 0b00000000_01000000U
+        public const val STRONG_ENCRYPTION: UShort = 0b00000000_01000000U
 
         /**
          * Indicates that file name and comment strings are UTF-8 encoded.
          */
-        const val LANGUAGE_ENCODING: UShort = 0b00001000_00000000U
+        public const val LANGUAGE_ENCODING: UShort = 0b00001000_00000000U
 
         /**
          * Indicates that local header values are masked.
          */
-        const val MASKED_HEADER_VALUES: UShort = 0b00100000_00000000U
+        public const val MASKED_HEADER_VALUES: UShort = 0b00100000_00000000U
     }
 
     /**
@@ -66,7 +66,7 @@ value class ZipGPBF(val value: UShort) {
      * @param languageEncoding Whether UTF-8 language encoding is marked as enabled.
      * @param maskedHeaderValues Whether local header values are marked as masked.
      */
-    constructor(
+    public constructor(
         omitChecksumAndSizes: Boolean = true,
         isPatchedData: Boolean = false,
         hasStrongEncryption: Boolean = false,
@@ -83,30 +83,30 @@ value class ZipGPBF(val value: UShort) {
     /**
      * Whether checksum and size fields are deferred to a data descriptor.
      */
-    inline val omitChecksumAndSizes: Boolean
+    public inline val omitChecksumAndSizes: Boolean
         get() = value and OMIT_CHECKSUM_AND_SIZES != 0U.toUShort()
 
     /**
      * Whether entry data is marked as patched.
      */
-    inline val isPatchedData: Boolean
+    public inline val isPatchedData: Boolean
         get() = value and PATCHED_DATA != 0U.toUShort()
 
     /**
      * Whether strong encryption is marked as enabled.
      */
-    inline val hasStrongEncryption: Boolean
+    public inline val hasStrongEncryption: Boolean
         get() = value and STRONG_ENCRYPTION != 0U.toUShort()
 
     /**
      * Whether UTF-8 language encoding is marked as enabled.
      */
-    inline val languageEncoding: Boolean
+    public inline val languageEncoding: Boolean
         get() = value and LANGUAGE_ENCODING != 0U.toUShort()
 
     /**
      * Whether local header values are marked as masked.
      */
-    inline val maskedHeaderValues: Boolean
+    public inline val maskedHeaderValues: Boolean
         get() = value and MASKED_HEADER_VALUES != 0U.toUShort()
 }

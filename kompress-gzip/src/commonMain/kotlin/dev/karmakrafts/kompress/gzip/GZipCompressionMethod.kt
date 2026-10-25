@@ -24,20 +24,20 @@ package dev.karmakrafts.kompress.gzip
  *
  * @param encodedValue The encoded method value stored in the GZip header.
  */
-enum class GZipCompressionMethod(val encodedValue: UByte) {
+public enum class GZipCompressionMethod(public val encodedValue: UByte) {
     // @formatter:off
     /** Deflate compression. */
     DEFLATE(0x08U);
     // @formatter:on
 
-    companion object {
+    public companion object {
         /**
          * Resolves a [GZipCompressionMethod] by its encoded value.
          *
          * @param encodedValue The encoded method value from a GZip header.
          * @return The matching [GZipCompressionMethod].
          */
-        fun byEncodedValue(encodedValue: UByte): GZipCompressionMethod = entries.first { method ->
+        public fun byEncodedValue(encodedValue: UByte): GZipCompressionMethod = entries.first { method ->
             method.encodedValue == encodedValue
         }
     }

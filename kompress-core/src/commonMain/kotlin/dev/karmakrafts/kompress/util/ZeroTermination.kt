@@ -22,7 +22,7 @@ import kotlinx.io.Source
 import kotlinx.io.writeUByte
 
 @InternalCompressionApi
-fun Source.bytesUntilZeroTerminator(): Long {
+public fun Source.bytesUntilZeroTerminator(): Long {
     var byte = readByte()
     var index = 0L
     // First probe for length of the string
@@ -34,7 +34,7 @@ fun Source.bytesUntilZeroTerminator(): Long {
 }
 
 @InternalCompressionApi
-inline fun <reified R> Sink.zeroTerminate(function: Sink.() -> R): R {
+public inline fun <reified R> Sink.zeroTerminate(function: Sink.() -> R): R {
     val result = function(this)
     writeUByte(0.toUByte())
     return result

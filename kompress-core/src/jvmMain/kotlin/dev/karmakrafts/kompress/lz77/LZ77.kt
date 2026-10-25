@@ -28,7 +28,7 @@ private val lz77Factory: (Int, Int, Int, Int) -> LZ77 by lazy {
 }
 
 @InternalCompressionApi
-actual fun LZ77( // @formatter:off
+public actual fun LZ77( // @formatter:off
     level: Int,
     minMatch: Int,
     maxMatch: Int,

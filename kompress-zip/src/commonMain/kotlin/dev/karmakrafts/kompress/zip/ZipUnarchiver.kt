@@ -236,7 +236,7 @@ private class ZipUnarchiver( // @formatter:off
  * @return ZIP unarchiver reading from this source.
  */
 @ExperimentalCompressionApi
-fun RawSource.unzip( // @formatter:off
+public fun RawSource.unzip( // @formatter:off
     decompressors: Map<ZipCompressionMethod, Decompressor> = mapOf(ZipCompressionMethod.DEFLATE to Inflater()),
     isSourceOwned: Boolean = true,
     areDecompressorsOwned: Boolean = true
@@ -252,7 +252,7 @@ fun RawSource.unzip( // @formatter:off
  * @return ZIP unarchiver reading from this source.
  */
 @ExperimentalCompressionApi
-fun Source.unzip( // @formatter:off
+public fun Source.unzip( // @formatter:off
     decompressors: Map<ZipCompressionMethod, Decompressor> = mapOf(ZipCompressionMethod.DEFLATE to Inflater()),
     isSourceOwned: Boolean = true,
     areDecompressorsOwned: Boolean = true

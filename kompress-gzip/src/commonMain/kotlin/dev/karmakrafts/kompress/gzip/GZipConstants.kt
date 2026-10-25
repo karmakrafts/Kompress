@@ -19,34 +19,34 @@ package dev.karmakrafts.kompress.gzip
 /**
  * Constants used by the GZip format implementation.
  */
-object GZipConstants {
+public object GZipConstants {
     /** Size of the fixed GZip header preamble in bytes. */
-    const val HEADER_PREAMBLE_SIZE: Int = 10
+    public const val HEADER_PREAMBLE_SIZE: Int = 10
 
     /** Size of the GZip trailer in bytes. */
-    const val TRAILER_SIZE: Int = 8
+    public const val TRAILER_SIZE: Int = 8
 
     /**
      * See [RFC1952](https://datatracker.ietf.org/doc/html/rfc1952) 2.3.1.
      * Start of page 6.
      */
-    const val MAGIC: UShort = 0x1F8BU
+    public const val MAGIC: UShort = 0x1F8BU
 
     /**
      * See [RFC1952](https://datatracker.ietf.org/doc/html/rfc1952) 2.3.1.
      * End of page 7.
      */
-    const val XFL_MIN_COMPRESSION: UByte = 0x04U
+    public const val XFL_MIN_COMPRESSION: UByte = 0x04U
 
     /** XFL value used when the compressor is configured for maximum compression. */
-    const val XFL_MAX_COMPRESSION: UByte = 0x02U
+    public const val XFL_MAX_COMPRESSION: UByte = 0x02U
 
     /** XFL value used when no specific compression hint is provided. */
-    const val XFL_NONE: UByte = 0x00U
+    public const val XFL_NONE: UByte = 0x00U
 
     /** Minimum supported compression level for GZip deflate. */
-    const val MIN_COMPRESSION: Int = 1
+    public const val MIN_COMPRESSION: Int = 1
 
     /** Maximum supported compression level for GZip deflate. */
-    const val MAX_COMPRESSION: Int = 9
+    public const val MAX_COMPRESSION: Int = 9
 }

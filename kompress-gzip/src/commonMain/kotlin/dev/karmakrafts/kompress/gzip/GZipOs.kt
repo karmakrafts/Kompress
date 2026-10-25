@@ -16,7 +16,6 @@
 
 package dev.karmakrafts.kompress.gzip
 
-import dev.karmakrafts.kompress.InternalCompressionApi
 import dev.karmakrafts.kplatform.OsFamily
 import dev.karmakrafts.kplatform.Platform
 
@@ -28,7 +27,7 @@ import dev.karmakrafts.kplatform.Platform
  *
  * @param encodedValue The encoded OS value stored in the GZip header.
  */
-enum class GZipOs(val encodedValue: UByte) {
+public enum class GZipOs(public val encodedValue: UByte) {
     // @formatter:off
     /** FAT filesystem (MS-DOS, OS/2, NT/Win32). */
     FAT         (0x00U),
@@ -62,22 +61,21 @@ enum class GZipOs(val encodedValue: UByte) {
     UNKNOWN     (0xFFU);
     // @formatter:on
 
-    companion object {
+    public companion object {
         /**
          * Resolves a [GZipOs] by its encoded value.
          *
          * @param encodedValue The encoded OS value from a GZip header.
          * @return The matching [GZipOs].
          */
-        fun byEncodedValue(encodedValue: UByte): GZipOs = entries.first { os -> os.encodedValue == encodedValue }
+        public fun byEncodedValue(encodedValue: UByte): GZipOs = entries.first { os -> os.encodedValue == encodedValue }
 
         /**
          * Guesses the current host operating-system marker for new entries.
          *
          * @return The best matching [GZipOs] for the current platform.
          */
-        @OptIn(InternalCompressionApi::class)
-        fun guessCurrent(): GZipOs {
+        public fun guessCurrent(): GZipOs {
             val family = Platform.os.family
             return when {
                 family == OsFamily.WINDOWS -> NTFS

@@ -22,16 +22,16 @@ import kotlinx.io.RawSink
 /**
  * A [RawSink] that calculates the CRC32 checksum of the data written to it.
  */
-interface CRC32Sink : RawSink {
+public interface CRC32Sink : RawSink {
     /**
      * The current CRC32 checksum of the data written to this sink.
      */
-    val checksum: UInt
+    public val checksum: UInt
 
     /**
      * Resets the current [checksum] to its initial value.
      */
-    fun reset()
+    public fun reset()
 }
 
 private class CRC32SinkImpl( // @formatter:off
@@ -60,7 +60,7 @@ private class CRC32SinkImpl( // @formatter:off
  * @param isSinkOwned whether the underlying sink is owned by the [CRC32Sink] and should be closed when it is closed.
  * @return a [CRC32Sink] wrapping this [RawSink].
  */
-fun RawSink.crc32Sink( // @formatter:off
+public fun RawSink.crc32Sink( // @formatter:off
     isSinkOwned: Boolean = true,
     crc32: CRC32 = CRC32()
 ): CRC32Sink = CRC32SinkImpl(this, isSinkOwned, crc32) // @formatter:on

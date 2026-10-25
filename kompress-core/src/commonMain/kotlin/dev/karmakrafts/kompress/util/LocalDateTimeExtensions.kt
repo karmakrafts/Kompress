@@ -23,7 +23,7 @@ import kotlinx.datetime.LocalTime
 import kotlinx.datetime.number
 
 @InternalCompressionApi
-fun UShort.unpackTimeWord(): LocalTime {
+public fun UShort.unpackTimeWord(): LocalTime {
     val hours = ((toUInt() shr 11) and 0b1111U).toInt()
     val minutes = ((toUInt() shr 5) and 0b1111U).toInt()
     val seconds = ((toUInt() and 0b1111U) shl 1).toInt()
@@ -31,7 +31,7 @@ fun UShort.unpackTimeWord(): LocalTime {
 }
 
 @InternalCompressionApi
-fun UShort.unpackDateWord(): LocalDate {
+public fun UShort.unpackDateWord(): LocalDate {
     val year = (((toUInt() shr 9) and 0b111111U) + 1980U).toInt()
     val month = ((toUInt() shr 5) and 0b111U).toInt()
     val day = (toUInt() and 0b1111U).toInt()
@@ -39,7 +39,7 @@ fun UShort.unpackDateWord(): LocalDate {
 }
 
 @InternalCompressionApi
-fun LocalDateTime.packTimeWord(): UShort {
+public fun LocalDateTime.packTimeWord(): UShort {
     val hours = (hour and 0b1111).toUInt()
     val minutes = (minute and 0b1111).toUInt()
     val seconds = ((second shr 1) and 0b1111).toUInt()
@@ -47,7 +47,7 @@ fun LocalDateTime.packTimeWord(): UShort {
 }
 
 @InternalCompressionApi
-fun LocalDateTime.packDateWord(): UShort {
+public fun LocalDateTime.packDateWord(): UShort {
     val year = ((year - 1980) and 0b111111).toUInt()
     val month = (month.number and 0b111).toUInt()
     val day = (day and 0b1111).toUInt()

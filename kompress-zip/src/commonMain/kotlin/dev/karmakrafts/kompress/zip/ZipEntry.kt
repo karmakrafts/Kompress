@@ -30,7 +30,7 @@ import kotlin.time.Instant
  * @property gpbf General purpose bit flag values used for the entry.
  */
 @ExperimentalCompressionApi
-data class ZipEntry(
+public data class ZipEntry(
     val modificationTime: Instant,
     val name: String,
     val comment: String? = null,

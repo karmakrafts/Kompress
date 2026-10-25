@@ -27,32 +27,32 @@ import kotlin.jvm.JvmInline
  */
 @ExperimentalCompressionApi
 @JvmInline
-value class ZipExtraFieldContainer(
-    val delegate: MutableList<ZipExtraFieldEntry>
+public value class ZipExtraFieldContainer(
+    public val delegate: MutableList<ZipExtraFieldEntry>
 ) : MutableList<ZipExtraFieldEntry> by delegate {
     /**
      * Factory helpers for [ZipExtraFieldContainer].
      */
-    companion object {
+    public companion object {
         /**
          * Creates an empty extra field container.
          *
          * @return New empty extra field container.
          */
-        fun empty(): ZipExtraFieldContainer = ZipExtraFieldContainer(mutableListOf())
+        public fun empty(): ZipExtraFieldContainer = ZipExtraFieldContainer(mutableListOf())
     }
 
     /**
      * Total encoded size of all contained extra field entries in bytes.
      */
-    inline val byteSize: Long get() = sumOf(ZipExtraFieldEntry::size)
+    public inline val byteSize: Long get() = sumOf(ZipExtraFieldEntry::size)
 
     /**
      * Encodes all contained extra field entries to [sink].
      *
      * @param sink Sink receiving the encoded extra field payload.
      */
-    fun encode(sink: Sink) {
+    public fun encode(sink: Sink) {
         forEach { entry -> entry.encode(sink) }
     }
 }

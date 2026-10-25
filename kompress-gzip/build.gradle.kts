@@ -24,6 +24,7 @@ import dev.karmakrafts.conventions.kotlin.defaultCompilerOptions
 import dev.karmakrafts.conventions.kotlin.withAndroidLibrary
 import dev.karmakrafts.conventions.kotlin.withBrowser
 import dev.karmakrafts.conventions.kotlin.withJvm
+import dev.karmakrafts.conventions.kotlin.withLinuxArm64StandaloneTests
 import dev.karmakrafts.conventions.kotlin.withNative
 import dev.karmakrafts.conventions.kotlin.withNodeJs
 import dev.karmakrafts.conventions.kotlin.withWasmWasi
@@ -53,6 +54,7 @@ configureDokka {
 }
 
 kotlin {
+    explicitApi()
     defaultCompilerOptions()
     withSourcesJar()
     withAndroidLibrary("$group.gzip")
@@ -61,6 +63,7 @@ kotlin {
             test(listOf(NativeBuildType.RELEASE))
         }
     }
+    withLinuxArm64StandaloneTests()
     withJvm {
         testRuns {
             create("vector") { // Run tests with jdk.incubator.vector API

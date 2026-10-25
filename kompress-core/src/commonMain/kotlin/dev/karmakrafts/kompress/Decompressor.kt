@@ -22,52 +22,52 @@ import kotlinx.io.readByteArray
 /**
  * Base interface for any type of streaming decompressor.
  */
-interface Decompressor : AutoCloseable {
-    companion object {
-        const val DEFAULT_BUFFER_SIZE: Int = 4096
+public interface Decompressor : AutoCloseable {
+    public companion object {
+        public const val DEFAULT_BUFFER_SIZE: Int = 4096
     }
 
     /**
      * The current input buffer.
      */
-    val input: ByteArray
+    public val input: ByteArray
 
     /**
      * The offset into the current input buffer in bytes.
      */
-    val inputOffset: Int
+    public val inputOffset: Int
 
     /**
      * The size of the current input data in bytes.
      */
-    val inputSize: Int
+    public val inputSize: Int
 
     /**
      * The number of bytes not consumed by the decompressor
      * remaining in the current input buffer.
      */
-    val remaining: Int
+    public val remaining: Int
 
     /**
      * The total number of bytes read in by this compressor instance since its last reset.
      */
-    val bytesRead: Long
+    public val bytesRead: Long
 
     /**
      * The total number of bytes written out by this compressor instance since its last reset.
      */
-    val bytesWritten: Long
+    public val bytesWritten: Long
 
     /**
      * True when the input buffer does not contain any more
      * data to decompress.
      */
-    val needsInput: Boolean
+    public val needsInput: Boolean
 
     /**
      * True when the end of the decompressed data buffer has been reached.
      */
-    val finished: Boolean
+    public val finished: Boolean
 
     /**
      * Update the current input buffer, offset and size of the input data.
@@ -76,7 +76,7 @@ interface Decompressor : AutoCloseable {
      * @param offset The offset into the given buffer to start reading from in bytes.
      * @param size The number of bytes to read from the given buffer.
      */
-    fun setInput( // @formatter:off
+    public fun setInput( // @formatter:off
         data: ByteArray,
         offset: Int = 0,
         size: Int = data.size
@@ -89,7 +89,7 @@ interface Decompressor : AutoCloseable {
      * @return The actual number of decompressed bytes.
      * @throws dev.karmakrafts.kompress.exception.DataFormatException when the decompressor encounters invalid data.
      */
-    fun decompress( // @formatter:off
+    public fun decompress( // @formatter:off
         output: ByteArray,
         offset: Int = 0,
         size: Int = output.size,
@@ -105,7 +105,7 @@ interface Decompressor : AutoCloseable {
      * @return The decompressed data.
      * @throws dev.karmakrafts.kompress.exception.DataFormatException when the decompressor encounters invalid data.
      */
-    fun decompressBulk(data: ByteArray, bufferSize: Int = 4096): ByteArray {
+    public fun decompressBulk(data: ByteArray, bufferSize: Int = 4096): ByteArray {
         setInput(data)
         finish()
         val buffer = Buffer()
@@ -122,11 +122,11 @@ interface Decompressor : AutoCloseable {
      * When called, indicates that decompression should end with the current
      * contents of the input buffer.
      */
-    fun finish()
+    public fun finish()
 
     /**
      * Reset the internal state of this decompressor so it can be reused
      * for a new decompression cycle.
      */
-    fun reset()
+    public fun reset()
 }

@@ -24,14 +24,14 @@ import kotlin.jvm.JvmInline
  * @property fields The raw encoded FLG byte.
  */
 @JvmInline
-value class ZlibFlags(val fields: UByte) {
+public value class ZlibFlags(public val fields: UByte) {
     /**
      * Creates an FLG byte from a compression level hint and dictionary flag.
      *
      * @param level The compression level hint to encode.
      * @param hasDictionary Whether the stream uses a preset dictionary.
      */
-    constructor( // @formatter:off
+    public constructor( // @formatter:off
         level: ZlibCompressionLevel = ZlibCompressionLevel.DEFAULT,
         hasDictionary: Boolean = false
     ) : this( // @formatter:on
@@ -39,11 +39,11 @@ value class ZlibFlags(val fields: UByte) {
     )
 
     /** The compression level hint encoded in this FLG byte. */
-    inline val level: ZlibCompressionLevel
+    public inline val level: ZlibCompressionLevel
         get() = ZlibCompressionLevel.byEncodedValue(((fields.toUInt() shr 6) and 0b11U).toUByte())
 
     /** Whether this FLG byte signals usage of a preset dictionary. */
-    inline val hasDictionary: Boolean
+    public inline val hasDictionary: Boolean
         get() = (fields.toUInt() and 0x20U) != 0U
 
     /**
@@ -52,7 +52,7 @@ value class ZlibFlags(val fields: UByte) {
      * @param cmf The CMF byte used to compute FCHECK.
      * @return The FLG byte with valid FCHECK bits.
      */
-    fun withCheckBits(cmf: ZlibCMF): UByte {
+    public fun withCheckBits(cmf: ZlibCMF): UByte {
         val flg = fields.toUInt() and 0xE0U
         val cmfBits = cmf.value.toUInt()
         val fcheck = (31U - (((cmfBits shl 8) or flg) % 31U)) % 31U

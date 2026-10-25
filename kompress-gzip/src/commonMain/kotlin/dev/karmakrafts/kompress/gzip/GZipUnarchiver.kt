@@ -19,7 +19,6 @@ package dev.karmakrafts.kompress.gzip
 import dev.karmakrafts.karbide.readUIntLeFast
 import dev.karmakrafts.karbide.readUShortLeFast
 import dev.karmakrafts.kompress.Decompressor
-import dev.karmakrafts.kompress.InternalCompressionApi
 import dev.karmakrafts.kompress.archive.AbstractBufferedUnarchiver
 import dev.karmakrafts.kompress.archive.Unarchiver
 import dev.karmakrafts.kompress.archive.UnarchiverEntryCallback
@@ -37,7 +36,6 @@ import kotlinx.io.readUByte
 import kotlinx.io.readUShort
 import kotlin.time.Instant
 
-@OptIn(InternalCompressionApi::class)
 private class GZipUnarchiver( // @formatter:off
     override val source: Source,
     private val inflater: Inflater,
@@ -181,7 +179,7 @@ private class GZipUnarchiver( // @formatter:off
  * @param isDecompressorOwned Whether the [inflater] is owned by the unarchiver and should be closed when the unarchiver is closed.
  * @return A GZip [Unarchiver] for [GZipEntry]s.
  */
-fun RawSource.ungzip( // @formatter:off
+public fun RawSource.ungzip( // @formatter:off
     inflater: Inflater = Inflater(),
     isSourceOwned: Boolean = true,
     isDecompressorOwned: Boolean = true
@@ -197,7 +195,7 @@ fun RawSource.ungzip( // @formatter:off
  * @param isDecompressorOwned Whether the [inflater] is owned by the unarchiver and should be closed when the unarchiver is closed.
  * @return A GZip [Unarchiver] for [GZipEntry]s.
  */
-fun Source.ungzip( // @formatter:off
+public fun Source.ungzip( // @formatter:off
     inflater: Inflater = Inflater(),
     isSourceOwned: Boolean = true,
     isDecompressorOwned: Boolean = true

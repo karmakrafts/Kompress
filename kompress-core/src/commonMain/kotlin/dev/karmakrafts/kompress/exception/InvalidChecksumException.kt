@@ -23,9 +23,9 @@ package dev.karmakrafts.kompress.exception
  * @property actualChecksum The actual checksum value that was calculated.
  * @constructor Creates a new [InvalidChecksumException] with the given [expectedChecksum] and [actualChecksum].
  */
-open class InvalidChecksumException(
-    val expectedChecksum: UInt,
-    val actualChecksum: UInt,
+public open class InvalidChecksumException(
+    public val expectedChecksum: UInt,
+    public val actualChecksum: UInt,
     message: String? = "Invalid checksum, expected 0x${expectedChecksum.toHexString()} but got 0x${actualChecksum.toHexString()}",
     cause: Throwable? = null
 ) : KompressException(message, cause)

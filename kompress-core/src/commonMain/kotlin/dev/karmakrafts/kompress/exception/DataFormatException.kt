@@ -16,6 +16,6 @@
 
 package dev.karmakrafts.kompress.exception
 
-open class DataFormatException(
+public open class DataFormatException(
     message: String? = null, cause: Throwable? = null
 ) : KompressException(message, cause)

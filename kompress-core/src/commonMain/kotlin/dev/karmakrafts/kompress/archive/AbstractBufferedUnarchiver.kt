@@ -18,7 +18,7 @@ package dev.karmakrafts.kompress.archive
 
 import kotlinx.io.Buffer
 
-abstract class AbstractBufferedUnarchiver<E, M : Enum<M>> : Unarchiver<E, M> {
+public abstract class AbstractBufferedUnarchiver<E, M : Enum<M>> : Unarchiver<E, M> {
     protected val buffer: Buffer = Buffer()
 
     // Allows buffering N bytes on demand based on the bytes already in the buffer

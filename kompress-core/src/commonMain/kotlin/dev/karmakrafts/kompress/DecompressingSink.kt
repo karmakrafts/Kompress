@@ -91,7 +91,7 @@ private class DecompressingSink( // @formatter:off
  *  This will automatically close the wrapped decompressor when the wrapper is closed.
  * @return A decompressing [RawSink].
  */
-fun RawSink.decompressingSink( // @formatter:off
+public fun RawSink.decompressingSink( // @formatter:off
     decompressor: Decompressor,
     bufferSize: Int = Decompressor.DEFAULT_BUFFER_SIZE,
     isSinkOwned: Boolean = true,

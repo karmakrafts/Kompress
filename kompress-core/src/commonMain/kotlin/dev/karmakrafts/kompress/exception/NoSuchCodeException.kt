@@ -16,4 +16,4 @@
 
 package dev.karmakrafts.kompress.exception
 
-class NoSuchCodeException(message: String? = null, cause: Throwable? = null) : KompressException(message, cause)
+public class NoSuchCodeException(message: String? = null, cause: Throwable? = null) : KompressException(message, cause)

@@ -19,26 +19,26 @@ package dev.karmakrafts.kompress.lz77
 import dev.karmakrafts.kompress.InternalCompressionApi
 
 @InternalCompressionApi
-interface LZ77 {
-    companion object {
-        const val DEFAULT_LEVEL: Int = 6
-        const val DEFAULT_MIN_MATCH: Int = 3
-        const val DEFAULT_MAX_MATCH: Int = 258
-        const val DEFAULT_WINDOW_SIZE: Int = 32 * 1024
+public interface LZ77 {
+    public companion object {
+        public const val DEFAULT_LEVEL: Int = 6
+        public const val DEFAULT_MIN_MATCH: Int = 3
+        public const val DEFAULT_MAX_MATCH: Int = 258
+        public const val DEFAULT_WINDOW_SIZE: Int = 32 * 1024
 
-        const val HASH_SIZE: Int = 1 shl 15
-        const val HASH_MASK: Int = HASH_SIZE - 1
-        const val DEFAULT_HEAD: Int = -1
-        const val DEFAULT_NEXT: Int = -1
+        public const val HASH_SIZE: Int = 1 shl 15
+        public const val HASH_MASK: Int = HASH_SIZE - 1
+        public const val DEFAULT_HEAD: Int = -1
+        public const val DEFAULT_NEXT: Int = -1
 
-        fun getMaxChainDepth(level: Int): Int = when (level) {
+        public fun getMaxChainDepth(level: Int): Int = when (level) {
             in 0..2 -> 4
             in 3..5 -> 16
             in 6..7 -> 64
             else -> 256
         }
 
-        fun rollingHash(data: ByteArray, offset: Int): Int {
+        public fun rollingHash(data: ByteArray, offset: Int): Int {
             require(data.size - offset >= 3) { "Rolling hash offset out of bounds" }
             return ( // @formatter:off
                 ((data[offset].toInt() and 0xFF) shl 10) xor
@@ -48,10 +48,10 @@ interface LZ77 {
         }
     }
 
-    var level: Int
-    val minMatch: Int
-    val maxMatch: Int
-    val windowSize: Int
+    public var level: Int
+    public val minMatch: Int
+    public val maxMatch: Int
+    public val windowSize: Int
 
     /**
      * Encodes the given data into an LZ77 token stream.
@@ -63,14 +63,14 @@ interface LZ77 {
      * @param size The size of the slice to read from the input array.
      * @return A list of LZ77 tokens corresponding to the original data.
      */
-    fun encode( // @formatter:off
+    public fun encode( // @formatter:off
         tokens: MutableList<Token>,
         data: ByteArray,
         offset: Int = 0,
         size: Int = data.size - offset
     )
 
-    fun reset()
+    public fun reset()
 }
 
 /**
@@ -175,7 +175,7 @@ internal class LZ77Impl( // @formatter:off
 }
 
 @InternalCompressionApi
-expect fun LZ77(
+public expect fun LZ77(
     level: Int = LZ77.DEFAULT_LEVEL,
     minMatch: Int = LZ77.DEFAULT_MIN_MATCH,
     maxMatch: Int = LZ77.DEFAULT_MAX_MATCH,

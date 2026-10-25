@@ -27,7 +27,7 @@ import kotlin.jvm.JvmInline
  */
 @OptIn(InternalCompressionApi::class)
 @JvmInline
-value class ZlibCMF(val value: UByte) {
+public value class ZlibCMF(public val value: UByte) {
     private companion object {
         const val MIN_WINDOW_SIZE: Int = 1 shl 8
         const val MAX_WINDOW_SIZE: Int = 1 shl 15
@@ -49,7 +49,7 @@ value class ZlibCMF(val value: UByte) {
      * @param compressionMethod The compression method to encode.
      * @param windowSize The LZ77 window size in bytes.
      */
-    constructor(
+    public constructor(
         compressionMethod: ZlibCompressionMethod = ZlibCompressionMethod.DEFLATE,
         windowSize: Int = LZ77.DEFAULT_WINDOW_SIZE
     ) : this(
@@ -57,10 +57,10 @@ value class ZlibCMF(val value: UByte) {
     )
 
     /** The compression method encoded in this CMF byte. */
-    inline val compressionMethod: ZlibCompressionMethod
+    public inline val compressionMethod: ZlibCompressionMethod
         get() = ZlibCompressionMethod.byEncodedValue(value and 0b1111U)
 
     /** The encoded LZ77 window size in bytes. */
-    inline val windowSize: Int
+    public inline val windowSize: Int
         get() = 1 shl ((((value.toUInt() shr 4) and 0b1111U).toInt()) + 8)
 }

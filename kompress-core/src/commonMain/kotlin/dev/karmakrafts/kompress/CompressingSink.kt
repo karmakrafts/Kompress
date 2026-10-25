@@ -91,7 +91,7 @@ private class CompressingSink( // @formatter:off
  *  This will automatically close the wrapped compressor when the wrapper is closed.
  * @return A compressing [RawSink].
  */
-fun RawSink.compressingSink( // @formatter:off
+public fun RawSink.compressingSink( // @formatter:off
     compressor: Compressor,
     bufferSize: Int = Compressor.DEFAULT_BUFFER_SIZE,
     isSinkOwned: Boolean = true,

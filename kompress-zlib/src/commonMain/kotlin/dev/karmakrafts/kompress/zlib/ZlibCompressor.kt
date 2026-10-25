@@ -17,8 +17,8 @@
 package dev.karmakrafts.kompress.zlib
 
 import dev.karmakrafts.kompress.Compressor
-import dev.karmakrafts.kompress.InternalCompressionApi
 import dev.karmakrafts.kompress.FramingCompressor
+import dev.karmakrafts.kompress.InternalCompressionApi
 import dev.karmakrafts.kompress.compressingSink
 import dev.karmakrafts.kompress.compressingSource
 import dev.karmakrafts.kompress.deflate.Deflater
@@ -36,12 +36,12 @@ import kotlinx.io.writeUInt
  * @param flags The FLG header fields to write.
  */
 @OptIn(InternalCompressionApi::class)
-class ZlibCompressor(
+public class ZlibCompressor(
     level: Int = Deflater.DEFAULT_LEVEL,
     private val cmf: ZlibCMF = ZlibCMF(),
     private val flags: ZlibFlags = ZlibFlags(ZlibCompressionLevel.fromDeflaterLevel(level))
 ) : FramingCompressor(Deflater(level)) {
-    companion object {
+    public companion object {
         /**
          * Compresses the given data in one go using the given
          * compression level and buffer size.
@@ -51,7 +51,7 @@ class ZlibCompressor(
          * @param bufferSize The size of the intermediate buffer used during compression.
          * @return The compressed data.
          */
-        fun compress( // @formatter:off
+        public fun compress( // @formatter:off
             data: ByteArray,
             level: Int = Deflater.DEFAULT_LEVEL,
             bufferSize: Int = Compressor.DEFAULT_BUFFER_SIZE
@@ -96,7 +96,7 @@ class ZlibCompressor(
  *  compression.
  * @return A [RawSource] that produces compressed data.
  */
-fun RawSource.zlibSource( // @formatter:off
+public fun RawSource.zlibSource( // @formatter:off
     level: Int = Deflater.DEFAULT_LEVEL,
     cmf: ZlibCMF = ZlibCMF(),
     flags: ZlibFlags = ZlibFlags(ZlibCompressionLevel.fromDeflaterLevel(level)),
@@ -118,7 +118,7 @@ fun RawSource.zlibSource( // @formatter:off
  *  compression.
  * @return A [RawSink] that accepts uncompressed data and writes compressed data.
  */
-fun RawSink.zlibSink( // @formatter:off
+public fun RawSink.zlibSink( // @formatter:off
     level: Int = Deflater.DEFAULT_LEVEL,
     cmf: ZlibCMF = ZlibCMF(),
     flags: ZlibFlags = ZlibFlags(ZlibCompressionLevel.fromDeflaterLevel(level)),

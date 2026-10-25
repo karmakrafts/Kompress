@@ -29,16 +29,16 @@ import kotlinx.io.Sink
  * @param E the type of entry this archiver uses.
  * @param M the type of compression modes this archiver supports.
  */
-interface Archiver<E, M : Enum<M>> : AutoCloseable {
+public interface Archiver<E, M : Enum<M>> : AutoCloseable {
     /**
      * The target sink being written to.
      */
-    val sink: RawSink
+    public val sink: RawSink
 
     /**
      * The compressors used for compressing entry data blocks.
      */
-    val compressors: Map<M, Compressor>
+    public val compressors: Map<M, Compressor>
 
     /**
      * Append a new entry to the archive.
@@ -50,7 +50,7 @@ interface Archiver<E, M : Enum<M>> : AutoCloseable {
      * @throws dev.karmakrafts.kompress.exception.DataFormatException when any of the given entry data
      *  doesn't satisfy the constraints of the underlying container format.
      */
-    fun appendEntry(entry: E, callback: (Sink) -> Boolean)
+    public fun appendEntry(entry: E, callback: (Sink) -> Boolean)
 }
 
 /**
@@ -61,7 +61,7 @@ interface Archiver<E, M : Enum<M>> : AutoCloseable {
  * @throws dev.karmakrafts.kompress.exception.DataFormatException when any of the given entry data
  *  doesn't satisfy the constraints of the underlying container format.
  */
-fun <E, M : Enum<M>> Archiver<E, M>.appendEntry(entry: E, source: RawSource) {
+public fun <E, M : Enum<M>> Archiver<E, M>.appendEntry(entry: E, source: RawSource) {
     appendEntry(entry) { sink ->
         sink.transferFrom(source) > 0L
     }
@@ -74,8 +74,8 @@ fun <E, M : Enum<M>> Archiver<E, M>.appendEntry(entry: E, source: RawSource) {
  * @throws dev.karmakrafts.kompress.exception.DataFormatException when any of the given entry data
  *  doesn't satisfy the constraints of the underlying container format.
  */
-fun <E, M : Enum<M>> Archiver<E, M>.appendEntries(entries: Iterable<Pair<E, RawSource>>) {
-    for ((entry, source) in entries) {
+public fun <E, M : Enum<M>> Archiver<E, M>.appendEntries(entries: Iterable<Pair<E, RawSource>>) {
+    for ([entry, source] in entries) {
         appendEntry(entry, source)
     }
 }

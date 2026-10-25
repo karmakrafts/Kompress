@@ -16,4 +16,7 @@
 
 package dev.karmakrafts.kompress.exception
 
-class NoSuchSymbolException(message: String? = null, cause: Throwable? = null) : KompressException(message, cause)
+public class NoSuchSymbolException(message: String? = null, cause: Throwable? = null) : KompressException(
+    message,
+    cause
+)

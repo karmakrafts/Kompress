@@ -36,11 +36,11 @@ import kotlinx.io.RawSource
 /**
  * Streaming compression interface that supports deflate and deflate-raw compression.
  */
-interface Deflater : Compressor {
-    companion object {
-        const val MIN_LEVEL: Int = 1
-        const val MAX_LEVEL: Int = 9
-        const val DEFAULT_LEVEL: Int = 6
+public interface Deflater : Compressor {
+    public companion object {
+        public const val MIN_LEVEL: Int = 1
+        public const val MAX_LEVEL: Int = 9
+        public const val DEFAULT_LEVEL: Int = 6
 
         /**
          * Compresses the given data in one go using the given
@@ -52,7 +52,7 @@ interface Deflater : Compressor {
          * @return The compressed data.
          * @throws dev.karmakrafts.kompress.exception.DataFormatException when the compressor encounters invalid data.
          */
-        fun compress( // @formatter:off
+        public fun compress( // @formatter:off
             data: ByteArray,
             level: Int = DEFAULT_LEVEL,
             bufferSize: Int = Compressor.DEFAULT_BUFFER_SIZE
@@ -69,7 +69,7 @@ interface Deflater : Compressor {
      *
      * **DO NOT change this during compression as it will corrupt your data!**
      */
-    var level: Int
+    public var level: Int
 }
 
 @OptIn(InternalCompressionApi::class)
@@ -556,7 +556,7 @@ internal class DeflaterImpl( // @formatter:off
  * @param level The compression level between 0 and 9.
  * @return A new [Deflater] instance with the given parameters.
  */
-fun Deflater( // @formatter:off
+public fun Deflater( // @formatter:off
     level: Int = Deflater.DEFAULT_LEVEL
 ): Deflater = DeflaterImpl(level)
 
@@ -573,7 +573,7 @@ fun Deflater( // @formatter:off
  *  compression.
  * @return A [RawSource] that produces compressed data.
  */
-fun RawSource.deflatingSource( // @formatter:off
+public fun RawSource.deflatingSource( // @formatter:off
     level: Int = Deflater.DEFAULT_LEVEL,
     bufferSize: Int = Compressor.DEFAULT_BUFFER_SIZE
 ): RawSource = compressingSource(Deflater(level), bufferSize) // @formatter:on
@@ -591,7 +591,7 @@ fun RawSource.deflatingSource( // @formatter:off
  *  compression.
  * @return A [RawSink] that accepts uncompressed data and writes compressed data.
  */
-fun RawSink.deflatingSink( // @formatter:off
+public fun RawSink.deflatingSink( // @formatter:off
     level: Int = Deflater.DEFAULT_LEVEL,
     bufferSize: Int = Compressor.DEFAULT_BUFFER_SIZE
 ): RawSink = compressingSink(Deflater(level), bufferSize) // @formatter:on

@@ -22,16 +22,16 @@ import kotlinx.io.RawSource
 /**
  * A [RawSource] that calculates the CRC32 checksum of the data read from it.
  */
-interface CRC32Source : RawSource {
+public interface CRC32Source : RawSource {
     /**
      * The current CRC32 checksum of the data read from this source.
      */
-    val checksum: UInt
+    public val checksum: UInt
 
     /**
      * Resets the current [checksum] to its initial value.
      */
-    fun reset()
+    public fun reset()
 }
 
 private class CRC32SourceImpl( // @formatter:off
@@ -61,7 +61,7 @@ private class CRC32SourceImpl( // @formatter:off
  * @param isSourceOwned whether the underlying source is owned by the [CRC32Source] and should be closed when it is closed.
  * @return a [CRC32Source] wrapping this [RawSource].
  */
-fun RawSource.crc32Source( // @formatter:off
+public fun RawSource.crc32Source( // @formatter:off
     isSourceOwned: Boolean = true,
     crc32: CRC32 = CRC32()
 ): CRC32Source = CRC32SourceImpl(this, isSourceOwned, crc32) // @formatter:on

@@ -22,9 +22,10 @@ package dev.karmakrafts.kompress.zlib
  * @property encodedValue The two-bit level encoding used in the FLG header byte.
  * @property deflateLevel The mapped DEFLATE level used by the underlying deflater.
  */
-enum class ZlibCompressionLevel(
-    val encodedValue: UByte, val deflateLevel: Int
-) {
+public enum class ZlibCompressionLevel( // @formatter:off
+    public val encodedValue: UByte,
+    public val deflateLevel: Int
+) { // @formatter:on
     // @formatter:off
     /** Fastest compression with the lowest compression ratio. */
     FASTEST(0x00U, 1),
@@ -36,14 +37,14 @@ enum class ZlibCompressionLevel(
     MAXIMUM(0x03U, 9);
     // @formatter:on
 
-    companion object {
+    public companion object {
         /**
          * Resolves a compression level by its encoded FLG bits.
          *
          * @param encodedValue The encoded level bits.
          * @return The matching compression level.
          */
-        fun byEncodedValue(encodedValue: UByte): ZlibCompressionLevel = entries.first { level ->
+        public fun byEncodedValue(encodedValue: UByte): ZlibCompressionLevel = entries.first { level ->
             level.encodedValue == encodedValue
         }
 
@@ -53,7 +54,7 @@ enum class ZlibCompressionLevel(
          * @param level The DEFLATE compression level.
          * @return The mapped Zlib compression level.
          */
-        fun fromDeflaterLevel(level: Int): ZlibCompressionLevel = when (level) {
+        public fun fromDeflaterLevel(level: Int): ZlibCompressionLevel = when (level) {
             in 0..1 -> FASTEST
             in 2..3 -> FAST
             in 4..6 -> DEFAULT

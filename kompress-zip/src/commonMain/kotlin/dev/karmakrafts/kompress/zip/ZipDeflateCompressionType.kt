@@ -24,7 +24,7 @@ import dev.karmakrafts.kompress.ExperimentalCompressionApi
  * @property encodedValue Encoded DEFLATE compression type value.
  */
 @ExperimentalCompressionApi
-enum class ZipDeflateCompressionType(val encodedValue: UShort) {
+public enum class ZipDeflateCompressionType(public val encodedValue: UShort) {
     // @formatter:off
     /** Normal DEFLATE compression. */
     NORMAL    (0b00U),
@@ -39,14 +39,14 @@ enum class ZipDeflateCompressionType(val encodedValue: UShort) {
     /**
      * Utilities for resolving encoded DEFLATE compression types.
      */
-    companion object {
+    public companion object {
         /**
          * Resolves a DEFLATE compression type by its encoded GPBF value.
          *
          * @param encodedValue Encoded DEFLATE compression type.
          * @return Compression type matching [encodedValue].
          */
-        fun byEncodedValue(encodedValue: UShort): ZipDeflateCompressionType = entries.first { type ->
+        public fun byEncodedValue(encodedValue: UShort): ZipDeflateCompressionType = entries.first { type ->
             type.encodedValue == encodedValue
         }
     }

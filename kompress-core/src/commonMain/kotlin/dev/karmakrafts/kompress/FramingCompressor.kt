@@ -26,7 +26,7 @@ import kotlinx.io.readByteArray
  *
  * @property compressor The underlying compressor that produces the wrapped payload.
  */
-abstract class FramingCompressor(val compressor: Compressor) : Compressor by compressor {
+public abstract class FramingCompressor(public val compressor: Compressor) : Compressor by compressor {
     /**
      * Internal wrapper output buffer.
      */
@@ -39,7 +39,7 @@ abstract class FramingCompressor(val compressor: Compressor) : Compressor by com
     /**
      * Appends wrapper prologue bytes to [buffer].
      */
-    protected open fun appendPrologue() = Unit
+    protected open fun appendPrologue(): Unit = Unit
 
     /**
      * Called after payload data has been consumed from [input].
@@ -47,12 +47,12 @@ abstract class FramingCompressor(val compressor: Compressor) : Compressor by com
      * @param offset The start offset in [input] of consumed payload bytes.
      * @param size The number of consumed payload bytes.
      */
-    protected open fun onDataRead(offset: Int, size: Int) = Unit
+    protected open fun onDataRead(offset: Int, size: Int): Unit = Unit
 
     /**
      * Appends wrapper epilogue bytes to [buffer].
      */
-    protected open fun appendEpilogue() = Unit
+    protected open fun appendEpilogue(): Unit = Unit
 
     override val bytesWritten: Long
         get() = compressor.bytesWritten + wrapperBytesWritten

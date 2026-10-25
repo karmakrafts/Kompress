@@ -29,21 +29,21 @@ import kotlinx.io.writeUShortLe
  * @property data Parsed payload data for the extra field.
  */
 @ExperimentalCompressionApi
-data class ZipExtraFieldEntry( // @formatter:off
+public data class ZipExtraFieldEntry( // @formatter:off
     val headerId: ZipExtraFieldEntryHeaderId,
     val data: ZipExtraFieldEntryData
 ) { // @formatter:on
     /**
      * Utilities for decoding extra field entries.
      */
-    companion object {
+    public companion object {
         /**
          * Decodes a single extra field entry from [source].
          *
          * @param source Source positioned at the extra field entry header id.
          * @return Decoded extra field entry.
          */
-        fun decode(source: Source): ZipExtraFieldEntry {
+        public fun decode(source: Source): ZipExtraFieldEntry {
             val headerId = ZipExtraFieldEntryHeaderId.byEncodedValue(source.readUShortLe())
             source.skip(UShort.SIZE_BYTES.toLong()) // We don't care about the data size
             val data = headerId.parse(source)
@@ -61,7 +61,7 @@ data class ZipExtraFieldEntry( // @formatter:off
      *
      * @param sink Sink receiving the encoded entry.
      */
-    fun encode(sink: Sink) {
+    public fun encode(sink: Sink) {
         sink.writeUShortLe(headerId.encodedValue)
         sink.writeUShortLe(data.size.toUShort())
         data.encode(sink)

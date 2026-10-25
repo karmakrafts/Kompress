@@ -19,7 +19,7 @@ package dev.karmakrafts.kompress.lz77
 import dev.karmakrafts.kompress.InternalCompressionApi
 
 @InternalCompressionApi
-actual fun LZ77( // @formatter:off
+public actual fun LZ77( // @formatter:off
     level: Int,
     minMatch: Int,
     maxMatch: Int,

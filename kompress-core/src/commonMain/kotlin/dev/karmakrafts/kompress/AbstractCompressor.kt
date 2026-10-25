@@ -21,7 +21,7 @@ package dev.karmakrafts.kompress
  *
  * Implementations can update these properties while performing compression.
  */
-abstract class AbstractCompressor : Compressor {
+public abstract class AbstractCompressor : Compressor {
     override var input: ByteArray = ByteArray(0)
         protected set
 

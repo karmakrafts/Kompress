@@ -22,54 +22,54 @@ import kotlin.math.min
 /**
  * Interface for calculating CRC32 checksums.
  */
-interface CRC32 {
-    companion object {
+public interface CRC32 {
+    public companion object {
         /**
          * The default initial value for CRC32 calculation.
          */
-        const val DEFAULT_INITIAL_VALUE: UInt = 0xFFFFFFFFU
+        public const val DEFAULT_INITIAL_VALUE: UInt = 0xFFFFFFFFU
 
         /**
          * The default polynomial used for CRC32 calculation (IEEE 802.3).
          */
-        const val DEFAULT_POLYNOMIAL: UInt = 0xEDB88320U
+        public const val DEFAULT_POLYNOMIAL: UInt = 0xEDB88320U
     }
 
     /**
      * The polynomial used for the CRC32 calculation.
      */
-    val polynomial: UInt
+    public val polynomial: UInt
 
     /**
      * The initial value used for the CRC32 calculation.
      */
-    val initialValue: UInt
+    public val initialValue: UInt
 
     /**
      * Resets the CRC32 value to the initial value.
      */
-    fun reset()
+    public fun reset()
 
     /**
      * Updates the CRC32 value with the given [data].
      *
      * @param data The data to update the CRC32 value with.
      */
-    fun round(data: ByteArray, offset: Int = 0, size: Int = data.size)
+    public fun round(data: ByteArray, offset: Int = 0, size: Int = data.size)
 
     /**
      * Updates the CRC32 value with the given [byte].
      *
      * @param byte The byte to update the CRC32 value with.
      */
-    fun round(byte: Byte)
+    public fun round(byte: Byte)
 
     /**
      * Finalizes the CRC32 calculation and returns the checksum value.
      *
      * @return The finalized CRC32 checksum.
      */
-    fun finalize(): UInt
+    public fun finalize(): UInt
 }
 
 /**
@@ -78,7 +78,7 @@ interface CRC32 {
  * @param data The data to calculate the CRC32 checksum for.
  * @return The calculated CRC32 checksum.
  */
-fun CRC32.once(data: ByteArray): UInt {
+public fun CRC32.once(data: ByteArray): UInt {
     round(data)
     return finalize()
 }
@@ -89,7 +89,7 @@ fun CRC32.once(data: ByteArray): UInt {
  * @param source The source to read the data from.
  * @param size The number of bytes to read from the source.
  */
-fun CRC32.round(source: Source, size: Long) {
+public fun CRC32.round(source: Source, size: Long) {
     var remaining = size
     val buffer = ByteArray(4096)
     while (remaining > 0 && !source.exhausted()) {
@@ -108,7 +108,7 @@ fun CRC32.round(source: Source, size: Long) {
  * @param size The number of bytes to read from the source.
  * @return The calculated CRC32 checksum.
  */
-fun CRC32.once(source: Source, size: Long): UInt {
+public fun CRC32.once(source: Source, size: Long): UInt {
     round(source, size)
     return finalize()
 }
@@ -265,7 +265,7 @@ internal class CRC32Impl( // @formatter:off
  * @param initialValue The initial value to use for the CRC32 calculation.
  * @return A new [CRC32] instance.
  */
-expect fun CRC32( // @formatter:off
+public expect fun CRC32( // @formatter:off
     polynomial: UInt = CRC32.DEFAULT_POLYNOMIAL,
     initialValue: UInt = CRC32.DEFAULT_INITIAL_VALUE
 ): CRC32

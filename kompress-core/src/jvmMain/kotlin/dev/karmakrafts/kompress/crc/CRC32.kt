@@ -18,4 +18,4 @@
 
 package dev.karmakrafts.kompress.crc
 
-actual fun CRC32(polynomial: UInt, initialValue: UInt): CRC32 = CRC32Impl(polynomial, initialValue)
+public actual fun CRC32(polynomial: UInt, initialValue: UInt): CRC32 = CRC32Impl(polynomial, initialValue)

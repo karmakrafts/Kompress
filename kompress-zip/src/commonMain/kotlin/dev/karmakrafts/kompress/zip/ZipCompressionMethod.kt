@@ -24,7 +24,7 @@ import dev.karmakrafts.kompress.ExperimentalCompressionApi
  * @property encodedValue Encoded compression method identifier stored in ZIP headers.
  */
 @ExperimentalCompressionApi
-enum class ZipCompressionMethod(val encodedValue: UShort) {
+public enum class ZipCompressionMethod(public val encodedValue: UShort) {
     // @formatter:off
     /** No compression is applied to entry data. */
     NONE     (0x0000U),
@@ -43,14 +43,14 @@ enum class ZipCompressionMethod(val encodedValue: UShort) {
     /**
      * Utilities for resolving encoded compression method identifiers.
      */
-    companion object {
+    public companion object {
         /**
          * Resolves a compression method by its encoded ZIP header value.
          *
          * @param encodedValue Encoded compression method identifier.
          * @return Compression method matching [encodedValue].
          */
-        fun byEncodedValue(encodedValue: UShort): ZipCompressionMethod = entries.first { method ->
+        public fun byEncodedValue(encodedValue: UShort): ZipCompressionMethod = entries.first { method ->
             method.encodedValue == encodedValue
         }
     }

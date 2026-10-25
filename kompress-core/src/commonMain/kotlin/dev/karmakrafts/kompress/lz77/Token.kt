@@ -23,16 +23,16 @@ import dev.karmakrafts.kompress.InternalCompressionApi
  * in any LZ77 token stream.
  */
 @InternalCompressionApi
-sealed interface Token {
+public sealed interface Token {
     /**
      * A literal byte token.
      */
-    data class Literal(val value: UByte) : Token
+    public data class Literal(val value: UByte) : Token
 
     /**
      * A length-distance pair based token.
      */
-    data class Match( // @formatter:off
+    public data class Match( // @formatter:off
         val length: Int,
         val distance: Int
     ) : Token // @formatter:on
