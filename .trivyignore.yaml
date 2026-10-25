@@ -1,3 +1,7 @@
 vulnerabilities:
   - id: CVE-2025-14813
     statement: Only affects local runtime
+  - id: CVE-2026-8763
+    statement: Only affects local dev tools
+  - id: CVE-2026-84939
+    statement: Only affects local dev tools
